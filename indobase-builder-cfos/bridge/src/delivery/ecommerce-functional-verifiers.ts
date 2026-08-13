@@ -26,6 +26,16 @@ export const ECOMMERCE_FUNCTIONAL_VERIFIER_IDS = [
 
 export type EcommerceFunctionalVerifierId = (typeof ECOMMERCE_FUNCTIONAL_VERIFIER_IDS)[number]
 
+function commerceOperatorHeaders(): Record<string, string> {
+  const secret = (
+    process.env.INDOBASE_COMMERCE_WEBHOOK_SECRET ||
+    process.env.BUILDER_CFOS_HANDOFF_SECRET ||
+    process.env.BUILDER_HANDOFF_SECRET ||
+    ''
+  ).trim()
+  return secret.length >= 32 ? { 'X-Indobase-Commerce-Webhook-Secret': secret } : {}
+}
+
 export type FunctionalFetch = (
   input: string | URL | Request,
   init?: RequestInit,
@@ -547,6 +557,7 @@ export async function runEcommerceFunctionalVerifiers(
             headers: {
               'content-type': 'application/json',
               'X-Indobase-Project-Ref': projectRef,
+              ...commerceOperatorHeaders(),
             },
             body: JSON.stringify({ projectRef, orderId }),
           },
@@ -560,6 +571,7 @@ export async function runEcommerceFunctionalVerifiers(
             headers: {
               'content-type': 'application/json',
               'X-Indobase-Project-Ref': projectRef,
+              ...commerceOperatorHeaders(),
             },
             body: JSON.stringify({ projectRef, orderId }),
           },

@@ -9,9 +9,17 @@ export function buildManagedShopAdminHtml(opts: {
   publicUrl: string
   products?: ManagedShopAdminRow[]
   orders?: ManagedShopAdminRow[]
+  commerceBaseUrl?: string
 }): string {
   const brand = (opts.brand || 'Shop').replace(/[<>&"]/g, '')
   const env = buildManagedPublicEnv({ publicUrl: opts.publicUrl, appId: opts.appId })
+  const bridge = (
+    opts.commerceBaseUrl ||
+    process.env.INDOBASE_BRIDGE_PUBLIC_URL ||
+    process.env.BRIDGE_PUBLIC_URL ||
+    'https://builder.indobase.in'
+  ).replace(/\/+$/, '')
+  env.INDOBASE_COMMERCE_URL = `${bridge}/api/os/commerce`
   const productsJson = JSON.stringify(opts.products || [])
   const ordersJson = JSON.stringify(opts.orders || [])
 
@@ -79,36 +87,35 @@ export function buildManagedShopAdminHtml(opts: {
   <p class="err" id="error" hidden></p>
 </main>
 <script>
-const API=(window.__INDOBASE_ENV__||{}).INDOBASE_RECORDS_BASE||'';
+const ENV=window.__INDOBASE_ENV__||{};
+const COMMERCE=ENV.INDOBASE_COMMERCE_URL||'';
+const REF=ENV.PROJECT_REF||'';
 let products=${productsJson};
 let orders=${ordersJson};
 const money=(v,c)=>{const n=Number(v||0);const cur=c||'INR';try{return new Intl.NumberFormat('en-IN',{style:'currency',currency:cur}).format(n)}catch(e){return '₹'+n.toLocaleString('en-IN')}};
-function pbItems(payload){if(Array.isArray(payload))return payload;if(payload&&Array.isArray(payload.items))return payload.items;if(payload&&Array.isArray(payload.records))return payload.records.map(x=>x.record||x);return []}
+const moneyMinor=(minor,c)=>money(Number(minor||0)/100,c);
+function orderTotal(o){if(o.total!=null)return Number(o.total);if(o.amountMinor!=null)return Number(o.amountMinor)/100;if(o.amount_minor!=null)return Number(o.amount_minor)/100;return 0}
 function render(){
   document.querySelector('#metrics').innerHTML=[
     ['Products',products.length,'Catalog records'],
     ['Inventory units',products.reduce((s,p)=>s+Number(p.stock||0),0),'Across active products'],
     ['Orders',orders.length,'Stored orders'],
-    ['Revenue',money(orders.reduce((s,o)=>s+Number(o.total||0),0),orders[0]&&orders[0].currency||'INR'),'Recorded totals'],
+    ['Revenue',money(orders.reduce((s,o)=>s+orderTotal(o),0),orders[0]&&orders[0].currency||'INR'),'Recorded totals'],
   ].map(x=>'<div class="metric"><label>'+x[0]+'</label><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join('');
-  document.querySelector('#products tbody').innerHTML=products.length?products.map(p=>'<tr><td><b>'+(p.name||'')+'</b><div class="muted">'+(p.slug||'')+'</div></td><td>'+money(p.price,p.currency)+'</td><td>'+Number(p.stock||0)+'</td></tr>').join(''):'<tr><td colspan="3" class="muted">No products yet.</td></tr>';
-  document.querySelector('#orders tbody').innerHTML=orders.length?orders.slice(0,20).map(o=>'<tr><td><b>'+(o.email||o.customer_name||'Guest')+'</b><div class="muted">'+(o.id||'')+'</div></td><td>'+money(o.total,o.currency)+'</td><td><span class="status '+(o.status||'')+'">'+String(o.status||'pending').replace(/_/g,' ')+'</span></td></tr>').join(''):'<tr><td colspan="3" class="muted">No orders yet.</td></tr>';
+  document.querySelector('#products tbody').innerHTML=products.length?products.map(p=>'<tr><td><b>'+(p.name||'')+'</b><div class="muted">'+(p.slug||'')+'</div></td><td>'+money(p.price!=null?p.price:(Number(p.priceMinor||0)/100),p.currency)+'</td><td>'+Number(p.stock||0)+'</td></tr>').join(''):'<tr><td colspan="3" class="muted">No products yet.</td></tr>';
+  document.querySelector('#orders tbody').innerHTML=orders.length?orders.slice(0,20).map(o=>'<tr><td><b>'+(o.email||o.customer_name||'Guest')+'</b><div class="muted">'+(o.id||'')+'</div></td><td>'+money(orderTotal(o),o.currency)+'</td><td><span class="status '+(o.paymentStatus||o.payment_status||o.status||'')+'">'+String(o.paymentStatus||o.payment_status||o.status||'pending').replace(/_/g,' ')+'</span></td></tr>').join(''):'<tr><td colspan="3" class="muted">No orders yet.</td></tr>';
 }
 async function load(){
   const err=document.querySelector('#error');
   err.hidden=true;
-  if(!API||!window.__INDOBASE_COLLECTION__){render();document.querySelector('#status').textContent='Snapshot mode';return}
+  if(!COMMERCE||!REF){render();document.querySelector('#status').textContent='Snapshot mode';return}
   try{
-    const productsCol=window.__INDOBASE_COLLECTION__('products');
-    const ordersCol=window.__INDOBASE_COLLECTION__('orders');
-    const [pr,or]=await Promise.all([
-      fetch(API+'/'+productsCol+'/records?perPage=200&sort=-created_at'),
-      fetch(API+'/'+ordersCol+'/records?perPage=50&sort=-created_at'),
-    ]);
-    const pj=await pr.json().catch(()=>({}));
-    const oj=await or.json().catch(()=>({}));
-    if(pr.ok){products=pbItems(pj)}
-    if(or.ok){const live=pbItems(oj);if(live.length)orders=live}
+    const res=await fetch(COMMERCE+'/admin/snapshot?projectRef='+encodeURIComponent(REF),{headers:{'X-Indobase-Project-Ref':REF}});
+    const json=await res.json().catch(()=>({}));
+    if(res.ok&&json&&json.ok){
+      if(Array.isArray(json.products)&&json.products.length) products=json.products;
+      if(Array.isArray(json.orders)&&json.orders.length) orders=json.orders;
+    }
     render();
     document.querySelector('#status').textContent='Updated '+new Date().toLocaleTimeString();
   }catch(e){

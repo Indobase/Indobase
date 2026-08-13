@@ -20,6 +20,8 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.match(html, /id="search"/)
     assert.match(html, /id="pdpDlg"/)
     assert.match(html, /id="confirmDlg"/)
+    assert.match(html, /qty-btn/)
+    assert.match(html, /data-act="rm"/)
     assert.doesNotMatch(html, /__INDOBASE_COLLECTION__\('orders'\)/)
     assert.doesNotMatch(html, /\/api\/collections\/.+\/orders/)
   })

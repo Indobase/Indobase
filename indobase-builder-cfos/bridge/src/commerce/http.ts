@@ -1,12 +1,43 @@
 /**
  * HTTP surface for Indobase Commerce capability (thin controller).
  */
+import { timingSafeEqual } from 'node:crypto'
+
 import type { Context } from 'hono'
 import { sanitizeAppId } from '../pocketbase/managed.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
-import { getCommerceProduct, getOrderRecord, listCommerceProducts } from './pb-adapter.js'
+import {
+  getCommerceProduct,
+  getOrderRecord,
+  listCommerceOrders,
+  listCommerceProducts,
+} from './pb-adapter.js'
 import { buildCommerceRuntimeJs } from './runtime.js'
 import { minorToMajor } from './money.js'
+
+function timingSafeEqualString(a: string, b: string): boolean {
+  const left = Buffer.from(a)
+  const right = Buffer.from(b)
+  if (left.length !== right.length) return false
+  return timingSafeEqual(left, right)
+}
+
+/** Webhook / operator mutations must not be public. */
+function commerceOperatorAuthorized(c: Context): boolean {
+  const provided = (
+    c.req.header('X-Indobase-Commerce-Webhook-Secret') ||
+    c.req.header('X-Indobase-OS-Secret') ||
+    ''
+  ).trim()
+  const expected = (
+    process.env.INDOBASE_COMMERCE_WEBHOOK_SECRET ||
+    process.env.BUILDER_CFOS_HANDOFF_SECRET ||
+    process.env.BUILDER_HANDOFF_SECRET ||
+    ''
+  ).trim()
+  if (expected.length < 32 || !provided) return false
+  return timingSafeEqualString(provided, expected)
+}
 
 function projectRefFrom(c: Context, body?: Record<string, unknown>): string {
   const header = c.req.header('X-Indobase-Project-Ref') || ''
@@ -184,8 +215,36 @@ export async function handleCommerceOrderGet(c: Context) {
   }
 }
 
-/** Dev/ops: mark paid (webhook stub until provider signatures wired). */
+/** Merchant admin snapshot — live products + orders via service role (not anon PB). */
+export async function handleCommerceAdminSnapshot(c: Context) {
+  const projectRef = projectRefFrom(c)
+  if (!projectRef) {
+    return c.json({ ok: false, code: 'invalid_request', message: 'projectRef required' }, 400, commerceCorsHeaders())
+  }
+  try {
+    const [products, orders] = await Promise.all([
+      listCommerceProducts(projectRef),
+      listCommerceOrders(projectRef),
+    ])
+    return c.json({ ok: true, products, orders }, 200, commerceCorsHeaders())
+  } catch (err) {
+    return c.json(
+      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'Snapshot failed' },
+      502,
+      commerceCorsHeaders(),
+    )
+  }
+}
+
+/** Operator/webhook: mark paid. Requires commerce webhook or OS handoff secret. */
 export async function handleCommerceMarkPaid(c: Context) {
+  if (!commerceOperatorAuthorized(c)) {
+    return c.json(
+      { ok: false, code: 'unauthorized', message: 'Commerce operator secret required' },
+      401,
+      commerceCorsHeaders(),
+    )
+  }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
   const projectRef = projectRefFrom(c, body)
   const orderId = typeof body.orderId === 'string' ? body.orderId : c.req.param('id') || ''
@@ -199,6 +258,13 @@ export async function handleCommerceMarkPaid(c: Context) {
 }
 
 export async function handleCommerceMarkFailed(c: Context) {
+  if (!commerceOperatorAuthorized(c)) {
+    return c.json(
+      { ok: false, code: 'unauthorized', message: 'Commerce operator secret required' },
+      401,
+      commerceCorsHeaders(),
+    )
+  }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
   const projectRef = projectRefFrom(c, body)
   const orderId = typeof body.orderId === 'string' ? body.orderId : c.req.param('id') || ''

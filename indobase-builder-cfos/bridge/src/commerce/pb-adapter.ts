@@ -24,6 +24,17 @@ function newId(): string {
   return out
 }
 
+/**
+ * PocketBase date fields and filters use `YYYY-MM-DD HH:mm:ss.SSSZ` (space, not `T`).
+ * ISO-8601 `T` compares as *later* than a space, so `expires_at<="${isoT}"` releases
+ * every reservation immediately.
+ */
+export function pocketBaseDateTime(value: Date | string = new Date()): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toISOString().replace('T', ' ')
+}
+
 async function adminToken(): Promise<{ token: string; base: string }> {
   const config = getManagedBackendConfig()
   if (!config) throw new Error('Indobase backend is not configured')
@@ -103,7 +114,7 @@ export async function sumActiveReservations(
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const col = physicalCollectionName(appId, 'inventory_reservations')
-  const now = new Date().toISOString()
+  const now = pocketBaseDateTime()
   const filter = encodeURIComponent(
     `product_id="${productId}" && status="reserved" && expires_at>"${now}"`,
   )
@@ -164,7 +175,8 @@ export async function createReservation(input: {
         product_id: input.productId,
         quantity: input.quantity,
         status: 'reserved',
-        expires_at: input.expiresAt,
+        expires_at: pocketBaseDateTime(input.expiresAt),
+        created_at: pocketBaseDateTime(),
       }),
     },
   )
@@ -211,8 +223,9 @@ export async function createOrderRecord(input: {
         subtotal_minor: input.subtotalMinor,
         currency: input.currency,
         idempotency_key: input.idempotencyKey,
-        reservation_expires_at: input.reservationExpiresAt,
+        reservation_expires_at: pocketBaseDateTime(input.reservationExpiresAt),
         shipping_address: input.shippingAddress || {},
+        created_at: pocketBaseDateTime(),
         items_json: input.lines.map((l) => ({
           product_id: l.productId,
           product_slug: l.slug,
@@ -241,6 +254,7 @@ export async function createOrderRecord(input: {
         quantity: line.quantity,
         unit_price: line.unitPriceMinor / 100,
         unit_price_minor: line.unitPriceMinor,
+        created_at: pocketBaseDateTime(),
       }),
     })
   }
@@ -281,6 +295,44 @@ export async function getOrderRecord(
   return body
 }
 
+async function decrementProductStock(
+  base: string,
+  token: string,
+  productsCol: string,
+  productId: string,
+  qty: number,
+): Promise<void> {
+  if (!productId || qty <= 0) return
+  const prod = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${productsCol}/records/${encodeURIComponent(productId)}`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  if (!prod.ok) return
+  const stock = Number(prod.body.stock || 0)
+  await pbJson(`${base}/api/collections/${productsCol}/records/${encodeURIComponent(productId)}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: adminAuthHeader(token),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ stock: Math.max(0, stock - qty) }),
+  })
+}
+
+function linesFromOrder(order: Record<string, unknown>): Array<{ productId: string; quantity: number }> {
+  const raw = order.items_json
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((row) => {
+      const item = row && typeof row === 'object' ? (row as Record<string, unknown>) : {}
+      return {
+        productId: String(item.product_id || item.productId || ''),
+        quantity: Number(item.quantity || 0),
+      }
+    })
+    .filter((l) => l.productId && l.quantity > 0)
+}
+
 export async function commitReservationsForOrder(
   projectRef: string,
   orderId: string,
@@ -294,31 +346,44 @@ export async function commitReservationsForOrder(
     `${base}/api/collections/${resCol}/records?perPage=100&filter=${filter}`,
     { headers: { Authorization: adminAuthHeader(token) } },
   )
-  if (!ok) return
-  for (const row of body.items || []) {
-    const productId = String(row.product_id || '')
-    const qty = Number(row.quantity || 0)
-    if (productId && qty > 0) {
-      const prod = await pbJson<Record<string, unknown>>(
-        `${base}/api/collections/${productsCol}/records/${encodeURIComponent(productId)}`,
-        { headers: { Authorization: adminAuthHeader(token) } },
+  const reserved = ok ? body.items || [] : []
+  if (reserved.length) {
+    for (const row of reserved) {
+      await decrementProductStock(
+        base,
+        token,
+        productsCol,
+        String(row.product_id || ''),
+        Number(row.quantity || 0),
       )
-      if (prod.ok) {
-        const stock = Number(prod.body.stock || 0)
-        await pbJson(
-          `${base}/api/collections/${productsCol}/records/${encodeURIComponent(productId)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              Authorization: adminAuthHeader(token),
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ stock: Math.max(0, stock - qty) }),
+      if (row.id) {
+        await pbJson(`${base}/api/collections/${resCol}/records/${encodeURIComponent(String(row.id))}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: adminAuthHeader(token),
+            'Content-Type': 'application/json',
           },
-        )
+          body: JSON.stringify({ status: 'committed' }),
+        })
       }
     }
-    await pbJson(`${base}/api/collections/${resCol}/records/${encodeURIComponent(String(row.id))}`, {
+    return
+  }
+
+  // Date-filter bugs (or expiry) may have released rows before webhook. Still commit stock once.
+  const order = await getOrderRecord(projectRef, orderId)
+  if (!order) return
+  for (const line of linesFromOrder(order)) {
+    await decrementProductStock(base, token, productsCol, line.productId, line.quantity)
+  }
+  const anyFilter = encodeURIComponent(`order_id="${orderId}"`)
+  const leftover = await pbJson<{ items?: Array<{ id?: string; status?: string }> }>(
+    `${base}/api/collections/${resCol}/records?perPage=100&filter=${anyFilter}`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  for (const row of leftover.body.items || []) {
+    if (!row.id || row.status === 'committed') continue
+    await pbJson(`${base}/api/collections/${resCol}/records/${encodeURIComponent(row.id)}`, {
       method: 'PATCH',
       headers: {
         Authorization: adminAuthHeader(token),
@@ -360,7 +425,7 @@ export async function releaseExpiredReservations(projectRef: string): Promise<nu
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const resCol = physicalCollectionName(appId, 'inventory_reservations')
-  const now = new Date().toISOString()
+  const now = pocketBaseDateTime()
   const filter = encodeURIComponent(`status="reserved" && expires_at<="${now}"`)
   const { ok, body } = await pbJson<{ items?: Array<{ id?: string }> }>(
     `${base}/api/collections/${resCol}/records?perPage=100&filter=${filter}`,
@@ -381,4 +446,18 @@ export async function releaseExpiredReservations(projectRef: string): Promise<nu
     n += 1
   }
   return n
+}
+
+export async function listCommerceOrders(
+  projectRef: string,
+): Promise<Array<Record<string, unknown>>> {
+  const appId = sanitizeAppId(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'orders')
+  const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
+    `${base}/api/collections/${col}/records?perPage=50`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  if (!ok) throw new Error(formatPbError(body, 'Failed to list orders'))
+  return [...(body.items || [])].reverse()
 }

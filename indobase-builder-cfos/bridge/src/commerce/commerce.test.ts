@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import { majorToMinor, minorToMajor, currencyMinorDigits } from './money.ts'
+import { pocketBaseDateTime } from './pb-adapter.ts'
 import { buildCommerceRuntimeJs } from './runtime.ts'
 
 describe('commerce money', () => {
@@ -10,6 +11,16 @@ describe('commerce money', () => {
     assert.equal(majorToMinor('40', 'INR'), 4000)
     assert.equal(minorToMajor(129900, 'INR'), 1299)
     assert.equal(currencyMinorDigits('JPY'), 0)
+  })
+})
+
+describe('PocketBase datetime', () => {
+  it('uses space instead of T so expiry filters compare correctly', () => {
+    const formatted = pocketBaseDateTime(new Date('2026-08-13T02:53:00.000Z'))
+    assert.equal(formatted, '2026-08-13 02:53:00.000Z')
+    assert.equal(formatted.includes('T'), false)
+    const iso = '2026-08-13T02:53:00.000Z'
+    assert.equal(formatted < iso, true, 'space sorts before T — filters must use the same format')
   })
 })
 
@@ -25,5 +36,16 @@ describe('commerce runtime ABI', () => {
     assert.match(js, /\/checkout/)
     assert.doesNotMatch(js, /api\/collections/)
     assert.doesNotMatch(js, /PocketBase/)
+  })
+})
+
+describe('commerce operator mutations', () => {
+  it('mark-paid handler is not imported as a public storefront ABI', () => {
+    const js = buildCommerceRuntimeJs({
+      commerceBaseUrl: 'https://builder.indobase.in/api/os/commerce',
+      projectRef: 'abc123',
+    })
+    assert.doesNotMatch(js, /mark-paid/)
+    assert.doesNotMatch(js, /markPaid/)
   })
 })

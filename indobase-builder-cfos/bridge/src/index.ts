@@ -52,6 +52,7 @@ import {
   LAUNCH_AGENT_HARD_RULES,
 } from './launch-business-tool.js'
 import {
+  handleCommerceAdminSnapshot,
   handleCommerceCheckout,
   handleCommerceMarkFailed,
   handleCommerceMarkPaid,
@@ -1786,6 +1787,7 @@ app.get('/api/os/commerce/products', handleCommerceProductsList)
 app.get('/api/os/commerce/products/:id', handleCommerceProductGet)
 app.post('/api/os/commerce/checkout', handleCommerceCheckout)
 app.get('/api/os/commerce/orders/:id', handleCommerceOrderGet)
+app.get('/api/os/commerce/admin/snapshot', handleCommerceAdminSnapshot)
 app.post('/api/os/commerce/orders/:id/mark-paid', handleCommerceMarkPaid)
 app.post('/api/os/commerce/orders/mark-paid', handleCommerceMarkPaid)
 app.post('/api/os/commerce/orders/:id/mark-failed', handleCommerceMarkFailed)
