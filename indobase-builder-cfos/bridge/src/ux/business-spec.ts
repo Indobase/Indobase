@@ -131,10 +131,16 @@ export function pickBusinessName(...candidates: Array<string | null | undefined>
 
 function inferBusinessType(intent: string): BusinessSpec['businessType'] {
   const q = intent.toLowerCase()
-  if (/\b(saas|web app|dashboard|accounts)\b/.test(q) && !/\b(store|shop|sneaker|ecommerce)\b/.test(q)) {
+  if (/\b(store|shop|sneaker|sneakers|ecommerce|boutique)\b/.test(q)) return 'ecommerce'
+  if (
+    /\b(saas|software as a service|web app|webapp|dashboard|client portal|customer portal|b2b|crm)\b/.test(q)
+  ) {
     return 'saas'
   }
-  if (/\b(landing|marketing site|website for)\b/.test(q) && !/\b(store|shop|sell)\b/.test(q)) {
+  if (/\b(build|launch|create|make)\b.{0,48}\b(?:an?\s+)?(?:app|application|platform|software)\b/.test(q)) {
+    return 'saas'
+  }
+  if (/\b(landing|marketing site|website for)\b/.test(q) && !/\b(sell)\b/.test(q)) {
     return 'landing'
   }
   return 'ecommerce'

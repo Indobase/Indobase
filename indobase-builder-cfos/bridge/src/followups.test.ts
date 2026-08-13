@@ -637,6 +637,17 @@ INDOBASE_CHOICES>>>
     assert.match(visible, /UrbanThread/)
   })
 
+  it('rewrites guidedBackend session-unavailable dumps to the conductor reply', () => {
+    const dumped =
+      'I couldn’t run `guidedBackend mode=ecommerce` because that operation is not available in this session, so I did not create or claim an ecommerce backend and did not place a test order. No Live deployment was started.'
+    const cleaned = cleanOperatorMessage(dumped, {
+      conductorReply: 'Preview is ready for Northwind.',
+      businessName: 'Northwind',
+    })
+    assert.doesNotMatch(cleaned, /guidedBackend|not available in this session|ecommerce backend/i)
+    assert.match(cleaned, /Northwind/)
+  })
+
   it('rewrites “command isn’t available” to the conductor reply and speaks the brand', () => {
     const blocked = rewriteBlockedBuildSpeech(
       'The persisted-preview editing command isn’t available.',

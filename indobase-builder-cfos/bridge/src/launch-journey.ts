@@ -3,10 +3,13 @@
  */
 import type { Session } from './auth.js'
 import { isGuestSession } from './auth.js'
+import { getBusinessSpec } from './ux/business-spec.js'
 import {
+  appTypeToKind,
   businessJourneyStageLabel,
   uxContextualActions,
   uxHeadline,
+  type BusinessAppKind,
   type UxJourneyFlags,
 } from './ux-conductor.js'
 
@@ -78,6 +81,7 @@ function sessionLooksPaymentsReady(session: Session): boolean {
 export function buildLaunchJourneyState(
   session: Session,
   launch?: LaunchStatusSnapshot | null,
+  appKind?: BusinessAppKind | null,
 ): LaunchJourneyState {
   const guest = isGuestSession(session)
   const catalogReady = Boolean(launch?.catalogReady)
@@ -116,6 +120,7 @@ export function buildLaunchJourneyState(
     stage('production', businessJourneyStageLabel('production'), productionDone, currentStage === 'production'),
   ]
 
+  const specKind = appTypeToKind(getBusinessSpec(session.projectRef)?.businessType)
   const flagsForUx: UxJourneyFlags = {
     guest,
     live: liveDone,
@@ -123,7 +128,7 @@ export function buildLaunchJourneyState(
     paymentsReady: paymentsDone,
     previewReady: previewDone,
     liveUrl,
-    appKind: 'store',
+    appKind: appKind || specKind || 'store',
   }
   const actions = uxContextualActions(flagsForUx)
   const next_action = actions[0] || null

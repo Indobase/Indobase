@@ -22,6 +22,13 @@ describe('BusinessSpec', () => {
     assert.equal(findEcommerceVertical('sneakers')?.products?.[0]?.name, 'Apex Runner')
   })
 
+  it('infers SaaS from a saas/application prompt, not a store', () => {
+    assert.equal(inferBusinessSpec('Build a saas application').businessType, 'saas')
+    assert.equal(inferBusinessSpec('I want to launch a SaaS app with customer accounts').businessType, 'saas')
+    assert.equal(inferBusinessSpec('Build me an application with login').businessType, 'saas')
+    assert.equal(inferBusinessSpec('Launch a premium sneaker store called UrbanThread').businessType, 'ecommerce')
+  })
+
   it('does not let apparel win on a sneaker prompt', () => {
     assert.equal(findEcommerceVertical('UrbanThread premium sneakers')?.id, 'sneakers')
     assert.equal(findEcommerceVertical('apparel')?.id, 'apparel')

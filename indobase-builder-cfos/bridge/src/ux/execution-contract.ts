@@ -363,7 +363,11 @@ function operatorMessageForTurn(input: {
   }
   if (input.turnClass === 'build' || input.intent === 'create_business') {
     if (input.previewStatus === 'ready') {
-      return `Preview is ready for ${input.named || 'your store'}.`
+      const noun =
+        input.businessRuntime.business.kind === 'saas' || input.businessRuntime.business.kind === 'app'
+          ? 'app'
+          : 'store'
+      return `Preview is ready for ${input.named || `your ${noun}`}.`
     }
     if (input.previewStatus === 'failed') {
       return 'Preview did not come up. I am retrying automatically.'
@@ -399,7 +403,8 @@ function composeAgentContext(result: {
       : 'BusinessSpec: none',
     `preview.status=${preview.status}; preview.url=${preview.url || 'none'}; httpOk=${preview.httpOk}`,
     `runtime.spec=${spec ? 'set' : 'null'}`,
-    'Never print INDOBASE_RUNTIME, Studio, PocketBase, or provisioner in operator-visible replies.',
+    'Never print INDOBASE_RUNTIME, Studio, PocketBase, provisioner, or guidedBackend in operator-visible replies.',
+    'FORBIDDEN: never name or call guidedBackend / ensureDatabase / applySchema. Those are not agent tools. If preview.status=ready, report that — do not say an operation is unavailable.',
   ]
   if (named) {
     lines.push(`Speak the brand as ${named}. FORBIDDEN: “your business” as the store name.`)

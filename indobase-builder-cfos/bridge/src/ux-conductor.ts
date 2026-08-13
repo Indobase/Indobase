@@ -215,35 +215,52 @@ export function uxContextualActions(flags: UxJourneyFlags): UxAction[] {
       },
     ]
   }
+  const kind = flags.appKind || 'store'
+  const noun = businessNoun(kind)
+  const liveOpen = flags.liveUrl ? `Open my live ${noun} ${flags.liveUrl}` : `Open my live ${noun}.`
   if (flags.live && flags.backendReady && flags.paymentsReady) {
     return [
-      { label: 'Open store', message: flags.liveUrl ? `Open my live store ${flags.liveUrl}` : 'Open my live store.' },
-      { label: 'Manage store', message: 'Open store admin so I can manage products and orders.' },
+      { label: `Open ${noun}`, message: liveOpen },
+      {
+        label: `Manage ${noun}`,
+        message: `Open admin so I can manage my ${noun}.`,
+      },
     ].slice(0, 3)
   }
   if (flags.live && !flags.backendReady) {
-    return [
-      {
-        label: 'Connect products & orders',
-        message: 'Connect products, orders and inventory so this live site can take real orders.',
-      },
-      { label: 'Open preview', message: flags.liveUrl ? `Open my site ${flags.liveUrl}` : 'Open my live preview.' },
-    ]
+    return kind === 'store'
+      ? [
+          {
+            label: 'Connect products & orders',
+            message: 'Connect products, orders and inventory so this live site can take real orders.',
+          },
+          { label: 'Open preview', message: flags.liveUrl ? `Open my site ${flags.liveUrl}` : 'Open my live preview.' },
+        ]
+      : [
+          { label: `Open ${noun}`, message: liveOpen },
+          { label: 'Continue editing', message: `Continue editing the ${noun}.` },
+        ]
   }
   if (flags.live && !flags.paymentsReady) {
+    if (kind !== 'store') {
+      return [
+        { label: `Open ${noun}`, message: liveOpen },
+        { label: 'Connect a domain', message: 'Connect a domain I already own.' },
+      ]
+    }
     return [
       {
         label: 'Connect payments',
         message:
           'Connect payments so customers can pay online. Ask whether I sell in India or internationally, then use my keys. Customers can still place orders without this.',
       },
-      { label: 'Open store', message: flags.liveUrl ? `Open my live store ${flags.liveUrl}` : 'Open my live store.' },
+      { label: 'Open store', message: liveOpen },
       { label: 'Customize design', message: 'Make the storefront look more premium.' },
     ]
   }
   if (flags.previewReady) {
     return [
-      { label: 'Launch store', message: 'Launch my store on Indobase now.' },
+      { label: `Launch ${noun}`, message: `Launch my ${noun} on Indobase now.` },
       { label: 'Continue editing', message: 'Continue editing the preview.' },
     ]
   }

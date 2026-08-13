@@ -400,12 +400,14 @@ export function stripToolCapsuleNoise(message: string): string {
   )
   t = t.replace(/^.*\bListed \d+ blueprints?\b.*$/gim, '')
   t = t.replace(/^.*\bsessionStatus\b.*(?:signed_in|member|guest).*$/gim, '')
-  t = t.replace(/^.*\bUsing (?:the )?(?:tool|authStart|authVerify|launchProductionApp|launchBusiness)\b.*$/gim, '')
+  t = t.replace(/^.*\bUsing (?:the )?(?:tool|authStart|authVerify|launchProductionApp|launchBusiness|guidedBackend)\b.*$/gim, '')
+  t = t.replace(/`guidedBackend[^`]*`/gi, '')
+  t = t.replace(/\bguidedBackend(?:\s+mode=\w+)?\b/gi, '')
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
 const BLOCKED_BUILD_SPEECH =
-  /\b(?:(?:launch|preview|persisted-preview|editing) command|launchProductionApp|launchBusiness|preview|launch)\b.{0,60}isn['’]?t (?:currently )?available|\bcommand isn['’]?t (?:currently )?available\b|\bpersisted-preview editing command isn['’]?t available\b/i
+  /\b(?:(?:launch|preview|persisted-preview|editing) command|launchProductionApp|launchBusiness|guidedBackend|preview|launch)\b.{0,80}(?:isn['’]?t|is not|not) (?:currently )?available|\b(?:command|operation) (?:isn['’]?t|is not|not) (?:currently )?available(?: in this session)?\b|\bpersisted-preview editing command isn['’]?t available\b|\bguidedBackend\b.{0,120}(?:not available|did not create|did not place)\b/i
 
 const DEFAULT_CONDUCTOR_REPLY =
   'That’s already in progress. Preview is ready — tell me what to change, or launch when you want it live.'

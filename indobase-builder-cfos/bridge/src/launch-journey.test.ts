@@ -3,6 +3,11 @@ import { describe, it } from 'node:test'
 
 import type { Session } from './auth.js'
 import { buildLaunchJourneyState } from './launch-journey.js'
+import {
+  clearBusinessSpecsForTests,
+  inferBusinessSpec,
+  rememberBusinessSpec,
+} from './ux/business-spec.ts'
 
 function memberSession(): Session {
   return {
@@ -47,6 +52,18 @@ describe('buildLaunchJourneyState', () => {
     assert.equal(journey.backend_ready, false)
     assert.equal(journey.stages.find((s) => s.id === 'preview')?.status, 'current')
     assert.doesNotMatch(journey.next_action?.message || '', /POST \/api|guidedBackend/i)
+  })
+
+  it('confirmed preview for a SaaS spec offers Launch app, not Launch store', () => {
+    rememberBusinessSpec('threadline', inferBusinessSpec('Build a saas application called Northwind'))
+    const journey = buildLaunchJourneyState(memberSession(), {
+      previewReady: true,
+      previewUrl: 'https://builder.indobase.in/live/threadline/',
+    })
+    assert.match(journey.next_action?.label || '', /Launch app/i)
+    assert.doesNotMatch(journey.next_action?.label || '', /store/i)
+    assert.match(journey.headline || '', /app/i)
+    clearBusinessSpecsForTests()
   })
 
   it('confirmed preview without publish offers Launch store', () => {
