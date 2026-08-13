@@ -1,5 +1,5 @@
 {
-  "milestone": "Ecommerce V1.2 Implementation (staging)",
+  "milestone": "Ecommerce V1.2 live webhook/PB certification (staging)",
   "title": "Ecommerce V1.2 Payment State Machine — not production certified",
   "branch": "staging",
   "promoteToMain": false,
@@ -7,9 +7,9 @@
   "contract": "ecommerce-contract/v1.2",
   "coreV1": "frozen",
   "v1.1": "frozen",
-  "v1.2": "implementation_milestone",
-  "claim": "Payment is a platform-owned distributed state machine behind the Commerce ABI. Inventory commits at most once. Late provider success after expiry does not decrement stock.",
-  "notClaimed": "Razorpay/Stripe live webhook certification, PocketBase compare-and-set across workers, production release.",
+  "v1.2": "live_webhook_abi_on_249",
+  "claim": "On .249, the V1.2 machine survives real checkout + real PocketBase + real webhook HTTP. Late provider success after reservation expiry does not commit inventory.",
+  "notClaimed": "Razorpay/Stripe hosted checkout and provider-signed webhooks, PocketBase compare-and-set across workers, multi-replica topology, production release.",
   "agentSurface": [
     "launchProductionApp",
     "launchBusiness",
@@ -27,35 +27,79 @@
     "PAYMENT-006",
     "PAYMENT-007"
   ],
-  "adversarialMatrix": {
-    "successWebhookx2": "one transition",
-    "failureWebhookx2": "one transition",
-    "successThenFailure": "remains paid",
-    "failureThenSuccess": "same_order_paid_commit_once",
-    "expiryThenSuccess": "terminal, no stock commit",
-    "successThenExpiry": "remains paid",
-    "retryx2": "one state transition",
-    "webhookBeforeClient": "eventually paid",
-    "clientRetryAfterTimeout": "same order, idempotent",
-    "concurrentSuccess": "one inventory commit",
-    "concurrentExpiryAndSuccess": "deterministic paid or expired",
-    "unknownEvent": "rejected, no corruption"
+  "levels": {
+    "1_logic": {
+      "status": "PASS",
+      "harness": "336/336",
+      "adversarialMatrix": "PASS"
+    },
+    "2_provider": {
+      "status": "PARTIAL",
+      "realCheckout": "PASS",
+      "realPocketBase": "PASS",
+      "realWebhookHttpAbi": "PASS 28/28",
+      "razorpayStripeSandbox": "NOT RUN — tenant gateway_not_ready; PaymentAdapter is interface-only; no provider-signed payload receiver on this SHA",
+      "hostedCheckoutUrl": null
+    },
+    "3_distributed": {
+      "status": "PARTIAL",
+      "singleInstanceConcurrentHttp": "PASS — one inventory commit; expiry+success after TTL is pending + lateSuccess + stockΔ=0",
+      "multiReplica": "NOT EXERCISABLE — service publishes host-mode *:8791, replicas=1",
+      "databaseCas": "STILL REQUIRED before production certification"
+    }
+  },
+  "live": {
+    "status": "PASS_WEBHOOK_ABI",
+    "releaseSha": "7ba706cb571bd8f5ca3c1c9342e0be56a3e0e4be",
+    "cfosImage": "roshanraghavander/indobase-builder-cfos:7ba706cb5",
+    "healthVersion": "7ba706cb5",
+    "replicas": 1,
+    "publishMode": "host:8791",
+    "storeProjectRef": "roshb77a4744fa",
+    "productId": "qh594bd63r0z72i",
+    "orders": {
+      "lifecyclePaid": "5n09xfyw66pngbn",
+      "abandonedPending": "6i05y73qujy4qpu"
+    },
+    "hardInvariant": {
+      "id": "lateSuccessAfterTerminal",
+      "ok": true,
+      "detail": "HTTP 200 lateSuccess=true pb=pending committed=false stock 115→115"
+    },
+    "results": {
+      "successfulPayment": "PASS",
+      "failedPayment": "PASS",
+      "cancelledPayment": "PASS (mark-failed stand-in; no cancel route on this SHA)",
+      "providerTimeout": "PASS (stays pending)",
+      "browserClosed": "PASS (stays pending)",
+      "webhookDelayed": "PASS",
+      "webhookDuplicated": "PASS",
+      "webhookAfterClientTimeout": "PASS",
+      "webhookAfterReservationExpiry": "PASS — lateSuccessAfterTerminal",
+      "invalidWebhookSignature": "PASS HTTP 401",
+      "wrongOrderProject": "PASS HTTP 400, no corruption",
+      "replayOldWebhook": "PASS already=true",
+      "inventoryCommittedOnce": "PASS 118→117 then duplicate 117→117",
+      "retrySameOrder": "PASS failed → paid, same order",
+      "concurrentSuccess": "PASS stock 115→114 already=1/2",
+      "concurrentExpiryAndSuccess": "PASS pb=pending late=true committed=0 stockΔ=0"
+    }
   },
   "concurrency": {
     "inProcess": "AtomicPaymentGate + withOrderPaymentLock + payment_revision",
-    "databaseCas": "REQUIRED before production certification — PocketBase PATCH is not a compare-and-set"
+    "databaseCas": "REQUIRED before production certification — PocketBase PATCH is not a compare-and-set",
+    "doNotPromoteAtomicPaymentGateToDistributedPrimitive": true
   },
   "harness": {
     "platformRegression": "336/336",
     "mockedWebhookPack": "PASS",
-    "note": "Harness green is an implementation milestone, not a production release certificate."
+    "liveWebhookAbi": "28/28",
+    "note": "Live 28/28 is webhook-ABI + PocketBase evidence, not a Razorpay/Stripe release certificate."
   },
   "releaseProcessRemaining": [
-    "deploy .249",
-    "real payment-provider sandbox",
-    "real webhook delivery",
-    "browser + API tests",
-    "failure/race tests",
+    "Razorpay/Stripe sandbox + provider-signed webhook delivery",
+    "PocketBase compare-and-set (affected_rows) across workers",
+    "multi-replica race (requires dropping host-mode port or an ingress mesh)",
     "production certification",
     "main"
   ],
