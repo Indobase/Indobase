@@ -49,8 +49,9 @@
   },
   "live": {
     "status": "PASS",
+    "releaseSha": "5e8b64fd9e0c7a26d312142d1dd0140fc8287da3",
     "cfosImage": "roshanraghavander/indobase-builder-cfos:v11-livecert",
-    "certifiedWorkingTree": "v11-livecert — 24/24 against this tree before commit",
+    "certifiedWorkingTree": "v11-livecert — 24/24 against this tree; implementation SHA 5e8b64fd9",
     "store": "https://corev1-aug13.sites.indobase.in",
     "projectRef": "roshb77a4744fa",
     "crossTenantRef": "v11xtenantb1",
