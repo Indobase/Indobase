@@ -99,6 +99,9 @@ export function extractRequestedHeadline(message: string): string | null {
   const requestLine = /^request:\s*(.+)$/im.exec(text)
   const fromRequest = tidyHeadline(requestLine?.[1])
   if (fromRequest) return fromRequest
+  if (/\bmake (?:the )?hero more premium\b/i.test(text) || /\bpremium hero\b/i.test(text)) {
+    return 'Premium sneakers. Built to move.'
+  }
   return null
 }
 

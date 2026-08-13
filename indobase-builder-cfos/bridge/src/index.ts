@@ -103,6 +103,7 @@ import {
 } from './agent-turn-meter.js'
 import { deriveAgentCredentials } from './agent-credentials.js'
 import {
+  lookupAgentPrincipal,
   reconcileAgentPrincipal,
   rehydrateSessionBackend,
   rememberAgentPrincipal,
@@ -120,7 +121,7 @@ import {
   applyOperatorIntent,
   applyPendingIntentAfterAuth,
 } from './ux/execution-contract.js'
-import { rememberPendingIntent, takePendingIntent } from './ux/runtime-store.js'
+import { rememberPendingIntent, takePendingAcrossAuth } from './ux/runtime-store.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -768,7 +769,18 @@ app.post('/auth/verify', async (c) => {
   )
   const sessionToken = createSessionToken(session, secret)
 
-  const guestPending = previous ? takePendingIntent(previous.projectRef) : null
+  const agentUsernameForPending =
+    (c.req.header('x-indobase-agent-username') || c.req.header('X-Indobase-Agent-Username') || '').trim()
+  const guestPrincipal = agentUsernameForPending
+    ? await lookupAgentPrincipal(agentUsernameForPending)
+    : null
+  const guestPending = takePendingAcrossAuth([
+    previous?.projectRef,
+    previous?.cfosBindProjectRef ? `bind:${previous.cfosBindProjectRef}` : null,
+    guestPrincipal?.projectRef,
+    guestPrincipal?.projectRef ? `bind:${guestPrincipal.projectRef}` : null,
+    agentUsernameForPending ? `agent:${agentUsernameForPending}` : null,
+  ])
   if (guestPending) rememberPendingIntent(session.projectRef, guestPending)
   try {
     await applyPendingIntentAfterAuth(session)

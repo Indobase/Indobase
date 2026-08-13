@@ -6,6 +6,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
 
 import type { Session } from '../auth.ts'
+import { deriveAgentUsername } from '../agent-credentials.ts'
 import { detectFabricatedClaims, isForbiddenAgentClaim, sanitizeAgentNarration } from '@indobase/platform'
 import { clearProductionLaunchJobsForTests } from '../production-launch/index.ts'
 import { readLiveFile } from '../static-launch.ts'
@@ -18,6 +19,8 @@ import {
 import {
   clearWorkspaceRuntimesForTests,
   getWorkspaceRuntime,
+  rememberPendingIntent,
+  takePendingAcrossAuth,
 } from './runtime-store.ts'
 import { clearBusinessSpecsForTests, getBusinessSpec } from './business-spec.ts'
 import { toBusinessRuntimeState } from './agent-truth.ts'
@@ -340,6 +343,32 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(afterOtp.runtime.preview.status, 'ready')
   })
 
+  it('agent OTP verify without cookie still carries UrbanThread onto the new workspace', async () => {
+    const guestSession: Session = {
+      ...session,
+      projectRef: 'draft_uat_guest',
+      cfosBindProjectRef: 'draft_uat_guest',
+    }
+    await applyOperatorIntent({ session: guestSession, message: PROMPT, guest: true })
+    const moved = takePendingAcrossAuth([
+      guestSession.projectRef,
+      `bind:${guestSession.cfosBindProjectRef}`,
+      `agent:${deriveAgentUsername(guestSession.gotrueId, guestSession.projectRef)}`,
+    ])
+    assert.equal(moved, PROMPT)
+    const signedIn: Session = { ...session, projectRef: 'uatu62484b2e5c' }
+    rememberPendingIntent(signedIn.projectRef, moved || '')
+    const turn = await applyOperatorIntent({
+      session: signedIn,
+      message: 'Please show me the store',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(turn.spec?.businessName, 'UrbanThread')
+    assert.equal(turn.spec?.catalog.verticalId, 'sneakers')
+    assert.notEqual(turn.spec?.businessName, 'your business')
+  })
+
   it('Go Live after pending create keeps UrbanThread, not the workspace placeholder', async () => {
     await applyOperatorIntent({ session, message: PROMPT, guest: true })
     const live = await applyOperatorIntent({
@@ -542,6 +571,23 @@ describe('FTU execution contract A–Q', () => {
     assert.match(reloaded.runtime.artifactHtml || '', /Premium Sneakers\. Built to Move\./)
     const disk2 = await readLiveFile(session.projectRef, 'index.html')
     assert.match(disk2?.body.toString('utf8') || '', /Premium Sneakers\. Built to Move\./)
+  })
+
+  it('make hero more premium persists a default headline', async () => {
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    const turn = await applyOperatorIntent({
+      session,
+      message: 'make hero more premium',
+      guest: false,
+    })
+    assert.equal(turn.intent, 'preview_edit')
+    assert.match(turn.operatorMessage, /Premium sneakers\. Built to move\./)
+    assert.match(turn.runtime.artifactHtml || '', /Premium sneakers\. Built to move\./)
   })
 
   it('PREVIEW_EDIT persists an unquoted hero headline', async () => {

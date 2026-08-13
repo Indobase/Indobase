@@ -13,6 +13,7 @@ import {
 } from '@indobase/platform'
 
 import type { Session } from '../auth.js'
+import { deriveAgentUsername } from '../agent-credentials.js'
 import type { LaunchStatusSnapshot } from '../launch-journey.js'
 import {
   executeProductionLaunchJob,
@@ -43,9 +44,9 @@ import {
   issueRuntimeCommand,
   patchWorkspaceRuntime,
   peekPendingIntent,
-  rememberPendingIntent,
+  rememberPendingIntentForSession,
   rememberWorkspaceRuntime,
-  takePendingIntent,
+  takePendingAcrossAuth,
   type PersistedWorkspaceRuntime,
 } from './runtime-store.js'
 
@@ -128,7 +129,9 @@ export function classifyOperatorIntent(
   const text = stripRuntimeStamp(message || '').trim()
   if (!text) return 'other'
   if (/^PREVIEW_EDIT\b/.test(text)) return 'preview_edit'
-  if (/\b(hero headline|change the hero|headline to)\b/i.test(text)) return 'preview_edit'
+  if (/\b(hero headline|change the hero|headline to|make (?:the )?hero more premium)\b/i.test(text)) {
+    return 'preview_edit'
+  }
   if (/^SCREEN\b/.test(text)) return 'operate'
   if (looksLikeGoLive(text)) return 'launch_production'
   if (looksLikeCreateBusiness(text)) return 'create_business'
@@ -635,7 +638,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
 
   if (guest) {
     if (looksLikeCreateBusiness(message) || looksLikeGoLive(message)) {
-      rememberPendingIntent(session.projectRef, message)
+      rememberPendingIntentForSession(session, message)
     }
     const businessRuntime = toSessionRuntime(session, runtime, input.snapshot)
     return {
@@ -655,7 +658,14 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     }
   }
 
-  const pending = peekPendingIntent(session.projectRef)
+  const agentPendingKey =
+    session.gotrueId && session.projectRef
+      ? `agent:${deriveAgentUsername(session.gotrueId, session.projectRef)}`
+      : ''
+  const pending =
+    peekPendingIntent(session.projectRef) ||
+    peekPendingIntent(session.cfosBindProjectRef) ||
+    peekPendingIntent(agentPendingKey)
   const effectiveMessage =
     (!message || looksLikeAuthNoise(message)) && pending ? pending : message || pending || ''
   const specSource =
@@ -663,15 +673,6 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       ? pending
       : [pending, message || effectiveMessage].filter(Boolean).join('\n') || effectiveMessage
   const intent = classifyOperatorIntent(effectiveMessage, runtime)
-  if (
-    pending &&
-    (intent === 'create_business' ||
-      intent === 'launch_production' ||
-      !message ||
-      looksLikeAuthNoise(message))
-  ) {
-    takePendingIntent(session.projectRef)
-  }
 
   let launch: ProductionLaunchExecuteResult | null = null
   let recovered = false
@@ -756,6 +757,14 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
           : spec
             ? `Preparing ${spec.businessName}…`
             : 'How can I help?'
+
+  if (pending && spec && !isPlaceholderBusinessName(spec.businessName)) {
+    takePendingAcrossAuth([
+      session.projectRef,
+      session.cfosBindProjectRef ? `bind:${session.cfosBindProjectRef}` : null,
+      agentPendingKey,
+    ])
+  }
 
   return {
     ok: intent === 'launch_production' ? Boolean(launch?.ok) : runtime.preview.status !== 'failed',
