@@ -1,0 +1,23 @@
+{
+  "milestone": "Ecommerce Production Core v1",
+  "shopifyParity": false,
+  "claim": "Indobase can generate and deploy a functioning production ecommerce core from a natural-language request.",
+  "notClaimed": "Indobase generates Shopify-equivalent stores.",
+  "releaseCandidate": "8be50dd3168c76882aaa06281f5e7d10e9e9e9b6",
+  "supersedes": "38e23035bf2112c08b76b621db3cdbf1c73d03ad",
+  "gates": {
+    "platformRegression": "286/286 on 8be50dd31 (full find src/**/*.test.ts)",
+    "liveEcommerceSmoke": "36/36",
+    "securityProbes": "PASS",
+    "knownP0P1": "PASS after date-filter + mark-paid auth fix"
+  },
+  "live": {
+    "store": "https://corev1-aug13.sites.indobase.in",
+    "admin": "https://corev1-aug13.sites.indobase.in/admin.html",
+    "projectRef": "roshb77a4744fa",
+    "orderId": "wus5mjemdryd457"
+  },
+  "outOfScope": ["V1.1 customer lifecycle", "V1.2 payment resilience", "V1.3 operational commerce"],
+  "namedInvariants": ["COMMERCE-RESERVATION-001", "ADMIN-AUTH-001"],
+  "promoteToMain": true
+}

@@ -35,6 +35,40 @@ export function pocketBaseDateTime(value: Date | string = new Date()): string {
   return date.toISOString().replace('T', ' ')
 }
 
+/** True when a PB-stored expiry is still in the future under PB filter comparison. */
+export function reservationIsActive(expiresAt: string, now: Date = new Date()): boolean {
+  const exp = pocketBaseDateTime(expiresAt)
+  const current = pocketBaseDateTime(now)
+  return Boolean(exp && current) && exp > current
+}
+
+/**
+ * ISO-8601 `T` sorts after a space, so `expires_at <= now.toISOString()` matches
+ * every PB-stored future reservation. Live bug on 38e23035b.
+ */
+export function isoNowFalselyExpiresPbReservation(expiresAtPb: string, now: Date): boolean {
+  const pbNow = pocketBaseDateTime(now)
+  const isoNow = now.toISOString()
+  return expiresAtPb <= isoNow && expiresAtPb > pbNow
+}
+
+export function expiredReservationFilter(now: Date = new Date()): string {
+  return `status="reserved" && expires_at<="${pocketBaseDateTime(now)}"`
+}
+
+export function activeReservationFilter(productId: string, now: Date = new Date()): string {
+  return `product_id="${productId}" && status="reserved" && expires_at>"${pocketBaseDateTime(now)}"`
+}
+
+export function reservedForOrderFilter(orderId: string): string {
+  return `order_id="${orderId}" && status="reserved"`
+}
+
+/** mark-paid commits stock only for rows still `reserved` (not prematurely released). */
+export function markPaidCanCommitReservation(status: string): boolean {
+  return status === 'reserved'
+}
+
 async function adminToken(): Promise<{ token: string; base: string }> {
   const config = getManagedBackendConfig()
   if (!config) throw new Error('Indobase backend is not configured')
@@ -114,10 +148,7 @@ export async function sumActiveReservations(
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const col = physicalCollectionName(appId, 'inventory_reservations')
-  const now = pocketBaseDateTime()
-  const filter = encodeURIComponent(
-    `product_id="${productId}" && status="reserved" && expires_at>"${now}"`,
-  )
+  const filter = encodeURIComponent(activeReservationFilter(productId))
   const { ok, body } = await pbJson<{ items?: Array<{ quantity?: number }> }>(
     `${base}/api/collections/${col}/records?perPage=200&filter=${filter}`,
     { headers: { Authorization: adminAuthHeader(token) } },
@@ -341,7 +372,7 @@ export async function commitReservationsForOrder(
   const { token, base } = await adminToken()
   const resCol = physicalCollectionName(appId, 'inventory_reservations')
   const productsCol = physicalCollectionName(appId, 'products')
-  const filter = encodeURIComponent(`order_id="${orderId}" && status="reserved"`)
+  const filter = encodeURIComponent(reservedForOrderFilter(orderId))
   const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
     `${base}/api/collections/${resCol}/records?perPage=100&filter=${filter}`,
     { headers: { Authorization: adminAuthHeader(token) } },
@@ -401,7 +432,7 @@ export async function releaseReservationsForOrder(
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const resCol = physicalCollectionName(appId, 'inventory_reservations')
-  const filter = encodeURIComponent(`order_id="${orderId}" && status="reserved"`)
+  const filter = encodeURIComponent(reservedForOrderFilter(orderId))
   const { ok, body } = await pbJson<{ items?: Array<{ id?: string }> }>(
     `${base}/api/collections/${resCol}/records?perPage=100&filter=${filter}`,
     { headers: { Authorization: adminAuthHeader(token) } },
@@ -425,8 +456,7 @@ export async function releaseExpiredReservations(projectRef: string): Promise<nu
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const resCol = physicalCollectionName(appId, 'inventory_reservations')
-  const now = pocketBaseDateTime()
-  const filter = encodeURIComponent(`status="reserved" && expires_at<="${now}"`)
+  const filter = encodeURIComponent(expiredReservationFilter())
   const { ok, body } = await pbJson<{ items?: Array<{ id?: string }> }>(
     `${base}/api/collections/${resCol}/records?perPage=100&filter=${filter}`,
     { headers: { Authorization: adminAuthHeader(token) } },
