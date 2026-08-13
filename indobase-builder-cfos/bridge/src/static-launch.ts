@@ -58,7 +58,7 @@ export interface StaticDeploymentAdapter {
   assignDomain(
     ref: string,
     opts: { subdomain: string; customDomain?: string },
-  ): Promise<{ liveUrl: string; previewUrl: string; dns?: DnsInstruction[] }>
+  ): Promise<{ liveUrl: string; previewUrl: string; subdomain: string; dns?: DnsInstruction[] }>
   healthCheck(liveUrl: string): Promise<{ healthy: boolean }>
   rollback(ref: string): Promise<void>
 }
@@ -180,6 +180,24 @@ function suggestSubdomain(title: string, ref: string): string {
   const fromTitle = sanitizeSubdomain(title.replace(/\s+/g, '-'))
   if (fromTitle && fromTitle !== 'site') return fromTitle
   return sanitizeSubdomain(ref)
+}
+
+/** Prefer the brand label; if another workspace already owns it, suffix with a short ref. */
+export function allocateUniqueSubdomain(
+  desired: string,
+  workspaceRef: string,
+  takenBy: (host: string) => string | undefined,
+  suffix = domainSuffix(),
+): string {
+  const base = sanitizeSubdomain(desired)
+  const tail = sanitizeSubdomain(workspaceRef.replace(/[^a-z0-9]+/gi, '').slice(-8)) || 'site'
+  const candidates = [base, `${base}-${tail}`, `${base}-${tail}-2`, `${base}-${tail}-3`]
+  for (const label of candidates) {
+    const host = `${label}.${suffix}`
+    const owner = takenBy(host)
+    if (!owner || owner === sanitizeRef(workspaceRef)) return label
+  }
+  return sanitizeSubdomain(`${base}-${tail}-${Date.now().toString(36).slice(-4)}`)
 }
 
 function defaultHtml(title: string): string {
@@ -429,10 +447,8 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
 
     async assignDomain(ref, opts) {
       const safeRef = sanitizeRef(ref)
-      const subdomain = sanitizeSubdomain(opts.subdomain)
       const previewUrl = `${publicBase()}/live/${safeRef}/`
       const suffix = domainSuffix()
-      const liveUrl = `https://${subdomain}.${suffix}`
       const reg = await loadRegistry()
       const now = new Date().toISOString()
 
@@ -440,13 +456,11 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
         if (rec.workspaceRef === safeRef) delete reg.byHost[host]
       }
 
+      const subdomain = allocateUniqueSubdomain(opts.subdomain, safeRef, (host) =>
+        reg.byHost[host]?.workspaceRef,
+      )
       const subdomainHost = `${subdomain}.${suffix}`
-      const existingSub = reg.byHost[subdomainHost]
-      if (existingSub && existingSub.workspaceRef !== safeRef) {
-        throw new Error(
-          `The Indobase link ${subdomain}.${suffix} is already taken by another business. Choose a different subdomain.`,
-        )
-      }
+      const liveUrl = `https://${subdomain}.${suffix}`
 
       reg.byHost[subdomainHost] = {
         hostname: subdomainHost,
@@ -490,7 +504,7 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
       }
 
       await saveRegistry(reg)
-      return { liveUrl, previewUrl, dns }
+      return { liveUrl, previewUrl, subdomain, dns }
     },
 
     async healthCheck(liveUrl: string) {
@@ -522,6 +536,7 @@ export async function launchStaticBusiness(
       customDomain: input.customDomain,
     })
     void adapter.healthCheck(assigned.previewUrl)
+    const assignedSubdomain = assigned.subdomain || subdomain
 
     const customHost = input.customDomain ? sanitizeHostname(input.customDomain) : null
     const hasCustom = Boolean(customHost)
@@ -541,7 +556,7 @@ export async function launchStaticBusiness(
       status: hasCustom ? 'pending_dns' : 'published',
       url: primaryUrl,
       previewUrl: assigned.previewUrl,
-      subdomain,
+      subdomain: assignedSubdomain,
       customDomain: customHost || undefined,
       dns: assigned.dns,
       message: hasCustom

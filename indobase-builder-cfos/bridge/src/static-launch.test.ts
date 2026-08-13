@@ -57,7 +57,7 @@ describe('static launch lane', () => {
     }
   })
 
-  it('rejects subdomain takeover by another workspace', async () => {
+  it('auto-allocates a unique subdomain when the brand label is taken', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-launch-'))
     process.env.INDOBASE_LAUNCH_ROOT = dir
     process.env.INDOBASE_LAUNCH_PUBLIC_URL = 'http://127.0.0.1:8791'
@@ -65,19 +65,22 @@ describe('static launch lane', () => {
     try {
       const first = await launchStaticBusiness({
         workspaceRef: 'biz_a',
-        title: 'A',
-        subdomain: 'taken-name',
+        title: 'UrbanThread',
+        subdomain: 'urbanthread',
         files: { 'index.html': '<html><body>A</body></html>' },
       })
       assert.equal(first.ok, true)
+      assert.equal(first.subdomain, 'urbanthread')
       const second = await launchStaticBusiness({
-        workspaceRef: 'biz_b',
-        title: 'B',
-        subdomain: 'taken-name',
+        workspaceRef: 'roshfdaaf13e89',
+        title: 'UrbanThread',
+        subdomain: 'urbanthread',
         files: { 'index.html': '<html><body>B</body></html>' },
       })
-      assert.equal(second.ok, false)
-      assert.match(second.message || '', /already taken|another business/i)
+      assert.equal(second.ok, true)
+      assert.notEqual(second.subdomain, 'urbanthread')
+      assert.match(second.subdomain || '', /urbanthread-/)
+      assert.notEqual(second.url, first.url)
     } finally {
       await rm(dir, { recursive: true, force: true })
       delete process.env.INDOBASE_LAUNCH_ROOT
