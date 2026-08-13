@@ -10,7 +10,13 @@ import { assertLaunchArchitectureReady } from '../launch-backend-gate.js'
 import { autoWireLaunchArtifacts } from '../wire-proof.js'
 import { assertEcommerceReleaseGateAsync } from '../delivery/index.js'
 import { humanizeLaunchFailure } from '../ux-conductor.js'
-import { inferBusinessSpec, rememberBusinessSpec } from '../ux/business-spec.js'
+import {
+  inferBusinessSpec,
+  inferName,
+  isPlaceholderBusinessName,
+  pickBusinessName,
+  rememberBusinessSpec,
+} from '../ux/business-spec.js'
 import { planProductionApp } from './application-planner.js'
 import { resolveProductionContract } from './production-contract.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from './shells.js'
@@ -139,14 +145,22 @@ async function smokeLiveUrl(url: string, appType: ProductionLaunchJob['appType']
 function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunchJob {
   const plan = planProductionApp({ appType: input.appType, intent: input.intent })
   const contract = resolveProductionContract(plan.appType)
-  const spec = inferBusinessSpec(
-    [input.intent, input.title, input.brand, input.vertical].filter(Boolean).join(' '),
+  const inferred = inferBusinessSpec(input.intent || '')
+  const named = pickBusinessName(
+    inferred.businessName,
+    input.brand,
+    input.title,
+    inferName(input.intent || ''),
   )
-  rememberBusinessSpec(session.projectRef, spec)
+  const spec = rememberBusinessSpec(session.projectRef, {
+    ...inferred,
+    businessName: named || inferred.businessName,
+    brand: named || inferred.brand,
+  })
   const vertical = input.vertical?.trim() || (plan.appType === 'ecommerce' ? spec.catalog.verticalId : undefined)
   const brand =
-    input.brand?.trim() ||
-    (spec.businessName && spec.businessName !== 'your business' ? spec.businessName : undefined)
+    pickBusinessName(input.brand, spec.businessName, inferred.businessName) ||
+    (spec.businessName && !isPlaceholderBusinessName(spec.businessName) ? spec.businessName : undefined)
   return rememberProductionLaunchJob({
     version: 'production-launch-job/v1',
     jobId: createProductionJobId(),
@@ -162,7 +176,7 @@ function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunc
     stages: buildEmptyStages(plan.appType),
     html: typeof input.html === 'string' ? input.html : undefined,
     files: input.files || undefined,
-    title: input.title?.trim() || brand,
+    title: pickBusinessName(input.title, brand, spec.businessName) || brand,
     brand,
     vertical,
     backend: session.backend ?? null,

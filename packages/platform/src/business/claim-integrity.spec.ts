@@ -82,4 +82,15 @@ describe('claim integrity', () => {
     expect(cleaned).not.toMatch(/not in this workspace/i)
     expect(cleaned).toMatch(/this workspace/)
   })
+
+  it('forbids “command isn’t available” when preview is ready', () => {
+    const ready = emptyBusinessRuntimeState({
+      preview: { status: 'ready', url: 'https://builder.indobase.in/live/x/' },
+      health: { catalogReady: false, paymentsReady: false, previewReady: true },
+    })
+    const speech = 'The persisted-preview editing command isn’t available.'
+    expect(detectFabricatedClaims(speech, ready)).toContain('command-unavailable')
+    const cleaned = sanitizeAgentNarration(speech, ready)
+    expect(cleaned).not.toMatch(/isn.?t available/i)
+  })
 })

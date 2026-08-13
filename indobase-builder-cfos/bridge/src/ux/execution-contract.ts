@@ -25,12 +25,17 @@ import {
 import {
   getBusinessSpec,
   inferBusinessSpec,
+  inferName,
+  isPlaceholderBusinessName,
+  mergeBusinessSpec,
+  pickBusinessName,
   rememberBusinessSpec,
   type BusinessSpec,
 } from './business-spec.js'
 import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
 import { extractRequestedHeadline, materializePreview, mutateHeroHeadline } from './preview-artifact.js'
 import { probePreviewHttp, readLiveFile, writeDraftPreview } from '../static-launch.js'
+import { executeLaunchBusinessTool } from '../launch-business-tool.js'
 import {
   appendRuntimeEvent,
   emptyPersistedRuntime,
@@ -92,6 +97,13 @@ function looksLikeGoLive(text: string): boolean {
   )
 }
 
+/** “Launch a premium sneaker store called X” — preview then the existing launchProductionApp path. */
+function looksLikeExplicitStoreLaunch(text: string): boolean {
+  const q = text.toLowerCase()
+  if (!/\blaunch a\b/.test(q)) return false
+  return /\b(store|shop|sneaker|sneakers|ecommerce|boutique)\b/.test(q)
+}
+
 export function classifyOperatorIntent(
   message: string,
   runtime: PersistedWorkspaceRuntime | null,
@@ -108,15 +120,20 @@ export function classifyOperatorIntent(
 }
 
 function specFromProductionJob(job: ProductionLaunchJob): BusinessSpec {
-  const inferred = inferBusinessSpec(job.intent || `Launch a ${job.vertical || 'store'} called ${job.title || job.brand || 'Store'}`)
+  const inferred = inferBusinessSpec(
+    job.intent || `Launch a ${job.vertical || 'store'} called ${job.title || job.brand || 'Store'}`,
+  )
+  const businessName =
+    pickBusinessName(inferred.businessName, job.brand, job.title, inferName(job.intent || '')) ||
+    inferred.businessName
   return {
     ...inferred,
-    businessName: job.title || job.brand || inferred.businessName,
+    businessName,
     businessType:
       job.appType === 'saas' || job.appType === 'landing' || job.appType === 'ecommerce'
         ? job.appType
         : inferred.businessType,
-    brand: job.brand || inferred.brand,
+    brand: pickBusinessName(job.brand, businessName, inferred.brand) || businessName,
     catalog: {
       ...inferred.catalog,
       verticalId: job.vertical || inferred.catalog.verticalId,
@@ -312,11 +329,18 @@ function composeAgentContext(result: {
   if (result.intent === 'preview_edit') {
     if (preview.status === 'ready' && preview.url) {
       lines.push(
-        `PREVIEW_EDIT is allowed. preview.status=ready. The store IS this workspace (${spec?.businessName || result.businessRuntime.business.name || 'this business'} at ${preview.url}). Edit the persisted artifact. FORBIDDEN: “not in this workspace” / “isn’t currently available”.`,
+        `PREVIEW_EDIT is allowed. preview.status=ready. The store IS this workspace (${spec?.businessName || result.businessRuntime.business.name || 'this business'} at ${preview.url}). The execution path already mutates the persisted artifact — do not call a preview-edit tool. FORBIDDEN: “not in this workspace” / “isn’t currently available” / “persisted-preview editing command isn’t available” / “launch command isn’t available”.`,
       )
     } else {
-      lines.push('PREVIEW_EDIT: preview is not ready. Do not claim the storefront exists yet.')
+      lines.push(
+        'PREVIEW_EDIT: apply the mutation through the existing execution path. FORBIDDEN: “persisted-preview editing command isn’t available”.',
+      )
     }
+  }
+  if (result.intent === 'create_business' || result.intent === 'launch_production') {
+    lines.push(
+      'launchProductionApp is already on the session tool surface and the execution path invokes it. FORBIDDEN: “launch command isn’t available” / “preview command isn’t available”.',
+    )
   }
   if (result.intent === 'operate' && result.businessRuntime.orders.length > 0) {
     lines.push('SCREEN / Ask AI: answer from BusinessRuntimeState.orders. Do not call a missing admin service.')
@@ -329,7 +353,33 @@ async function ensureSpecAndPreview(
   message: string,
   probe?: typeof probePreviewHttp,
 ): Promise<{ spec: BusinessSpec; runtime: PersistedWorkspaceRuntime; recovered: boolean; commandId: string }> {
-  const spec = rememberBusinessSpec(session.projectRef, inferBusinessSpec(message))
+  const inferred = inferBusinessSpec(message)
+  const spec = rememberBusinessSpec(
+    session.projectRef,
+    mergeBusinessSpec(getBusinessSpec(session.projectRef), {
+      ...inferred,
+      businessName: pickBusinessName(inferred.businessName, inferName(message)) || inferred.businessName,
+      sourceIntent: inferred.sourceIntent || message,
+    }),
+  )
+  const existing = getWorkspaceRuntime(session.projectRef)
+  if (
+    existing?.spec &&
+    !isPlaceholderBusinessName(existing.spec.businessName) &&
+    existing.preview.status === 'ready' &&
+    existing.artifactHtml
+  ) {
+    const runtime = patchWorkspaceRuntime(session.projectRef, {
+      spec,
+      plan: planFromSpec(spec),
+    })
+    return {
+      spec,
+      runtime: getWorkspaceRuntime(session.projectRef) || runtime,
+      recovered: false,
+      commandId: existing.lastCommandId || '',
+    }
+  }
   const createCmd = issueRuntimeCommand(session.projectRef, 'runtime.create', {
     spec: {
       name: spec.businessName,
@@ -396,8 +446,20 @@ async function runProductionLaunch(
   runtime: PersistedWorkspaceRuntime,
   launchDeps?: ProductionLaunchDeps,
 ): Promise<{ launch: ProductionLaunchExecuteResult; runtime: PersistedWorkspaceRuntime; commandId: string }> {
-  const spec = runtime.spec || getBusinessSpec(session.projectRef) || inferBusinessSpec(message)
-  rememberBusinessSpec(session.projectRef, spec)
+  const inferred = inferBusinessSpec(message)
+  const spec = rememberBusinessSpec(
+    session.projectRef,
+    mergeBusinessSpec(runtime.spec || getBusinessSpec(session.projectRef), {
+      businessName:
+        pickBusinessName(
+          runtime.spec?.businessName,
+          getBusinessSpec(session.projectRef)?.businessName,
+          inferred.businessName,
+          inferName(message),
+        ) || inferred.businessName,
+      sourceIntent: runtime.spec?.sourceIntent || inferred.sourceIntent || message,
+    }),
+  )
   const command = issueRuntimeCommand(session.projectRef, 'runtime.launch', {
     appType: spec.businessType,
     vertical: spec.catalog.verticalId,
@@ -410,8 +472,8 @@ async function runProductionLaunch(
       production: true,
       html: runtime.artifactHtml || runtime.artifactFiles?.['index.html'] || null,
       files: runtime.artifactFiles || null,
-      title: spec.businessName,
-      brand: spec.businessName,
+      title: isPlaceholderBusinessName(spec.businessName) ? undefined : spec.businessName,
+      brand: isPlaceholderBusinessName(spec.businessName) ? undefined : spec.businessName,
       vertical: spec.catalog.verticalId,
     },
     launchDeps,
@@ -455,10 +517,23 @@ async function runProductionLaunch(
   }
 }
 
+function subdomainFromLiveUrl(url: string | null | undefined): string | undefined {
+  const raw = (url || '').trim()
+  if (!raw) return undefined
+  try {
+    const host = new URL(raw).hostname.toLowerCase()
+    const label = host.split('.')[0]
+    return label && label !== 'www' ? label : undefined
+  } catch {
+    return undefined
+  }
+}
+
 async function applyPersistedPreviewEdit(
   session: Session,
   message: string,
   runtime: PersistedWorkspaceRuntime,
+  launchDeps?: ProductionLaunchDeps,
 ): Promise<{ runtime: PersistedWorkspaceRuntime; commandId?: string; mutated: boolean; headline: string | null }> {
   const headline = extractRequestedHeadline(message)
   if (!headline) return { runtime, mutated: false, headline: null }
@@ -468,6 +543,8 @@ async function applyPersistedPreviewEdit(
     const disk = await readLiveFile(session.projectRef, 'index.html')
     html = disk?.body?.toString('utf8') || ''
   }
+  const job = getLatestProductionLaunchJob(session.projectRef)
+  if (!html) html = job?.html || job?.files?.['index.html'] || ''
   if (!html) return { runtime, mutated: false, headline }
 
   const nextHtml = mutateHeroHeadline(html, headline)
@@ -501,13 +578,31 @@ async function applyPersistedPreviewEdit(
     message: `Hero headline → ${headline}`,
     commandId: command.id,
   })
-  const job = getLatestProductionLaunchJob(session.projectRef)
   if (job) {
     rememberProductionLaunchJob({
       ...job,
       html: nextHtml,
       files: { ...(job.files || {}), 'index.html': nextHtml },
     })
+    if ((job.status === 'live' || job.url) && !launchDeps?.launch) {
+      try {
+        await executeLaunchBusinessTool(
+          session.projectRef,
+          {
+            title: runtime.spec?.businessName || job.title || job.brand,
+            subdomain: subdomainFromLiveUrl(job.url) || job.brand || undefined,
+            html: nextHtml,
+            files,
+            app_type: job.appType,
+            gotrueId: session.gotrueId,
+            email: session.email,
+          },
+          { title: runtime.spec?.businessName || job.title, backend: session.backend },
+        )
+      } catch {
+        /* draft + job html already persisted; live republish retries on next launch */
+      }
+    }
   }
   return { runtime: getWorkspaceRuntime(session.projectRef) || runtime, commandId: command.id, mutated: true, headline }
 }
@@ -554,6 +649,19 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   let commandId: string | undefined
   let spec = runtime.spec || getBusinessSpec(session.projectRef)
 
+  if (
+    !spec &&
+    effectiveMessage &&
+    (intent === 'other' || intent === 'operate') &&
+    (inferName(effectiveMessage) || looksLikeCreateBusiness(effectiveMessage))
+  ) {
+    const created = await ensureSpecAndPreview(session, effectiveMessage, input.probe)
+    spec = created.spec
+    runtime = created.runtime
+    recovered = created.recovered
+    commandId = created.commandId
+  }
+
   if (intent === 'create_business' || (intent === 'launch_production' && !runtime.spec && effectiveMessage)) {
     const created = await ensureSpecAndPreview(session, effectiveMessage, input.probe)
     spec = created.spec
@@ -562,7 +670,11 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     commandId = created.commandId
   }
 
-  if (intent === 'launch_production' && (runtime.spec || spec)) {
+  const shouldLaunchNow =
+    intent === 'launch_production' ||
+    (intent === 'create_business' && looksLikeExplicitStoreLaunch(effectiveMessage) && Boolean(runtime.spec || spec))
+
+  if (shouldLaunchNow && (runtime.spec || spec)) {
     if (runtime.preview.status !== 'ready' || !runtime.artifactHtml) {
       const created = await ensureSpecAndPreview(
         session,
@@ -580,8 +692,13 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   }
 
   let mutatedHeadline: string | null = null
-  if (intent === 'preview_edit' && runtime.preview.status === 'ready') {
-    const edited = await applyPersistedPreviewEdit(session, effectiveMessage || message, runtime)
+  if (intent === 'preview_edit') {
+    const edited = await applyPersistedPreviewEdit(
+      session,
+      effectiveMessage || message,
+      runtime,
+      input.launchDeps,
+    )
     runtime = edited.runtime
     mutatedHeadline = edited.headline
     if (edited.commandId) commandId = edited.commandId

@@ -36,4 +36,22 @@ describe('BusinessSpec', () => {
     clearBusinessSpecsForTests()
     assert.equal(getBusinessSpec('proj_glow'), null)
   })
+
+  it('infers UrbanThread from lowercase, quoted, and markdown called-X', () => {
+    assert.equal(inferBusinessSpec('launch a premium sneaker store called urbanthread').businessName, 'Urbanthread')
+    assert.equal(inferBusinessSpec('Launch a premium sneaker store called "UrbanThread"').businessName, 'UrbanThread')
+    assert.equal(inferBusinessSpec('Launch a premium sneaker store called **UrbanThread**').businessName, 'UrbanThread')
+    assert.notEqual(
+      inferBusinessSpec('Launch a premium sneaker store called UrbanThread').businessName,
+      'your business',
+    )
+  })
+
+  it('does not let a placeholder name overwrite UrbanThread', () => {
+    clearBusinessSpecsForTests()
+    rememberBusinessSpec('proj_ut', inferBusinessSpec('Launch a premium sneaker store called UrbanThread'))
+    rememberBusinessSpec('proj_ut', inferBusinessSpec('Go Live'))
+    assert.equal(getBusinessSpec('proj_ut')?.businessName, 'UrbanThread')
+    clearBusinessSpecsForTests()
+  })
 })

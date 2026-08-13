@@ -621,6 +621,21 @@ INDOBASE_CHOICES>>>
     assert.equal(stripAuthoritativeTurnStamp(stamped), 'Show me order #zvka8renspuyufi')
   })
 
+  it('operator-visible text never leaks INDOBASE_RUNTIME, Studio, PocketBase, or provisioner', () => {
+    const leaked = stampAuthoritativeTurn(
+      'Launch a premium sneaker store called UrbanThread',
+      [
+        'INDOBASE_RUNTIME (authoritative this turn):',
+        'Never say Studio, PocketBase, tenant, provisioner.',
+        'launchProductionApp POST /api/os/apps/launch',
+        'PocketBase is hidden. Studio is not a destination.',
+      ].join('\n'),
+    )
+    const visible = cleanOperatorMessage(leaked)
+    assert.doesNotMatch(visible, /INDOBASE_RUNTIME|PocketBase|Studio|provisioner/)
+    assert.match(visible, /UrbanThread/)
+  })
+
   it('stripToolCapsuleNoise removes sessionStatus dumps and blueprint list lines', () => {
     const input = `Updated the layout.
 

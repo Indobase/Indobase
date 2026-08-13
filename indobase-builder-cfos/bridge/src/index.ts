@@ -127,6 +127,7 @@ import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './se
 import { CFOS_SPA_SHELL_PREFIXES } from './cfos-spa-shell.js'
 import { setWorkspaceScreen } from './ux-screen-store.js'
 import { loadAuthoritativeLaunchFacts } from './ux/authoritative-turn.js'
+import { composeRuntimeStateHint } from './ux/agent-truth.js'
 
 initBridgeSentry('builder-cfos')
 
@@ -853,7 +854,7 @@ app.get('/api/os/runtime/session-status', async (c) => {
     signed_in: !guest,
     runtime: payload.runtime,
     agent_hint: payload.agent_hint,
-    agent_context: payload.agent_hint,
+    agent_context: payload.runtime ? composeRuntimeStateHint(payload.runtime) : '',
     snapshot: facts.snapshot,
     message: guest
       ? 'Unsigned-in: complete account in chat (name+email+DPDP → authStart+authVerify) or Create account. Do not emit niche/recommendation cards until after verify. Then continue the original request.'
@@ -1975,7 +1976,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
           }
         : null,
       runtime: execution?.businessRuntime || null,
-      agent_context: execution?.agentContext || agentHint,
+      agent_context: execution?.agentContext || '',
       agent_hint: agentHint,
     })
   }
@@ -2061,7 +2062,7 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
           }
         : null,
       runtime: execution?.businessRuntime || null,
-      agent_context: execution?.agentContext || agentHint,
+      agent_context: execution?.agentContext || '',
       agent_hint: agentHint,
     },
     status,

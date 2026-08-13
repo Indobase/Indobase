@@ -149,7 +149,13 @@ describe('FTU execution contract A–Q', () => {
 
   it('B–I: prompt creates spec, runtime, artifact, reachable preview; no false ready claim', async () => {
     // A already asserted empty. First signed-in prompt.
-    const turn = await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const reached = { launchProductionApp: false }
+    const turn = await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps(reached),
+    })
 
     // B prompt creates BusinessSpec
     assert.ok(turn.spec)
@@ -209,10 +215,20 @@ describe('FTU execution contract A–Q', () => {
     const sanitized = verifyNarration('Your store is ready.', emptyTurn)
     assert.doesNotMatch(sanitized, /store is ready/i)
     assert.equal(detectFabricatedClaims('Preview is ready for UrbanThread.', turn.businessRuntime).length, 0)
+
+    // Original “Launch a … store” intent invokes the existing launchProductionApp path.
+    assert.equal(reached.launchProductionApp, true)
+    assert.equal(turn.launch?.ok, true)
+    assert.notEqual(turn.spec?.businessName, 'your business')
   })
 
   it('J–N: Launch invokes launchProductionApp path; live URL required before LIVE speech', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     const reached = { launchProductionApp: false }
     const launchTurn = await applyOperatorIntent({
       session,
@@ -255,7 +271,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('O–Q: capability + BusinessRuntimeState + BusinessSnapshot', async () => {
-    const turn = await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const turn = await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     // O Capability cannot be claimed ready without authoritative state
     assert.ok(
       detectFabricatedClaims('Customer database enabled.', turn.businessRuntime).includes('capability'),
@@ -296,7 +317,12 @@ describe('FTU execution contract A–Q', () => {
     const guest = await applyOperatorIntent({ session, message: PROMPT, guest: true })
     assert.equal(getBusinessSpec(session.projectRef), null)
     assert.equal(guest.runtime.spec, null)
-    const afterAuth = await applyOperatorIntent({ session, message: '', guest: false })
+    const afterAuth = await applyOperatorIntent({
+      session,
+      message: '',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     assert.equal(afterAuth.spec?.businessName, 'UrbanThread')
     assert.equal(afterAuth.runtime.preview.status, 'ready')
   })
@@ -310,7 +336,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('Ask AI / SCREEN includes snapshot orders in begin-turn agentContext', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     const turn = await applyOperatorIntent({
       session,
       message: 'SCREEN\nsection: orders\nentity: zvka8renspuyufi\nrequest: Show me order #zvka8renspuyufi',
@@ -347,7 +378,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('PREVIEW_EDIT is allowed when preview.status=ready', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     const turn = await applyOperatorIntent({
       session,
       message:
@@ -370,7 +406,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('rehydrates spec+preview+orders after in-memory runtime is cleared', async () => {
-    const first = await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    const first = await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     assert.equal(first.runtime.preview.status, 'ready')
     clearWorkspaceRuntimesForTests()
     clearBusinessSpecsForTests()
@@ -421,8 +462,8 @@ describe('FTU execution contract A–Q', () => {
         stages: [],
         html: first.runtime.artifactHtml,
         files: first.runtime.artifactFiles,
-        title: 'UrbanThread',
-        brand: 'UrbanThread',
+        title: 'your business',
+        brand: 'your business',
         vertical: 'sneakers',
         url: 'https://urbanthread-aaf13e89.sites.indobase.in',
         claim_live: true,
@@ -440,7 +481,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('PREVIEW_EDIT persists the hero headline across reload', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     const headline = 'Premium Sneakers. Built to Move.'
     const turn = await applyOperatorIntent({
       session,
@@ -466,7 +512,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('fresh snapshot replaces a stale order count on the next turn', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     const first = await applyOperatorIntent({
       session,
       message: 'What orders do I have?',
@@ -495,7 +546,12 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('workspace B cannot read A’s spec, artifact, or orders', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: false })
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
     const other: Session = {
       ...session,
       gotrueId: 'user-b',

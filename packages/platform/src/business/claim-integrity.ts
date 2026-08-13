@@ -32,6 +32,7 @@ export type FabricatedClaim =
   | 'catalog'
   | 'orders-unavailable'
   | 'store-missing'
+  | 'command-unavailable'
 
 const PREVIEW_READY_SPEECH =
   /\b(preview is ready|your (?:store|shop|site|app) is ready|everything is ready|storefront is (?:ready|live)|you can (?:view|browse|preview) (?:it|your store))\b/i
@@ -54,6 +55,9 @@ const ORDERS_UNAVAILABLE_SPEECH =
 const STORE_MISSING_SPEECH =
   /\b(?:not in this workspace|isn['’]?t currently available|(?:store|shop|site) (?:is )?(?:not|isn['’]?t) (?:in this workspace|currently available))\b/i
 
+const COMMAND_UNAVAILABLE_SPEECH =
+  /\b(?:(?:launch|preview|persisted-preview|editing) command|launchProductionApp|launchBusiness)\b.{0,40}isn['’]?t (?:currently )?available|\bcommand isn['’]?t (?:currently )?available\b/i
+
 export function detectFabricatedClaims(
   text: string,
   state: BusinessRuntimeState,
@@ -74,6 +78,13 @@ export function detectFabricatedClaims(
     hits.push('products')
   }
   if (agentMayClaimPreview(state) && STORE_MISSING_SPEECH.test(body)) hits.push('store-missing')
+  const toolsExist = Boolean(
+    state.preview.status === 'ready' ||
+      state.live.isLive ||
+      state.deployment.jobId ||
+      state.jobs.length > 0,
+  )
+  if (toolsExist && COMMAND_UNAVAILABLE_SPEECH.test(body)) hits.push('command-unavailable')
   return hits
 }
 
@@ -94,6 +105,13 @@ export function completedClaimAllowed(
       return state.orders.length === 0
     case 'store-missing':
       return !agentMayClaimPreview(state)
+    case 'command-unavailable':
+      return !(
+        state.preview.status === 'ready' ||
+        state.live.isLive ||
+        state.deployment.jobId ||
+        state.jobs.length > 0
+      )
     case 'products':
     case 'catalog':
       return state.health.catalogReady || state.products.length > 0
@@ -125,6 +143,10 @@ function describeListedOrders(state: BusinessRuntimeState): string {
     .join('; ')
 }
 
+function replaceAll(source: string, pattern: RegExp, replacement: string): string {
+  return source.replace(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`), replacement)
+}
+
 /**
  * Rewrite fabricated success speech. Never invent preview/live/database/orders.
  */
@@ -132,23 +154,33 @@ export function sanitizeAgentNarration(text: string, state: BusinessRuntimeState
   const hits = detectFabricatedClaims(text, state)
   if (hits.length === 0) return text
   let out = text
-  if (hits.includes('preview')) out = out.replace(PREVIEW_READY_SPEECH, PREPARING)
-  if (hits.includes('live')) out = out.replace(LIVE_SPEECH, NOT_LIVE)
-  if (hits.includes('capability')) out = out.replace(DATABASE_SPEECH, NO_DATABASE)
-  if (hits.includes('orders')) out = out.replace(ORDERS_SPEECH, NO_ORDERS)
+  if (hits.includes('preview')) out = replaceAll(out, PREVIEW_READY_SPEECH, PREPARING)
+  if (hits.includes('live')) out = replaceAll(out, LIVE_SPEECH, NOT_LIVE)
+  if (hits.includes('capability')) out = replaceAll(out, DATABASE_SPEECH, NO_DATABASE)
+  if (hits.includes('orders')) out = replaceAll(out, ORDERS_SPEECH, NO_ORDERS)
   if (hits.includes('orders-unavailable')) {
     const listed = describeListedOrders(state)
-    out = out.replace(
+    out = replaceAll(
+      out,
       ORDERS_UNAVAILABLE_SPEECH,
       listed ? `order ${listed} is listed in BusinessRuntimeState` : NO_ORDERS,
     )
   }
   if (hits.includes('store-missing')) {
     const url = state.preview.url || state.live.url || 'this workspace'
-    out = out.replace(STORE_MISSING_SPEECH, `the store is in this workspace (${url})`)
+    out = replaceAll(out, STORE_MISSING_SPEECH, `the store is in this workspace (${url})`)
   }
-  if (hits.includes('products')) out = out.replace(PRODUCTS_SPEECH, NO_PRODUCTS)
-  if (detectFabricatedClaims(out, state).length === 0) return out
+  if (hits.includes('command-unavailable')) {
+    out = replaceAll(
+      out,
+      COMMAND_UNAVAILABLE_SPEECH,
+      'the existing launch and preview path is already running for this workspace',
+    )
+  }
+  if (hits.includes('products')) out = replaceAll(out, PRODUCTS_SPEECH, NO_PRODUCTS)
+  const remaining = detectFabricatedClaims(out, state)
+  if (remaining.length === 0) return out
+  if (!remaining.some((h) => h === 'preview' || h === 'live' || h === 'capability')) return out
   return [PREPARING, hits.includes('capability') ? NO_DATABASE : '', hits.includes('live') ? NOT_LIVE : '']
     .filter(Boolean)
     .join(' ')

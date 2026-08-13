@@ -777,12 +777,16 @@ void (async () => {
     const stampsOutbound =
       text.includes('let outboundMessage = inputValue') &&
       text.includes('let messageInput = outboundMessage')
+    const stampsHintFallback = text.includes("j?.agent_hint.trim() ? j.agent_hint.trim()")
+    const compactStampOnly = text.includes('Compact agent_context only')
     if (
       text.includes('/api/os/agent/begin-turn') &&
       hasGuestSync &&
       hasTurnContext &&
       hasRuntimeStamp &&
-      stampsOutbound
+      stampsOutbound &&
+      compactStampOnly &&
+      !stampsHintFallback
     ) {
       console.log('  ChatInterface begin-turn meter + guest sync already patched (skip)')
     } else {
@@ -831,14 +835,13 @@ void (async () => {
           }
           w.__INDOBASE_GUEST__ = isGuest
           w.__INDOBASE_SESSION_STAGE__ = j?.stage || (isGuest ? 'guest' : 'member')
+          // Compact agent_context only — never stamp agent_hint (operator chat leak).
           const turnCtx = (typeof j?.agent_context === 'string' && j.agent_context.trim())
             ? j.agent_context.trim()
-            : (typeof j?.agent_hint === 'string' && j.agent_hint.trim() ? j.agent_hint.trim() : '')
-          if (turnCtx) {
-            w.__INDOBASE_TURN_CONTEXT__ = turnCtx
-            if (!outboundMessage.includes('<<<INDOBASE_RUNTIME>>>')) {
-              outboundMessage = '<<<INDOBASE_RUNTIME>>>\\n' + turnCtx + '\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n' + outboundMessage
-            }
+            : ''
+          if (turnCtx) w.__INDOBASE_TURN_CONTEXT__ = turnCtx
+          if (turnCtx && !outboundMessage.includes('<<<INDOBASE_RUNTIME>>>')) {
+            outboundMessage = '<<<INDOBASE_RUNTIME>>>\\n' + turnCtx + '\\n<<<END_INDOBASE_RUNTIME>>>\\n\\n' + outboundMessage
           }
           if (typeof j?.agent_hint === 'string' && j.agent_hint.trim()) {
             w.__INDOBASE_AGENT_HINT__ = j.agent_hint
@@ -2326,7 +2329,8 @@ ${injection}`
     const importInjection =
       'import styles from "./ChatInterface.module.css";\n' +
       'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips\n' +
-      'import { WorkspaceChrome } from "./WorkspaceChrome"; // Indobase chat+preview workspace'
+      'import { WorkspaceChrome } from "./WorkspaceChrome"; // Indobase chat+preview workspace\n' +
+      'import { cleanOperatorMessage } from "./followups"; // strip INDOBASE_RUNTIME from operator chat'
 
     if (text.includes('FollowUpRecommendations') && text.includes('Indobase follow-up chips')) {
       const oldAllow =
@@ -2423,12 +2427,26 @@ ${injection}`
     }
 
     text = read(chatPath)
+    if (text.includes('Indobase follow-up chips') && !text.includes('cleanOperatorMessage')) {
+      text = text.replace(
+        'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips',
+        'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips\n' +
+          'import { cleanOperatorMessage } from "./followups"; // strip INDOBASE_RUNTIME from operator chat',
+      )
+    }
+    if (text.includes('cleanOperatorMessage') && text.includes('message={msg.message}')) {
+      text = text.replaceAll('message={msg.message}', 'message={cleanOperatorMessage(msg.message)}')
+    }
     if (text.includes('Indobase follow-up chips') && !text.includes('Indobase chat+preview workspace')) {
       text = text.replace(
         'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips',
         'import { FollowUpRecommendations } from "./FollowUpRecommendations"; // Indobase follow-up chips\n' +
           'import { WorkspaceChrome } from "./WorkspaceChrome"; // Indobase chat+preview workspace',
       )
+    }
+    if (text.includes('cleanOperatorMessage')) {
+      write(chatPath, text)
+      console.log('  ChatInterface ← strip INDOBASE_RUNTIME from operator-visible messages')
     }
     const composerNeedle = '{/* ── Bottom: input, update state, and cost ──────────────── */}'
     if (text.includes(composerNeedle) && !text.includes('<WorkspaceChrome')) {

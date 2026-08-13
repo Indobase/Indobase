@@ -351,10 +351,27 @@ export function stampAuthoritativeTurn(userMessage: string, agentContext: string
 
 export function stripAuthoritativeTurnStamp(message: string): string {
   if (!message) return message
-  return message
-    .replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*?<<<END_INDOBASE_RUNTIME>>>\s*/gi, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  let t = message
+  t = t.replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*?<<<END_INDOBASE_RUNTIME>>>\s*/gi, '')
+  t = t.replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*$/gi, '')
+  t = t.replace(/<<<END_INDOBASE_RUNTIME>>>\s*/gi, '')
+  t = t.replace(/^\s*INDOBASE_RUNTIME\b[^\n]*(?:\n(?!\n)[^\n]*)*\n*/gim, '')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+const OPERATOR_LEAK_LINE =
+  /^(?:#{1,3}\s*)?(?:-+\s*)?(?:Never say\s+)?(?:Studio|PocketBase|provisioner|tenant|saas)\b.*$/gim
+
+/** Operator-visible chat must never include model/runtime injection or infra names. */
+export function stripOperatorInfraLeak(message: string): string {
+  if (!message) return message
+  let t = stripAuthoritativeTurnStamp(message)
+  t = t.replace(OPERATOR_LEAK_LINE, '')
+  t = t.replace(/\b(?:PocketBase|provisioner)\b/gi, '')
+  t = t.replace(/\bStudio\b/g, '')
+  t = t.replace(/\bINDOBASE_RUNTIME\b/gi, '')
+  t = t.replace(/[ \t]{2,}/g, ' ')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
 const CHIP_TOOL_NAMES =
@@ -375,7 +392,7 @@ export function operatorChipLabel(label: string): string {
 /** Hide raw tool capsule dumps from operator-visible markdown (keep dev capsules intact). */
 export function stripToolCapsuleNoise(message: string): string {
   if (!message) return message
-  let t = stripAuthoritativeTurnStamp(message)
+  let t = stripOperatorInfraLeak(message)
   t = t.replace(/```(?:json)?\s*\{[\s\S]*?"tool"\s*:\s*"sessionStatus"[\s\S]*?\}\s*```/gi, '')
   t = t.replace(
     /```(?:json)?\s*\{[\s\S]*?"(?:signed_in|stage|guest)"[\s\S]*?"sessionStatus"[\s\S]*?\}\s*```/gi,
@@ -387,7 +404,7 @@ export function stripToolCapsuleNoise(message: string): string {
 }
 
 export function cleanOperatorMessage(message: string): string {
-  return stripToolCapsuleNoise(stripLeakedCot(message))
+  return stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message)))
 }
 
 function journeyChipTitle(headline?: string | null): string {

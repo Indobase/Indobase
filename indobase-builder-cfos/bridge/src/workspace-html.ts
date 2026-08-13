@@ -205,14 +205,21 @@ export function injectIndobaseContextBootstrap(html: string): string {
           row.setAttribute('data-ib-hidden-tool', '1');
           row.style.display = 'none';
         }
-        var walk = (root || document).querySelectorAll('p, li, div, span');
+        function stripRuntimeLeak(text) {
+          if (!text) return text;
+          var out = String(text).replace(/<<<INDOBASE_RUNTIME>>>[\\s\\S]*?<<<END_INDOBASE_RUNTIME>>>\\s*/gi, '');
+          out = out.replace(/<<<INDOBASE_RUNTIME>>>[\\s\\S]*/gi, '');
+          out = out.replace(/<<<END_INDOBASE_RUNTIME>>>\\s*/gi, '');
+          out = out.replace(/\\bINDOBASE_RUNTIME\\b/gi, '');
+          return out.replace(/\\n{3,}/g, '\\n\\n').trim();
+        }
+        var walk = (root || document).querySelectorAll('p, li, div, span, pre, code, article, [class*="markdown"], [class*="message"]');
         for (var j = 0; j < walk.length; j++) {
           var node = walk[j];
-          var raw = node.childNodes && node.childNodes.length === 1 && node.childNodes[0].nodeType === 3
-            ? (node.textContent || '')
-            : '';
-          if (!raw || raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1) continue;
-          var stripped = raw.replace(/<<<INDOBASE_RUNTIME>>>[\\s\\S]*?<<<END_INDOBASE_RUNTIME>>>\\s*/g, '').trim();
+          var raw = node.textContent || '';
+          if (!raw || (raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1 && raw.indexOf('INDOBASE_RUNTIME') === -1)) continue;
+          if (node.querySelector && node.querySelector('button, iframe, input, textarea, img')) continue;
+          var stripped = stripRuntimeLeak(raw);
           if (stripped !== raw) node.textContent = stripped;
         }
       } catch (_) {}

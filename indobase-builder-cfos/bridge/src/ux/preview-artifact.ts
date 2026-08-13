@@ -72,14 +72,33 @@ export function buildPreviewFiles(spec: BusinessSpec, projectRef: string): Recor
   return { 'index.html': html, 'metadata.json': meta }
 }
 
+function tidyHeadline(raw: string | null | undefined): string | null {
+  const n = (raw || '')
+    .replace(/^[\s`'"“”‘’]+|[\s`'"“”‘’]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!n || n.length < 3 || n.length > 120) return null
+  if (/^(make|change|rewrite|update|edit|hide|delete|move|duplicate)\b/i.test(n) && n.length < 28) {
+    return null
+  }
+  return n
+}
+
 export function extractRequestedHeadline(message: string): string | null {
   const text = (message || '').trim()
   if (!text) return null
   const quoted =
     /(?:hero\s+)?headline\s+to\s+[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text) ||
-    /request:\s*(?:change\s+(?:the\s+)?hero(?:\s+headline)?\s+to\s+)?[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text)
-  const raw = quoted?.[1]?.trim()
-  return raw || null
+    /request:\s*(?:change\s+(?:the\s+)?(?:hero(?:\s+headline)?|headline)\s+to\s+)?[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(
+      text,
+    ) ||
+    /rewrite(?:\s+the)?(?:\s+hero)?(?:\s+headline)?\s+to\s+[`'‘’""]([^`'‘’""]+)[`'‘’""]/i.exec(text)
+  const fromQuote = tidyHeadline(quoted?.[1])
+  if (fromQuote) return fromQuote
+  const requestLine = /^request:\s*(.+)$/im.exec(text)
+  const fromRequest = tidyHeadline(requestLine?.[1])
+  if (fromRequest) return fromRequest
+  return null
 }
 
 export function mutateHeroHeadline(html: string, headline: string): string {
