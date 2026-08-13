@@ -52,6 +52,16 @@ export {
   runCustomerCertification,
 } from './customer-certification.js'
 export {
+  PAYMENT_APPLICATION_CONTRACT,
+  PAYMENT_CONTRACT_VERSION,
+  PAYMENT_INVARIANT_IDS,
+} from './payment-contract.js'
+export {
+  PAYMENT_CERT_VERSION,
+  certifyPaymentStateMachine,
+  runPaymentCertification,
+} from './payment-certification.js'
+export {
   ECOMMERCE_FUNCTIONAL_VERIFIER_IDS,
   requiredFunctionalVerifiersFailed,
   runEcommerceFunctionalVerifiers,

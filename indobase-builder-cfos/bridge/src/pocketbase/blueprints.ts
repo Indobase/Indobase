@@ -221,6 +221,8 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'idempotency_key', type: 'text' },
           { name: 'payment_url', type: 'text' },
           { name: 'provider_event_id', type: 'text' },
+          { name: 'payment_state', type: 'text' },
+          { name: 'payment_revision', type: 'number' },
           { name: 'reservation_expires_at', type: 'date' },
           { name: 'shipping_address', type: 'json' },
           { name: 'customer_id', type: 'text' },

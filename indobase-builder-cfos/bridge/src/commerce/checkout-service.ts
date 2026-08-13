@@ -16,16 +16,39 @@ import {
   patchOrderPayment,
   releaseExpiredReservations,
   releaseReservationsForOrder,
+  reservationIsActive,
   sumActiveReservations,
 } from './pb-adapter.js'
 import { normalizeCustomerEmail } from './customer-identity.js'
 import { resolveCheckoutCustomer } from './customer-service.js'
+import { compareAndApplyPaymentEvent, snapshotFromRecords } from './payment-machine.js'
 import type {
   CommerceCheckoutError,
   CommerceCheckoutRequest,
   CommerceCheckoutResult,
   PricedLine,
 } from './types.js'
+
+const orderPaymentLocks = new Map<string, Promise<unknown>>()
+
+/** Serializes payment transitions per order in this process. PocketBase CAS is a live-cert gate. */
+async function withOrderPaymentLock<T>(orderId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = orderPaymentLocks.get(orderId) || Promise.resolve()
+  let release: () => void = () => {}
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  orderPaymentLocks.set(
+    orderId,
+    prev.then(() => gate).catch(() => gate),
+  )
+  await prev.catch(() => undefined)
+  try {
+    return await fn()
+  } finally {
+    release()
+  }
+}
 
 const RESERVATION_TTL_MS = 30 * 60 * 1000
 
@@ -226,33 +249,69 @@ export async function executeCheckout(
   }
 }
 
-/** Mark order paid (webhook / operator) — commit reservations + stock. Idempotent. */
+function snapshotForOrder(order: Record<string, unknown>) {
+  const expiresAt = String(order.reservation_expires_at || '')
+  const paid = order.payment_status === 'paid'
+  const expired = Boolean(expiresAt) && !paid && !reservationIsActive(expiresAt)
+  return snapshotFromRecords({
+    paymentStatus: typeof order.payment_status === 'string' ? order.payment_status : null,
+    paymentState: typeof order.payment_state === 'string' ? order.payment_state : null,
+    reservationExpired: expired,
+    reservationStatus: expired ? 'released' : paid ? 'committed' : 'reserved',
+    providerEventId: typeof order.provider_event_id === 'string' ? order.provider_event_id : null,
+    revision: typeof order.payment_revision === 'number' ? order.payment_revision : 0,
+  })
+}
+
+/** Mark order paid (webhook / operator) — V1.2 machine; inventory commit at most once. */
 export async function markOrderPaid(input: {
   projectRef: string
   orderId: string
   providerEventId?: string
-}): Promise<{ ok: true; already?: boolean } | CommerceCheckoutError> {
+}): Promise<{ ok: true; already?: boolean; lateSuccess?: boolean } | CommerceCheckoutError> {
   if (!isManagedBackendConfigured()) {
     return { ok: false, code: 'backend_unavailable', message: 'Backend unavailable' }
   }
   try {
-    const order = await getOrderRecord(input.projectRef, input.orderId)
-    if (!order) {
-      return { ok: false, code: 'invalid_request', message: 'Order not found' }
-    }
-    if (order.payment_status === 'paid') {
-      return { ok: true, already: true }
-    }
-    if (input.providerEventId && order.provider_event_id === input.providerEventId) {
-      return { ok: true, already: true }
-    }
-    await commitReservationsForOrder(input.projectRef, input.orderId)
-    await patchOrderPayment(input.projectRef, input.orderId, {
-      payment_status: 'paid',
-      status: 'paid',
-      provider_event_id: input.providerEventId || '',
+    return await withOrderPaymentLock(input.orderId, async () => {
+      await ensureCommerceSchema(input.projectRef)
+      const order = await getOrderRecord(input.projectRef, input.orderId)
+      if (!order) {
+        return { ok: false, code: 'invalid_request' as const, message: 'Order not found' }
+      }
+      const eventId = input.providerEventId || `paid:${input.orderId}`
+      const observed = snapshotForOrder(order)
+      const transition = compareAndApplyPaymentEvent(observed, observed.state, {
+        type: 'provider_success',
+        providerEventId: eventId,
+      })
+      if (transition.reason === 'stale_state') {
+        return { ok: true as const, already: true }
+      }
+      if (transition.lateSuccessAfterTerminal) {
+        await patchOrderPayment(input.projectRef, input.orderId, {
+          provider_event_id: eventId,
+          payment_revision: transition.snapshot.revision,
+        })
+        return { ok: true as const, already: true, lateSuccess: true }
+      }
+      if (transition.idempotent && transition.snapshot.state === 'paid' && transition.effect === 'none') {
+        return { ok: true as const, already: true }
+      }
+      if (transition.effect === 'commit') {
+        await commitReservationsForOrder(input.projectRef, input.orderId)
+      }
+      if (transition.snapshot.state === 'paid') {
+        await patchOrderPayment(input.projectRef, input.orderId, {
+          payment_status: 'paid',
+          status: 'paid',
+          payment_state: 'paid',
+          payment_revision: transition.snapshot.revision,
+          provider_event_id: eventId,
+        })
+      }
+      return { ok: true as const, already: transition.idempotent }
     })
-    return { ok: true }
   } catch (err) {
     return {
       ok: false,
@@ -265,14 +324,38 @@ export async function markOrderPaid(input: {
 export async function markOrderFailed(input: {
   projectRef: string
   orderId: string
-}): Promise<{ ok: true } | CommerceCheckoutError> {
+  providerEventId?: string
+}): Promise<{ ok: true; already?: boolean } | CommerceCheckoutError> {
   try {
-    await releaseReservationsForOrder(input.projectRef, input.orderId)
-    await patchOrderPayment(input.projectRef, input.orderId, {
-      payment_status: 'failed',
-      status: 'cancelled',
+    return await withOrderPaymentLock(input.orderId, async () => {
+      await ensureCommerceSchema(input.projectRef)
+      const order = await getOrderRecord(input.projectRef, input.orderId)
+      if (!order) {
+        return { ok: false, code: 'invalid_request' as const, message: 'Order not found' }
+      }
+      const eventId = input.providerEventId || `failed:${input.orderId}`
+      const observed = snapshotForOrder(order)
+      const transition = compareAndApplyPaymentEvent(observed, observed.state, {
+        type: 'provider_failure',
+        providerEventId: eventId,
+      })
+      if (transition.snapshot.state === 'paid') {
+        return { ok: true as const, already: true }
+      }
+      if (transition.effect === 'release') {
+        await releaseReservationsForOrder(input.projectRef, input.orderId)
+      }
+      if (transition.snapshot.state === 'payment_failed') {
+        await patchOrderPayment(input.projectRef, input.orderId, {
+          payment_status: 'failed',
+          status: 'pending',
+          payment_state: 'payment_failed',
+          payment_revision: transition.snapshot.revision,
+          provider_event_id: eventId,
+        })
+      }
+      return { ok: true as const, already: transition.idempotent }
     })
-    return { ok: true }
   } catch (err) {
     return {
       ok: false,

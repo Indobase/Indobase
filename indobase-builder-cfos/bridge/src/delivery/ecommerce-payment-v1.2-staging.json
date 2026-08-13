@@ -1,0 +1,63 @@
+{
+  "milestone": "Ecommerce V1.2 Implementation (staging)",
+  "title": "Ecommerce V1.2 Payment State Machine — not production certified",
+  "branch": "staging",
+  "promoteToMain": false,
+  "productionCertified": false,
+  "contract": "ecommerce-contract/v1.2",
+  "coreV1": "frozen",
+  "v1.1": "frozen",
+  "v1.2": "implementation_milestone",
+  "claim": "Payment is a platform-owned distributed state machine behind the Commerce ABI. Inventory commits at most once. Late provider success after expiry does not decrement stock.",
+  "notClaimed": "Razorpay/Stripe live webhook certification, PocketBase compare-and-set across workers, production release.",
+  "agentSurface": [
+    "launchProductionApp",
+    "launchBusiness",
+    "connectGateway",
+    "productionChecklist",
+    "promptQuota"
+  ],
+  "abstraction": "Storefront → Commerce ABI → Payment State Machine → Payment Adapter (Razorpay | Stripe)",
+  "namedInvariants": [
+    "PAYMENT-001",
+    "PAYMENT-002",
+    "PAYMENT-003",
+    "PAYMENT-004",
+    "PAYMENT-005",
+    "PAYMENT-006",
+    "PAYMENT-007"
+  ],
+  "adversarialMatrix": {
+    "successWebhookx2": "one transition",
+    "failureWebhookx2": "one transition",
+    "successThenFailure": "remains paid",
+    "failureThenSuccess": "same_order_paid_commit_once",
+    "expiryThenSuccess": "terminal, no stock commit",
+    "successThenExpiry": "remains paid",
+    "retryx2": "one state transition",
+    "webhookBeforeClient": "eventually paid",
+    "clientRetryAfterTimeout": "same order, idempotent",
+    "concurrentSuccess": "one inventory commit",
+    "concurrentExpiryAndSuccess": "deterministic paid or expired",
+    "unknownEvent": "rejected, no corruption"
+  },
+  "concurrency": {
+    "inProcess": "AtomicPaymentGate + withOrderPaymentLock + payment_revision",
+    "databaseCas": "REQUIRED before production certification — PocketBase PATCH is not a compare-and-set"
+  },
+  "harness": {
+    "platformRegression": "336/336",
+    "mockedWebhookPack": "PASS",
+    "note": "Harness green is an implementation milestone, not a production release certificate."
+  },
+  "releaseProcessRemaining": [
+    "deploy .249",
+    "real payment-provider sandbox",
+    "real webhook delivery",
+    "browser + API tests",
+    "failure/race tests",
+    "production certification",
+    "main"
+  ],
+  "outOfScope": ["V1.3 operational commerce", "agent payment tools", "promote to main"]
+}

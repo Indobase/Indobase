@@ -53,6 +53,9 @@ applySchema, setupShopCatalog, placeTestShopOrder, or launchBusiness are needed 
 applySchema, setupShopCatalog, resolveProductImages, placeTestShopOrder, listShopOrders,
 wireCheckout. The ecommerce job runs these internally.
 
+The payment state machine is **not** an agent tool. Storefronts use the Commerce ABI only;
+CheckoutService owns payment transitions behind a provider adapter (Razorpay/Stripe).
+
 If the job returns \`awaiting_generate\`: write storefront HTML using **only**
 \`window.indobase.commerce\` (cart UX may use localStorage; never price/stock/order/payment
 authority), then POST the same jobId with html/files.
