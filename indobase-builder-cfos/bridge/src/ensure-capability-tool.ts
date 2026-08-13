@@ -40,12 +40,17 @@ export const ENSURE_EMAIL_TOOL = {
   parameters: { type: 'object', properties: {} },
 } as const
 
+export const ANALYTICS_UNAVAILABLE_CODE = 'analytics_unavailable' as const
+
+export const ANALYTICS_UNAVAILABLE_MESSAGE =
+  'Indobase Analytics is not available on this CFOS / managed-backend launch path. Skip analytics; continue with domain, payments, or productionChecklist. Do not claim Analytics live.'
+
 export const ENSURE_ANALYTICS_TOOL = {
   name: 'ensureAnalytics',
   aliases: ['ensureEvents', 'enableAnalytics', 'ensure_analytics'] as const,
   description:
-    'Enable Indobase Analytics for this business. Returns launch_url to finish site setup. ' +
-    'Do not claim Analytics live from ensure alone. Do not use webFetch.',
+    'Analytics is unavailable on this CFOS launch path (Studio Analytics stripped). ' +
+    'Returns pending_setup + analytics_unavailable — do not call unless the operator asks; never claim Analytics live. Do not use webFetch.',
   method: 'POST' as const,
   path: '/api/os/tools/ensureAnalytics',
   wraps: '/api/os/runtime/ensure',
@@ -69,7 +74,7 @@ Build UI → launchBusiness. Skip ensure*.
    - Auth: users OTP on \`{api}/api/collections/users\` — Bearer **user** token (anon_key is \`public\`, not Kong)
    Never invent Neon/Firebase URLs or PostgREST \`/rest/v1\` / \`/auth/v1\` paths on the managed backend.
 4. **launchBusiness** when the real UI is ready.
-5. Optional **ensureEmail** / **ensureAnalytics** — quote pending_setup + launch_url; do not block Go Live on them. After a live url, prefer emitting an **Add analytics** chip that calls ensureAnalytics (non-blocking).
+5. Optional **ensureEmail** only when asked — quote pending_setup + launch_url; do not block Go Live. **Do NOT offer ensureAnalytics / Add analytics chips** — Analytics is stripped on this CFOS path (returns analytics_unavailable).
 6. Do NOT use webFetch for ensure. Do NOT say Connect Neon/Coolify/Postgres/Docker/Firebase/Mailchimp.
 7. Do NOT claim “production ready” until productionChecklist returns claim_production_ready:true.
 8. Prefer **guidedBackend** for ecommerce or “Add a real backend” to run ensureDatabase → schema/catalog in one call.
@@ -201,24 +206,28 @@ export async function executeEnsureEmail(session: {
   }
 }
 
-export async function executeEnsureAnalytics(session: {
+/**
+ * Soft-disable: Studio Analytics product is stripped from the CFOS / PocketBase
+ * launch path. Do not call platform ensure (events) — that hits a dead Studio
+ * control plane and surfaces opaque 502s. Honest pending_setup instead.
+ */
+export async function executeEnsureAnalytics(_session: {
   gotrueId: string
   email: string
   projectRef: string
 }) {
-  const result = await platformRuntimeEnsure({
-    gotrueId: session.gotrueId,
-    email: session.email,
-    workspaceRef: session.projectRef,
-    capability: 'events',
-  })
   return {
-    ...result,
+    ok: true,
+    capability: 'events',
+    capabilityId: 'events',
+    status: 'enabled' as const,
+    provision_state: 'none',
+    setup_status: 'pending' as const,
+    launch_url: null,
+    code: ANALYTICS_UNAVAILABLE_CODE,
     tool: 'ensureAnalytics' as const,
-    claim_analytics_ready: result.ok === true && result.setup_status === 'ready',
-    message:
-      typeof result.message === 'string'
-        ? result.message
-        : 'Analytics backend ready — finish site setup',
+    claim_analytics_ready: false,
+    message: ANALYTICS_UNAVAILABLE_MESSAGE,
+    httpStatus: 200,
   }
 }

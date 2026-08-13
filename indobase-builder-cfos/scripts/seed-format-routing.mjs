@@ -72,11 +72,11 @@ Free: 5 prompts (ChatInterface /api/os/agent/begin-turn). Outside composer: GET/
 Payments BYOK: on gateway_not_ready explain Razorpay/Stripe KYC → connectGateway (never invent hosted PSP keys). Quote session.governance / tool.governance.
 
 ## Production path (hybrid)
-**Landing single-turn:** clear landing/marketing/"website for X" → Build UI + launchBusiness app_type=landing in one turn (skip guidedBackend); quote exact url; then Domain (customDomain CNAME @/www → sites.indobase.in; no auto-verify) / ensureAnalytics / Checklist.
+**Landing single-turn:** clear landing/marketing/"website for X" → Build UI + launchBusiness app_type=landing in one turn (skip guidedBackend); quote exact url; then Domain (customDomain CNAME @/www → sites.indobase.in; no auto-verify) / Checklist (skip ensureAnalytics — unavailable on CFOS).
 Landing / clear store preview (ambiguous): Build UI → FOLLOWUPS → launchBusiness on Go Live (real html/files; quote exact url; never invent; *.sites.indobase.in; customDomain CNAME → sites.indobase.in).
 Store after Add a real backend / auto-chain: guidedBackend + placeTestShopOrder → publish **storefront_html** (Commerce ABI) → Go Live → payments when asked (India/Razorpay → connectGateway).
 SaaS/booking/dashboard: guidedBackend mode=generic (ensureLogin + ensureDatabase + applySchema) → wire UI to session.backend for **non-shop** data screens → launchBusiness with app_type.
-Optional ensureEmail / ensureAnalytics — after Go Live offer ensureAnalytics chip (non-blocking).
+Optional ensureEmail when asked. Do not offer ensureAnalytics (stripped on CFOS; tool returns analytics_unavailable).
 productionChecklist — claim ready only if claim_production_ready:true.
 Never Neon/Coolify/Firebase/Mailchimp, mock APIs, or third-party hosts.
 

@@ -208,13 +208,6 @@ export const BUSINESS_OS_DISCOVERABLE_ACTIONS: readonly BusinessOsDiscoverableAc
       'Enable Indobase Email — call ensureEmail, quote pending_setup + launch_url, and finish sender setup before claiming Email enabled.',
   },
   {
-    id: 'enable-analytics',
-    label: 'Add analytics',
-    audience: 'signed_in',
-    prompt:
-      'Enable Indobase Analytics — call ensureAnalytics, quote launch_url, and finish site setup before claiming Analytics live.',
-  },
-  {
     id: 'enable-payments',
     label: 'Add payments',
     audience: 'signed_in',

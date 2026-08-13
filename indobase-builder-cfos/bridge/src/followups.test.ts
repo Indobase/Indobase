@@ -101,9 +101,9 @@ INDOBASE_CHOICES>>>
     assert.ok(resolved)
     assert.match(resolved.title, /MERIDIAN|next/i)
     assert.ok(resolved.items.length >= 2 && resolved.items.length <= MAX_VISIBLE_CHIPS)
-    // Live hostname → post-Go Live ladder (domain / payments / analytics / checklist)
+    // Live hostname → post-Go Live ladder (domain / payments / checklist)
     assert.ok(
-      resolved.items.some((i) => /Connect my domain|Add payments|Add analytics|Production checklist/i.test(i.label)),
+      resolved.items.some((i) => /Connect my domain|Add payments|Production checklist/i.test(i.label)),
     )
   })
 
@@ -486,11 +486,11 @@ INDOBASE_CHOICES>>>
     assert.ok(store.items.some((i) => /Connect my domain/i.test(i.label)))
   })
 
-  it('postGoLiveFollowups include ensureAnalytics chip', () => {
+  it('postGoLiveFollowups omit ensureAnalytics chip (stripped on CFOS)', () => {
     const store = postGoLiveFollowups('Aural', { store: true })
-    assert.ok(store.items.some((i) => /Add analytics|ensureAnalytics/i.test(i.label + i.message)))
+    assert.ok(!store.items.some((i) => /Add analytics|ensureAnalytics/i.test(i.label + i.message)))
     const landing = postGoLiveFollowups('CRUMB', { store: false })
-    assert.ok(landing.items.some((i) => /ensureAnalytics/i.test(i.message)))
+    assert.ok(!landing.items.some((i) => /ensureAnalytics|Add analytics/i.test(i.label + i.message)))
     assert.ok(landing.items.some((i) => /Connect my domain|CNAME/i.test(i.label + i.message)))
   })
 
@@ -519,7 +519,7 @@ INDOBASE_CHOICES>>>
     const stage = landingSingleTurnFollowups('CRUMB')
     assert.ok(stage.items.some((i) => /launchBusiness app_type=landing/i.test(i.message)))
     assert.ok(stage.items.every((i) => !/guidedBackend mode=ecommerce/i.test(i.message)))
-    assert.ok(stage.items.some((i) => /ensureAnalytics/i.test(i.message)))
+    assert.ok(stage.items.every((i) => !/ensureAnalytics|Add analytics/i.test(i.label + i.message)))
   })
 
   it('injects landing single-turn Go Live chips for clear landing deliverables', () => {

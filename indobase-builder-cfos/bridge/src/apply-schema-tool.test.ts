@@ -29,10 +29,11 @@ describe('general web-app production tools', () => {
     assert.equal(ensureAnalyticsToolCatalog().path, '/api/os/tools/ensureAnalytics')
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureLogin/)
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureEmail/)
-    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensureAnalytics/)
+    assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /Do NOT offer ensureAnalytics/)
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /applySchema/)
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /ensure-first|BEFORE building|before.*UI/i)
     assert.match(ENSURE_CAPABILITY_AGENT_HARD_RULES, /guidedBackend/)
+    assert.match(ensureAnalyticsToolCatalog().description, /unavailable|stripped/i)
   })
 
   it('guidedBackend allows preview-first then chip-triggered ensure', async () => {

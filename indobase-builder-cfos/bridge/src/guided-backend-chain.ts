@@ -97,7 +97,7 @@ When the product needs a real backend (SaaS/data, chip **Add a real backend**, o
 4. Prefer owner-scoped / authenticated write rules — never world-open writes.
 5. After claim_backend_ready: emit FOLLOWUPS Go Live → Admin (≤4). Prefer **storefront_html** from guidedBackend — storefront must use **only** \`window.indobase.commerce\` (products/cart/checkout/orders). **FORBIDDEN:** hand-roll checkout, POST \`/api/collections/…/orders\`, trust browser price/stock. launchBusiness on Go Live with storefront_html or app_type=ecommerce. Ecommerce Go Live is a **release gate** (ApplicationContract + optional functional verifiers); on \`contract_verifier_failed\` / \`functional_verifier_failed\` fix per \`failure_graph[].repair_hint\` then retry — do not invent a URL. Respect tool \`task_graph\` / \`task_graph_summary\`: on a failed task use \`failure_graph\` repair_hint; do not invent a live URL.
 6. Quote tool \`progress\` / \`message\` / \`task_graph_summary\`. ONLY claim a live URL when guidedBackend or launchBusiness returns ok + url.
-7. Email / Analytics optional — do not block Go Live on them. After live url, offer **ensureAnalytics** chip (non-blocking).
+7. Email optional when asked — do not block Go Live. Do **not** offer ensureAnalytics (stripped on CFOS).
 8. Payments remain BYOK — guidedBackend does not skip KYC; hosted paymentUrl comes from commerce.checkout when gateway ready.
 `.trim()
 

@@ -110,7 +110,7 @@ export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
     message:
-      'This is a landing/marketing site — build UI and call launchBusiness app_type=landing in the same turn (skip guidedBackend); SEO + legal; optional domain; then ensureAnalytics + productionChecklist',
+      'This is a landing/marketing site — build UI and call launchBusiness app_type=landing in the same turn (skip guidedBackend); SEO + legal; optional domain; then productionChecklist (skip ensureAnalytics — unavailable on CFOS)',
   },
   {
     label: 'SaaS / web app',
@@ -229,15 +229,11 @@ export function landingSingleTurnFollowups(brand?: string | null): StageFollowUp
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live now — call launchBusiness app_type=landing for ${name} with real html/files in this turn (skip guidedBackend / PocketBase ecommerce). Quote the exact url, then emit Domain / Analytics / Checklist chips — no continue/take-live micro-prompts`,
+        message: `Go Live now — call launchBusiness app_type=landing for ${name} with real html/files in this turn (skip guidedBackend / PocketBase ecommerce). Quote the exact url, then emit Domain / Checklist chips — no continue/take-live micro-prompts`,
       },
       {
         label: 'Connect my domain',
         message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www → sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet`,
-      },
-      {
-        label: 'Add analytics',
-        message: `After the live url, call ensureAnalytics for ${name} (non-blocking) — quote launch_url / pending_setup; do not block Go Live`,
       },
       {
         label: 'Production checklist',
@@ -753,7 +749,8 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
 /**
  * Example chips after launchBusiness returned a live url — agent must rewrite.
  * Store path prefers Add payments (India/Razorpay ask) over re-doing backend.
- * When paymentsReady, skip Add payments and prefer checklist / domain / analytics.
+ * When paymentsReady, skip Add payments and prefer checklist / domain.
+ * Analytics chips are omitted — Studio Analytics is stripped on CFOS.
  */
 export function postGoLiveFollowups(
   brand?: string | null,
@@ -766,7 +763,6 @@ export function postGoLiveFollowups(
     return postPaymentsFollowups(brand)
   }
   const domainMsg = `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www value=sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet — quote tool dns instructions`
-  const analyticsMsg = `Call ensureAnalytics for ${name} after the live url (non-blocking) — quote launch_url / pending_setup; do not claim Analytics live from ensure alone`
   const items: FollowUpItem[] = []
   // Store: payments first (matches journey Payments stage); domain is secondary.
   if (store) {
@@ -780,22 +776,12 @@ export function postGoLiveFollowups(
     message: domainMsg,
   })
   if (store) {
-    items.push(
-      {
-        label: 'Add analytics',
-        message: analyticsMsg,
-      },
-      {
-        label: 'Production checklist',
-        message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
-      },
-    )
+    items.push({
+      label: 'Production checklist',
+      message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+    })
   } else {
     items.push(
-      {
-        label: 'Add analytics',
-        message: analyticsMsg,
-      },
       {
         label: 'Add a real backend',
         message: `Call guidedBackend for ${name} if not done — then publish storefront_html (Commerce ABI) and Go Live`,
