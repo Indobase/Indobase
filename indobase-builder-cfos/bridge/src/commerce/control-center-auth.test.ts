@@ -184,6 +184,31 @@ describe('Control Center snapshot HTTP', () => {
     assert.deepEqual(queried, [])
   })
 
+  it('Hono next callback is not treated as snapshot loaders', async () => {
+    const queried: string[] = []
+    const hono = new Hono()
+    const loaders = {
+      listProducts: async (ref: string) => {
+        queried.push(`products:${ref}`)
+        return []
+      },
+      listOrders: async (ref: string) => {
+        queried.push(`orders:${ref}`)
+        return []
+      },
+    }
+    hono.get('/api/os/commerce/admin/snapshot', (c, next) => {
+      void next
+      return handleCommerceAdminSnapshot(c, loaders)
+    })
+    const token = createSessionToken(member('roshb77a4744fa'), SECRET)
+    const res = await hono.request('/api/os/commerce/admin/snapshot', {
+      headers: { cookie: `${SESSION_COOKIE}=${token}` },
+    })
+    assert.equal(res.status, 200)
+    assert.deepEqual(queried, ['products:roshb77a4744fa', 'orders:roshb77a4744fa'])
+  })
+
   it('guest session → 403', async () => {
     const queried: string[] = []
     const token = createSessionToken(createGuestSession(), SECRET)

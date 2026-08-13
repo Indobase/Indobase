@@ -218,8 +218,10 @@ export async function handleCommerceOrderGet(c: Context) {
 /** Merchant Control Center snapshot — OS session bound; never a public projectRef selector. */
 export async function handleCommerceAdminSnapshot(
   c: Context,
-  loaders: ControlCenterSnapshotLoaders = defaultSnapshotLoaders,
+  loaders?: ControlCenterSnapshotLoaders,
 ) {
+  const snapshotLoaders =
+    loaders && typeof loaders.listProducts === 'function' ? loaders : defaultSnapshotLoaders
   const { session, guest } = osSessionFromRequest(c)
   const requested = c.req.query('projectRef') || c.req.header('X-Indobase-Project-Ref') || ''
   const auth = authorizeControlCenterAccess({
@@ -232,8 +234,8 @@ export async function handleCommerceAdminSnapshot(
   }
   try {
     const [products, orders] = await Promise.all([
-      loaders.listProducts(auth.projectRef),
-      loaders.listOrders(auth.projectRef),
+      snapshotLoaders.listProducts(auth.projectRef),
+      snapshotLoaders.listOrders(auth.projectRef),
     ])
     return c.json({ ok: true, products, orders }, 200, commerceCorsHeaders())
   } catch (err) {
