@@ -80,7 +80,7 @@ describe('buildLaunchJourneyState', () => {
     )
     assert.match(journey.next_action?.label || '', /Launch app/i)
     assert.doesNotMatch(journey.next_action?.label || '', /store/i)
-    assert.equal(journey.flags.app_kind, 'app')
+    assert.equal(journey.flags.app_kind, 'saas')
     assert.equal(journey.stages.find((s) => s.id === 'backend')?.label, 'App')
     clearBusinessSpecsForTests()
   })

@@ -30,8 +30,8 @@ export function sameProjectRef(sessionRef: string, requestedRef: string): boolea
 
 /**
  * OS member session is AUTHORITY. Client projectRef is DERIVED/REJECTED:
- * conflict → 403, never a tenant override. Anonymous storefronts may use
- * the client identifier (customer catalog/checkout).
+ * conflict → 403, never a tenant override.
+ * Anonymous catalog is a published-storefront read — not a client-controlled tenant selector.
  */
 export function resolveTenantProjectRef(input: {
   session: ControlCenterSession | null
@@ -54,6 +54,37 @@ export function resolveTenantProjectRef(input: {
     return { ok: true, projectRef: ref }
   }
   return { ok: false, status: 401, code: 'unauthorized' }
+}
+
+export type PublicCatalogAuth =
+  | ControlCenterAuthOk
+  | ControlCenterAuthDenied
+  | { ok: false; status: 400 | 404; code: 'invalid_request' | 'not_published' }
+
+/**
+ * Anonymous GET catalog: only the published business for that storefront.
+ * Authenticated operators stay session-bound (conflict → 403).
+ */
+export function resolvePublicCatalogProjectRef(input: {
+  session: ControlCenterSession | null
+  guest?: boolean
+  clientProjectRef?: string | null
+  isPublished: (projectRef: string) => boolean
+}): PublicCatalogAuth {
+  const client = (input.clientProjectRef || '').trim()
+  if (input.session?.projectRef?.trim() && !input.guest) {
+    return authorizeControlCenterAccess({
+      session: input.session,
+      guest: input.guest,
+      requestedProjectRef: client,
+    })
+  }
+  const ref = sanitizeAppId(client)
+  if (!ref) return { ok: false, status: 400, code: 'invalid_request' }
+  if (!input.isPublished(ref)) {
+    return { ok: false, status: 404, code: 'not_published' }
+  }
+  return { ok: true, projectRef: ref }
 }
 
 export function authorizeControlCenterAccess(input: {

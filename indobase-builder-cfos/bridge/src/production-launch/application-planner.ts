@@ -50,7 +50,7 @@ export function inferProductionAppType(intent: string): ProductionAppType | null
     return 'ecommerce'
   }
   if (
-    /\b(saas|crm|dashboard|portal|membership|workspace|client app|web app|login|sign[\s-]?up|accounts?|auth|database|backend|booking|appointments?)\b/.test(
+    /\b(saas|crm|dashboard|portal|membership|workspace|client app|web app|launch my app|login|sign[\s-]?up|accounts?|auth|database|backend|booking|appointments?)\b/.test(
       t,
     )
   ) {
@@ -64,6 +64,14 @@ export function inferProductionAppType(intent: string): ProductionAppType | null
     return 'landing'
   }
   return null
+}
+
+/** BusinessSpec owns kind. Job inference must not rewrite a known spec. */
+export function resolveAuthoritativeAppType(input: {
+  specType?: string | null
+  jobType?: string | null
+}): ProductionAppType | null {
+  return normalizeProductionAppType(input.specType) || normalizeProductionAppType(input.jobType)
 }
 
 export function planProductionApp(input: {

@@ -5,7 +5,23 @@
  * Frozen tool surface stays five tools; this layer only names what the operator sees.
  */
 
-export type BusinessAppKind = 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency'
+export type BusinessAppKind =
+  | 'store'
+  | 'app'
+  | 'website'
+  | 'booking'
+  | 'ordering'
+  | 'agency'
+  | 'saas'
+  | 'ecommerce'
+
+export function isAppJourneyKind(kind?: BusinessAppKind | null): boolean {
+  return kind === 'app' || kind === 'saas' || kind === 'booking'
+}
+
+export function isStoreJourneyKind(kind?: BusinessAppKind | null): boolean {
+  return kind === 'store' || kind === 'ecommerce' || kind === 'ordering'
+}
 
 export type HomeIntent = {
   id: string
@@ -147,20 +163,22 @@ export type UxAction = {
 }
 
 export function businessNoun(kind: BusinessAppKind = 'store'): string {
-  if (kind === 'app' || kind === 'booking') return 'app'
+  if (isAppJourneyKind(kind)) return 'app'
   if (kind === 'website' || kind === 'agency') return 'website'
   return 'store'
 }
 
+/** BusinessSpec.businessType is identity. Job/deploy appType must not invent a different kind. */
 export function appTypeToKind(appType?: string | null): BusinessAppKind {
   const t = (appType || '').toLowerCase()
-  if (t === 'saas') return 'app'
-  if (t === 'landing') return 'website'
+  if (t === 'saas' || t === 'app') return 'saas'
+  if (t === 'landing' || t === 'website') return 'website'
+  if (t === 'ecommerce' || t === 'store' || t === 'shop') return 'ecommerce'
   return 'store'
 }
 
 export function jobTitlesForKind(kind: BusinessAppKind = 'store'): Record<string, string> {
-  if (kind === 'app' || kind === 'booking') return SAAS_JOB_TITLES
+  if (isAppJourneyKind(kind)) return SAAS_JOB_TITLES
   if (kind === 'website' || kind === 'agency') return WEBSITE_JOB_TITLES
   return STORE_JOB_TITLES
 }
@@ -172,7 +190,7 @@ export function businessJobStageTitle(id: string, appType?: string | null): stri
 
 export function businessJourneyStageLabel(id: string, kind?: BusinessAppKind): string {
   if (id === 'backend') {
-    if (kind === 'app' || kind === 'booking') return 'App'
+    if (isAppJourneyKind(kind)) return 'App'
     if (kind === 'website' || kind === 'agency') return 'Site'
     return 'Store'
   }
@@ -233,7 +251,7 @@ export function uxContextualActions(flags: UxJourneyFlags): UxAction[] {
     ].slice(0, 3)
   }
   if (flags.live && !flags.backendReady) {
-    return kind === 'store'
+    return isStoreJourneyKind(kind)
       ? [
           {
             label: 'Connect products & orders',
@@ -247,7 +265,7 @@ export function uxContextualActions(flags: UxJourneyFlags): UxAction[] {
         ]
   }
   if (flags.live && !flags.paymentsReady) {
-    if (kind !== 'store') {
+    if (!isStoreJourneyKind(kind)) {
       return [
         { label: `Open ${noun}`, message: liveOpen },
         { label: 'Connect a domain', message: 'Connect a domain I already own.' },
@@ -347,7 +365,7 @@ export function projectCapabilities(input: {
     for (const id of input.contractCapabilityIds) {
       for (const cap of CONTRACT_CAPABILITY_MAP[id] || []) found.add(cap)
     }
-  } else if (kind === 'app') {
+  } else if (isAppJourneyKind(kind) && kind !== 'booking') {
     found.add('auth')
     found.add('customers')
     found.add('data')
@@ -371,8 +389,8 @@ export function projectCapabilities(input: {
     found.add('customers')
   }
   if (input.paymentsReady) found.add('payments')
-  else if (kind === 'store' || kind === 'ordering') found.add('payments')
-  if (input.backendReady && (kind === 'app' || kind === 'booking')) {
+  else if (isStoreJourneyKind(kind)) found.add('payments')
+  if (input.backendReady && isAppJourneyKind(kind)) {
     found.add('auth')
     found.add('data')
   }
@@ -385,7 +403,7 @@ export function controlCenterNav(
 ): ControlCenterSection[] {
   const has = (id: ProjectCapability) => capabilities.includes(id)
   const nav: ControlCenterSection[] = [{ id: 'overview', label: 'Overview', capability: 'overview' }]
-  if (kind === 'app') {
+  if (isAppJourneyKind(kind) && kind !== 'booking') {
     if (has('auth') || has('customers')) nav.push({ id: 'users', label: 'Users', capability: 'auth' })
     if (has('data')) nav.push({ id: 'data', label: 'Data', capability: 'data' })
     if (has('activity')) nav.push({ id: 'activity', label: 'Activity', capability: 'activity' })

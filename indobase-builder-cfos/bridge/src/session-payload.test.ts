@@ -260,8 +260,38 @@ describe('session-payload', () => {
       osProxyPath: '/os/app/',
       indobaseProxyPath: '/api/indobase/proxy/',
     })
-    assert.equal(payload.project.kind, 'app')
-    assert.equal(payload.runtime.business.kind, 'app')
+    assert.equal(payload.project.kind, 'saas')
+    assert.equal(payload.runtime.business.kind, 'saas')
+    clearBusinessSpecsForTests()
+  })
+
+  it('SaaS BusinessSpec keeps kind=saas after a landing production job', () => {
+    clearBusinessSpecsForTests()
+    rememberBusinessSpec('proj_abc', inferBusinessSpec('Build a SaaS called TutorDesk'))
+    const payload = buildSessionApiPayload({
+      session: signedIn,
+      agentHint: 'hint',
+      generation: { schemaVersion: 1 },
+      agentRuntimeConfigured: true,
+      agentRuntimeUrl: 'http://127.0.0.1:8787',
+      osProxyPath: '/os/app/',
+      indobaseProxyPath: '/api/indobase/proxy/',
+      productionJob: {
+        appType: 'landing',
+        status: 'live',
+        jobId: 'plj_test',
+        url: 'https://tutordesk.sites.indobase.in',
+        claim_live: true,
+        evidence: {},
+        stages: [],
+        failures: [],
+        contract: { capabilities: [] },
+      } as never,
+    })
+    assert.equal(payload.project.kind, 'saas')
+    assert.equal(payload.runtime.business.kind, 'saas')
+    assert.equal(payload.runtime.spec?.businessName, 'TutorDesk')
+    assert.notEqual(payload.runtime.spec?.businessName?.toLowerCase(), 'your business')
     clearBusinessSpecsForTests()
   })
 })

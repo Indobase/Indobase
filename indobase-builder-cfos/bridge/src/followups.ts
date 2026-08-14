@@ -40,7 +40,7 @@ export type JourneyChipFlags = {
   liveUrl?: string | null
   /** Authoritative /api/session.project.state — live cards require `live`. */
   projectState?: string | null
-  appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency'
+  appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency' | 'saas' | 'ecommerce'
 }
 
 export type ResolveFollowUpsOptions = {
@@ -383,7 +383,7 @@ export function operatorChipLabel(label: string, appKind?: JourneyChipFlags['app
     .replace(/\s+[—–-]\s*$/g, '')
     .trim()
   if (!out || /^with$/i.test(out)) out = 'Continue'
-  if (appKind === 'app' || appKind === 'booking') {
+  if (appKind === 'app' || appKind === 'saas' || appKind === 'booking') {
     out = out.replace(/\bLaunch store\b/gi, 'Launch app').replace(/\bOpen store\b/gi, 'Open app')
   } else if (appKind === 'website' || appKind === 'agency') {
     out = out.replace(/\bLaunch store\b/gi, 'Launch website').replace(/\bOpen store\b/gi, 'Open website')
@@ -628,7 +628,7 @@ export function filterChipsForJourneyState(
   if (flags.isPaymentsReady) {
     items = items.filter((i) => !isPaymentsChip(i))
   }
-  if (flags.appKind === 'app' || flags.appKind === 'website' || flags.appKind === 'booking' || flags.appKind === 'agency') {
+  if (flags.appKind === 'app' || flags.appKind === 'saas' || flags.appKind === 'website' || flags.appKind === 'booking' || flags.appKind === 'agency') {
     items = items.filter((i) => !isBackendEnsureChip(i))
     items = items.map((i) => ({ ...i, label: operatorChipLabel(i.label, flags.appKind) }))
   }
@@ -834,7 +834,7 @@ export function postPreviewFollowups(
   appKind?: JourneyChipFlags['appKind'],
 ): StageFollowUps {
   const name = brandLabel(brand)
-  const noun = appKind === 'app' || appKind === 'booking' ? 'app' : appKind === 'website' || appKind === 'agency' ? 'website' : 'store'
+  const noun = appKind === 'app' || appKind === 'saas' || appKind === 'booking' ? 'app' : appKind === 'website' || appKind === 'agency' ? 'website' : 'store'
   return {
     title: whereNextTitle(brand),
     items: [
@@ -1397,7 +1397,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
   if (isLive) {
     const brand = extractBrandFromMessage(cleaned)
     const postLive = postGoLiveFollowups(brand, {
-      store: flags.appKind !== 'app' && flags.appKind !== 'website' && flags.appKind !== 'booking' && flags.appKind !== 'agency',
+      store: flags.appKind !== 'app' && flags.appKind !== 'saas' && flags.appKind !== 'website' && flags.appKind !== 'booking' && flags.appKind !== 'agency',
       paymentsReady: flags.isPaymentsReady,
     })
     const injected: ParsedFollowUps = {

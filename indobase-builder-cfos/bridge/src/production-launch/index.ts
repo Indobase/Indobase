@@ -2,6 +2,7 @@ export {
   inferProductionAppType,
   normalizeProductionAppType,
   planProductionApp,
+  resolveAuthoritativeAppType,
   type ApplicationPlan,
   type ProductionAppType,
 } from './application-planner.js'

@@ -124,6 +124,7 @@ import {
   applyPendingIntentAfterAuth,
 } from './ux/execution-contract.js'
 import { rememberPendingIntent, takePendingAcrossAuth, getWorkspaceRuntime } from './ux/runtime-store.js'
+import { getBusinessSpec } from './ux/business-spec.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -1765,16 +1766,17 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
   const isGoLive = c.req.path.includes('goLive')
   const draft = body.draft === true || body.production === false
+  const runtime = getWorkspaceRuntime(session.projectRef)
+  const specType = runtime?.spec?.businessType || getBusinessSpec(session.projectRef)?.businessType || null
   const appTypeHint =
     typeof body.appType === 'string'
       ? body.appType
       : typeof body.app_type === 'string'
         ? body.app_type
-        : null
+        : specType
   const ecommerceProduction =
     !draft && /^(ecommerce|store|shop)$/i.test(String(appTypeHint || ''))
   if (!draft) {
-    const runtime = getWorkspaceRuntime(session.projectRef)
     const result = await executeProductionLaunchJob(session, {
       jobId: typeof body.jobId === 'string' ? body.jobId : null,
       intent:
@@ -1785,7 +1787,7 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
             : isGoLive || ecommerceProduction
               ? 'Launch my business'
               : 'Launch my business',
-      appType: typeof body.appType === 'string' ? body.appType : typeof body.app_type === 'string' ? body.app_type : null,
+      appType: appTypeHint,
       production: true,
       html:
         typeof body.html === 'string'
@@ -2359,7 +2361,15 @@ app.get('/favicon.ico', (c) => proxyPublicRuntime(c))
 // Other CF OS HTTP APIs (`/api/client-errors`, `/api/site-logo`, …).
 // Exact `/api` WebSocket is handled by createRuntimeProxyServer upgrade hook.
 app.all('/api/*', async (c) => {
-  const pathname = new URL(c.req.url).pathname
+  const pathname = (new URL(c.req.url).pathname || '').replace(/\/+$/, '') || '/'
+  // Hono may miss GET /products when /products/:id exists; this catch-all
+  // currently 404s bridge paths. Dispatch the public catalog here.
+  if (
+    pathname === '/api/os/commerce/products' &&
+    (c.req.method === 'GET' || c.req.method === 'HEAD')
+  ) {
+    return handleCommerceProductsList(c)
+  }
   if (isBridgeOwnedApiPath(pathname)) return c.notFound()
   return requireRuntimeProxy(c, '')
 })

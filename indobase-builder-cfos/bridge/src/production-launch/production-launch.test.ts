@@ -65,6 +65,11 @@ describe('application planner', () => {
     assert.equal(plan.appType, 'saas')
     assert.equal(plan.source, 'explicit')
   })
+
+  it('Launch my app infers saas, not landing', () => {
+    const plan = planProductionApp({ intent: 'Launch my app on Indobase now.' })
+    assert.equal(plan.appType, 'saas')
+  })
 })
 
 describe('production contracts + shells', () => {

@@ -12,8 +12,9 @@ import {
   resolveHandoffSecret,
 } from '../auth.js'
 import { sanitizeAppId } from '../pocketbase/managed.js'
+import { getLatestProductionLaunchJob } from '../production-launch/job-store.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
-import { authorizeControlCenterAccess, resolveTenantProjectRef } from './control-center-auth.js'
+import { authorizeControlCenterAccess, resolvePublicCatalogProjectRef, resolveTenantProjectRef } from './control-center-auth.js'
 import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
@@ -91,6 +92,23 @@ function bindCommerceProjectRef(
   })
 }
 
+function defaultIsPublishedStorefront(projectRef: string): boolean {
+  return getLatestProductionLaunchJob(projectRef)?.status === 'live'
+}
+
+function bindPublicCatalogProjectRef(
+  c: Context,
+  isPublished: (projectRef: string) => boolean = defaultIsPublishedStorefront,
+): { ok: true; projectRef: string } | { ok: false; status: number; code: string } {
+  const { session, guest } = osSessionFromRequest(c)
+  return resolvePublicCatalogProjectRef({
+    session,
+    guest,
+    clientProjectRef: clientProjectRefFrom(c),
+    isPublished,
+  })
+}
+
 export function commerceCorsHeaders(): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -126,8 +144,9 @@ export async function handleCommerceRuntimeJs(c: Context) {
 export async function handleCommerceProductsList(
   c: Context,
   listFn: typeof listCommerceProducts = listCommerceProducts,
+  isPublished: (projectRef: string) => boolean = defaultIsPublishedStorefront,
 ) {
-  const bound = bindCommerceProjectRef(c)
+  const bound = bindPublicCatalogProjectRef(c, isPublished)
   if (!bound.ok) {
     return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
   }
@@ -143,8 +162,11 @@ export async function handleCommerceProductsList(
   }
 }
 
-export async function handleCommerceProductGet(c: Context) {
-  const bound = bindCommerceProjectRef(c)
+export async function handleCommerceProductGet(
+  c: Context,
+  isPublished: (projectRef: string) => boolean = defaultIsPublishedStorefront,
+) {
+  const bound = bindPublicCatalogProjectRef(c, isPublished)
   const id = c.req.param('id') || ''
   if (!bound.ok) {
     return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())

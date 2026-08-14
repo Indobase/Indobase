@@ -11,7 +11,7 @@ import {
   createSessionToken,
   type Session,
 } from '../auth.ts'
-import { authorizeControlCenterAccess, resolveTenantProjectRef, sameProjectRef } from './control-center-auth.ts'
+import { authorizeControlCenterAccess, resolvePublicCatalogProjectRef, resolveTenantProjectRef, sameProjectRef } from './control-center-auth.ts'
 import { handleCommerceAdminSnapshot, handleCommerceProductsList } from './http.ts'
 
 const SECRET = 'control-center-test-secret-32chars!!'
@@ -255,26 +255,97 @@ describe('Commerce products list session authority', () => {
     })
     assert.equal(res.status, 403)
     assert.deepEqual(queried, [])
+    const forged = await hono.request('/api/os/commerce/products', {
+      headers: {
+        cookie: `${SESSION_COOKIE}=${token}`,
+        'X-Indobase-Project-Ref': 'urbanthread',
+      },
+    })
+    assert.equal(forged.status, 403)
+    assert.deepEqual(queried, [])
+  })
+
+  it('anonymous published storefront catalog returns that business only', async () => {
+    const queried: string[] = []
+    const published = new Set(['urbanthread'])
+    const hono = new Hono()
+    hono.get('/api/os/commerce/products', (c) =>
+      handleCommerceProductsList(
+        c,
+        async (ref) => {
+          queried.push(ref)
+          return [{ id: 'UT-01' }]
+        },
+        (ref) => published.has(ref),
+      ),
+    )
+    const res = await hono.request('/api/os/commerce/products?projectRef=urbanthread')
+    assert.equal(res.status, 200)
+    assert.deepEqual(queried, ['urbanthread'])
+  })
+
+  it('unknown/unpublished storefront does not query another business', async () => {
+    const queried: string[] = []
+    const hono = new Hono()
+    hono.get('/api/os/commerce/products', (c) =>
+      handleCommerceProductsList(
+        c,
+        async (ref) => {
+          queried.push(ref)
+          return [{ id: 'leaked' }]
+        },
+        (ref) => ref === 'northpeak',
+      ),
+    )
+    const res = await hono.request('/api/os/commerce/products?projectRef=unpublished-ref')
+    assert.equal(res.status, 404)
+    const body = await res.json()
+    assert.equal(body.code, 'not_published')
+    assert.deepEqual(queried, [])
+    const pub = resolvePublicCatalogProjectRef({
+      session: null,
+      clientProjectRef: 'ghost',
+      isPublished: () => false,
+    })
+    assert.equal(pub.ok, false)
+    if (!pub.ok) assert.equal(pub.status, 404)
+  })
+
+  it('conflicting client projectRef is 403, not ignored', () => {
     const conflict = resolveTenantProjectRef({
       session: member('northpeak'),
       clientProjectRef: 'urbanthread',
       allowAnonymousClient: true,
     })
     assert.equal(conflict.ok, false)
-    if (!conflict.ok) assert.equal(conflict.status, 403)
+    if (!conflict.ok) {
+      assert.equal(conflict.status, 403)
+      assert.equal(conflict.code, 'forbidden')
+    }
   })
 
-  it('anonymous storefront may use client projectRef', async () => {
+  it('GET /products still lists when /api/* catch-all would 404 bridge paths', async () => {
     const queried: string[] = []
     const hono = new Hono()
-    hono.get('/api/os/commerce/products', (c) =>
-      handleCommerceProductsList(c, async (ref) => {
-        queried.push(ref)
-        return [{ id: 'p1' }]
-      }),
-    )
-    const res = await hono.request('/api/os/commerce/products?projectRef=urbanthread')
+    hono.get('/api/os/commerce/products/:id', (c) => c.json({ id: c.req.param('id') }))
+    hono.all('/api/*', async (c) => {
+      const pathname = (new URL(c.req.url).pathname || '').replace(/\/+$/, '') || '/'
+      if (pathname === '/api/os/commerce/products' && (c.req.method === 'GET' || c.req.method === 'HEAD')) {
+        return handleCommerceProductsList(
+          c,
+          async (ref) => {
+            queried.push(ref)
+            return [{ id: 'p1' }]
+          },
+          (ref) => ref === 'northpeak',
+        )
+      }
+      return c.notFound()
+    })
+    const res = await hono.request('/api/os/commerce/products?projectRef=northpeak')
     assert.equal(res.status, 200)
-    assert.deepEqual(queried, ['urbanthread'])
+    assert.deepEqual(queried, ['northpeak'])
+    const body = await res.json()
+    assert.equal(body.ok, true)
   })
 })

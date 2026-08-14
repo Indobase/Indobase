@@ -34,6 +34,7 @@ import {
   AGENT_SURFACE_HARD_RULES,
   LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
   launchProductionAppToolCatalog,
+  resolveAuthoritativeAppType,
   summarizeProductionLaunchJob,
   type ProductionLaunchJob,
 } from './production-launch/index.js'
@@ -213,7 +214,11 @@ function buildAuthoritativeProject(
 ) {
   const persisted = getWorkspaceRuntime(session.projectRef)
   const spec = persisted?.spec || getBusinessSpec(session.projectRef)
-  const appType = job?.appType || spec?.businessType || null
+  const appType =
+    resolveAuthoritativeAppType({ specType: spec?.businessType, jobType: job?.appType }) ||
+    spec?.businessType ||
+    job?.appType ||
+    null
   const kind = appTypeToKind(appType)
   const catalogReady = Boolean(
     job?.evidence?.catalog_seeded || job?.evidence?.backend_ready || launch?.catalogReady || journey.flags.is_backend_ready,
