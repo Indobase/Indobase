@@ -147,7 +147,19 @@ export async function getCommerceProduct(
     active: body.active !== false,
     category: String(body.category || ''),
   }
-  const variants = (await listVariantRecords(projectRef)).filter((row) => String(row.product_id || '') === product.id)
+  let variants = (await listVariantRecords(projectRef)).filter((row) => String(row.product_id || '') === product.id)
+  if (!variants.length) {
+    await createCommerceVariant(projectRef, product.id, {
+      sku: product.slug || product.id,
+      title: 'Default',
+      options: {},
+      priceMinor: product.priceMinor,
+      stock: product.stock,
+      currency: product.currency,
+      default: true,
+    })
+    variants = (await listVariantRecords(projectRef)).filter((row) => String(row.product_id || '') === product.id)
+  }
   return attachVariants([product], variants)[0] || product
 }
 
@@ -183,20 +195,6 @@ function variantFromRecord(row: Record<string, unknown>, productId: string, inde
   }
 }
 
-function defaultVariantFromProduct(p: CommerceProduct): CommerceVariant {
-  return {
-    id: p.id,
-    productId: p.id,
-    sku: p.slug || p.id,
-    title: 'Default',
-    options: {},
-    priceMinor: p.priceMinor,
-    stock: p.stock,
-    currency: p.currency,
-    default: true,
-  }
-}
-
 async function listVariantRecords(
   projectRef: string,
 ): Promise<Array<Record<string, unknown>>> {
@@ -224,8 +222,8 @@ function attachVariants(
   }
   return products.map((p) => {
     const variants = byProduct.get(p.id) || []
-    const attached = variants.length ? variants.map((v, i) => ({ ...v, default: v.default || i === 0 })) : [defaultVariantFromProduct(p)]
-    const stock = variants.length ? variants.reduce((s, v) => s + v.stock, 0) : p.stock
+    const attached = variants.map((v, i) => ({ ...v, default: v.default || i === 0 }))
+    const stock = attached.length ? attached.reduce((s, v) => s + v.stock, 0) : p.stock
     return { ...p, variants: attached, stock }
   })
 }
@@ -294,15 +292,22 @@ export async function createCommerceProduct(
   )
   if (!ok || !body.id) throw new Error(formatPbError(body, 'Could not create product'))
   let product = productFromRecord(body)
-  if (input.variants?.length) {
-    for (let i = 0; i < input.variants.length; i++) {
-      await createCommerceVariant(projectRef, product.id, { ...input.variants[i], default: i === 0 })
-    }
-    const loaded = await getCommerceProduct(projectRef, product.id)
-    if (loaded) product = loaded
-  } else {
-    product = attachVariants([product], [])[0] || product
+  const variantSpecs = input.variants?.length
+    ? input.variants
+    : [
+        {
+          sku: slug,
+          title: 'Default',
+          options: {},
+          priceMinor: input.priceMinor,
+          stock: typeof input.stock === 'number' ? input.stock : 10,
+        },
+      ]
+  for (let i = 0; i < variantSpecs.length; i++) {
+    await createCommerceVariant(projectRef, product.id, { ...variantSpecs[i], default: i === 0 })
   }
+  const loaded = await getCommerceProduct(projectRef, product.id)
+  if (loaded) product = loaded
   return product
 }
 
@@ -538,7 +543,7 @@ export async function sumActiveReservations(
   const { token, base } = await adminToken()
   const col = physicalCollectionName(appId, 'inventory_reservations')
   const filter = encodeURIComponent(
-    variantId && variantId !== productId
+    variantId
       ? activeVariantReservationFilter(variantId)
       : activeReservationFilter(productId),
   )
@@ -661,7 +666,7 @@ export async function createOrderRecord(input: {
         guest_token_hash: input.guestTokenHash || '',
         items_json: input.lines.map((l) => ({
           product_id: l.productId,
-          variant_id: l.variantId || l.productId,
+          variant_id: l.variantId,
           product_slug: l.slug,
           quantity: l.quantity,
           unit_price_minor: l.unitPriceMinor,
@@ -685,7 +690,7 @@ export async function createOrderRecord(input: {
         order_id: body.id,
         product_slug: line.slug,
         product_id: line.productId,
-        variant_id: line.variantId || '',
+        variant_id: line.variantId,
         quantity: line.quantity,
         unit_price: line.unitPriceMinor / 100,
         unit_price_minor: line.unitPriceMinor,
@@ -728,30 +733,6 @@ export async function getOrderRecord(
   )
   if (!ok || !body.id) return null
   return body
-}
-
-async function decrementProductStock(
-  base: string,
-  token: string,
-  productsCol: string,
-  productId: string,
-  qty: number,
-): Promise<void> {
-  if (!productId || qty <= 0) return
-  const prod = await pbJson<Record<string, unknown>>(
-    `${base}/api/collections/${productsCol}/records/${encodeURIComponent(productId)}`,
-    { headers: { Authorization: adminAuthHeader(token) } },
-  )
-  if (!prod.ok) return
-  const stock = Number(prod.body.stock || 0)
-  await pbJson(`${base}/api/collections/${productsCol}/records/${encodeURIComponent(productId)}`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: adminAuthHeader(token),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ stock: Math.max(0, stock - qty) }),
-  })
 }
 
 async function decrementVariantStock(
@@ -800,7 +781,6 @@ export async function commitReservationsForOrder(
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const resCol = physicalCollectionName(appId, 'inventory_reservations')
-  const productsCol = physicalCollectionName(appId, 'products')
   const variantsCol = physicalCollectionName(appId, 'product_variants')
   const filter = encodeURIComponent(reservedForOrderFilter(orderId))
   const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
@@ -811,16 +791,8 @@ export async function commitReservationsForOrder(
   if (reserved.length) {
     for (const row of reserved) {
       const variantId = String(row.variant_id || '')
-      if (variantId && variantId !== String(row.product_id || '')) {
+      if (variantId) {
         await decrementVariantStock(base, token, variantsCol, variantId, Number(row.quantity || 0))
-      } else {
-        await decrementProductStock(
-          base,
-          token,
-          productsCol,
-          String(row.product_id || ''),
-          Number(row.quantity || 0),
-        )
       }
       if (row.id) {
         await pbJson(`${base}/api/collections/${resCol}/records/${encodeURIComponent(String(row.id))}`, {
@@ -840,10 +812,8 @@ export async function commitReservationsForOrder(
   const order = await getOrderRecord(projectRef, orderId)
   if (!order) return
   for (const line of linesFromOrder(order)) {
-    if (line.variantId && line.variantId !== line.productId) {
+    if (line.variantId) {
       await decrementVariantStock(base, token, variantsCol, line.variantId, line.quantity)
-    } else {
-      await decrementProductStock(base, token, productsCol, line.productId, line.quantity)
     }
   }
   const anyFilter = encodeURIComponent(`order_id="${orderId}"`)

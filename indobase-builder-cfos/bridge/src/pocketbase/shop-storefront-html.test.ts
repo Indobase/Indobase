@@ -37,6 +37,8 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.doesNotMatch(html, /\/api\/collections\/.+\/orders/)
     assert.match(html, /I couldn't complete the order yet/)
     assert.doesNotMatch(html, /verified\.order\.paymentStatus|paymentStatus\|\|/)
+    assert.match(html, /function defaultVariant/)
+    assert.match(html, /data-variant/)
   })
 
   it('catalog projection patches the baked products snapshot', () => {

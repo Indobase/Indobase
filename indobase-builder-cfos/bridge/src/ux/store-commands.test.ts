@@ -46,6 +46,21 @@ describe('store commands (internal, not tools)', () => {
     assert.doesNotMatch(result.message, /PocketBase/i)
   })
 
+  it('optionless products still get a distinct default variant', async () => {
+    const deps = createMemoryStoreCommandDeps()
+    const result = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Add a product called Harbor Mug at ₹499',
+      deps,
+    })
+    assert.equal(result.ok, true)
+    assert.equal(result.snapshot.products.length, 1)
+    const variants = result.snapshot.products[0]?.variants || []
+    assert.equal(variants.length, 1)
+    assert.notEqual(variants[0]?.id, result.snapshot.products[0]?.id)
+    assert.equal(variants[0]?.default, true)
+  })
+
   it('rejects cross-workspace mutation with 403', async () => {
     const deps = createMemoryStoreCommandDeps({
       storeaaaa01: [{ id: 'p1', name: 'Apex Runner', priceMinor: 129900, stock: 8 }],

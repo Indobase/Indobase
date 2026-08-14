@@ -95,7 +95,7 @@ export type CommerceProduct = {
 
 export type PricedLine = {
   productId: string
-  variantId?: string
+  variantId: string
   slug: string
   name: string
   quantity: number

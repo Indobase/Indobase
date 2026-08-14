@@ -131,16 +131,18 @@ export async function executeCheckout(
       if (!product || !product.active) {
         return { ok: false, code: 'invalid_product', message: `Product not found: ${productId}` }
       }
-      const variants = product.variants?.length ? product.variants : []
+      const variants = product.variants || []
       const variant =
         (variantId && variants.find((v) => v.id === variantId)) ||
         variants.find((v) => v.default) ||
         variants[0]
-      const skuId = variant?.id || product.id
-      const unitPrice = variant?.priceMinor ?? product.priceMinor
-      const onHand = typeof variant?.stock === 'number' ? variant.stock : product.stock
+      if (!variant?.id) {
+        return { ok: false, code: 'invalid_product', message: `No purchasable variant for ${product.name}` }
+      }
+      const unitPrice = variant.priceMinor
+      const onHand = typeof variant.stock === 'number' ? variant.stock : 0
       currency = product.currency || currency
-      const reserved = await sumActiveReservations(projectRef, product.id, skuId !== product.id ? skuId : undefined)
+      const reserved = await sumActiveReservations(projectRef, product.id, variant.id)
       const available = onHand - reserved
       if (available < quantity) {
         return {
@@ -151,9 +153,9 @@ export async function executeCheckout(
       }
       lines.push({
         productId: product.id,
-        variantId: skuId,
+        variantId: variant.id,
         slug: product.slug,
-        name: variant && variant.title && variant.title !== 'Default' ? `${product.name} (${variant.title})` : product.name,
+        name: variant.title && variant.title !== 'Default' ? `${product.name} (${variant.title})` : product.name,
         quantity,
         unitPriceMinor: unitPrice,
         lineTotalMinor: unitPrice * quantity,

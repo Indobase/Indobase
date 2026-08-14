@@ -45,11 +45,16 @@ export function variantTitleFromOptions(options: Record<string, string>): string
   return Object.values(options).filter(Boolean).join(' / ')
 }
 
+/** Distinct from product.id — product is not purchasable. */
+export function defaultVariantIdForProduct(productId: string): string {
+  return `${productId}__default`
+}
+
 export function defaultVariantForProduct(product: BusinessProduct): NonNullable<BusinessProduct['variants']>[number] {
   const existing = product.variants?.find((v) => v.default) || product.variants?.[0]
   if (existing) return existing
   return {
-    id: product.id,
+    id: defaultVariantIdForProduct(product.id),
     sku: product.sku || product.id,
     title: 'Default',
     options: {},

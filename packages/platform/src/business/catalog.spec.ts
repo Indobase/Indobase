@@ -49,4 +49,16 @@ describe('catalog domain', () => {
     expect(resolveProductVariant(products[0], { productId: 'p1' })?.id).toBe('v0')
     expect(resolveProductVariant(products[0], { variantId: 'v3' })?.options?.Size).toBe('10')
   })
+
+  it('gives optionless products a default variant whose id is not the product id', () => {
+    const product = { id: 'p1', name: 'Plain Tee', priceMinor: 199900, stock: 12 }
+    const variant = resolveProductVariant(product, { productId: 'p1' })
+    expect(variant?.id).toBeTruthy()
+    expect(variant?.id).not.toBe(product.id)
+    expect(variant?.default).toBe(true)
+    const inventory = inventoryFromCatalogProducts([product])
+    expect(inventory).toHaveLength(1)
+    expect(inventory[0]?.variantId).toBe(variant?.id)
+    expect(inventory[0]?.variantId).not.toBe(product.id)
+  })
 })

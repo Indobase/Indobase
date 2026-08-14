@@ -496,7 +496,18 @@ export function createMemoryStoreCommandDeps(
         stock: v.stock,
         default: i === 0,
       }))
-      const stock = variants.length ? variants.reduce((s, v) => s + (v.stock || 0), 0) : input.stock
+      if (!variants.length) {
+        variants.push({
+          id: `v${seq++}`,
+          sku: slugify(input.name),
+          title: 'Default',
+          options: {},
+          priceMinor: input.priceMinor,
+          stock: input.stock,
+          default: true,
+        })
+      }
+      const stock = variants.reduce((s, v) => s + (v.stock || 0), 0)
       const row: StoreProductRecord = {
         id: `p${seq++}`,
         name: input.name,
@@ -786,9 +797,11 @@ export async function executeStoreCommand(input: {
           mutated: false,
         }
       }
-      const realVariants = (target.variants || []).filter((v) => v.id && v.id !== target.id)
-      const variant = matchVariant(target, classified.variantHint)
-      if (realVariants.length && variant && variant.id !== target.id && deps.updateVariant) {
+      const variant =
+        matchVariant(target, classified.variantHint) ||
+        (target.variants || []).find((v) => v.default) ||
+        target.variants?.[0]
+      if (variant && deps.updateVariant) {
         await deps.updateVariant(projectRef, variant.id, { stock: classified.stock })
         const snapshot = await loadSnapshot()
         const command = createCommand(
