@@ -202,7 +202,7 @@ async function listVariantRecords(
   const { token, base } = await adminToken()
   const col = physicalCollectionName(appId, 'product_variants')
   const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
-    `${base}/api/collections/${col}/records?perPage=500&sort=created_at`,
+    `${base}/api/collections/${col}/records?perPage=500`,
     { headers: { Authorization: adminAuthHeader(token) } },
   )
   if (!ok) return []
@@ -385,7 +385,7 @@ export async function createCommerceVariant(
       }),
     },
   )
-  if (!ok || !body.id) return null
+  if (!ok || !body.id) throw new Error(formatPbError(body, 'Could not create variant'))
   return variantFromRecord(body, productId, 0)
 }
 

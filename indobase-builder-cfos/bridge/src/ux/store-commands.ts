@@ -697,19 +697,26 @@ export async function executeStoreCommand(input: {
     if (classified.kind === 'product.create') {
       const name = classified.name || 'New product'
       const slug = slugify(name)
-      const priceMinor = majorToMinor(classified.priceMajor ?? 0, 'INR')
+      const listed = await deps.listProducts(projectRef)
+      const existing = matchProduct(listed, name)
+      const priceMinor =
+        classified.priceMajor && classified.priceMajor > 0
+          ? majorToMinor(classified.priceMajor, 'INR')
+          : existing?.priceMinor && existing.priceMinor > 0
+            ? existing.priceMinor
+            : majorToMinor(classified.priceMajor ?? 0, 'INR')
       const stockEach = classified.stock ?? 10
       const variants = classified.options
         ? variantRowsFromOptions(slug, classified.options, priceMinor, stockEach)
         : []
-      const existing = matchProduct(await deps.listProducts(projectRef), name)
       if (existing && variants.length && deps.createVariant) {
-        const had = existing.variants?.length || 0
+        const had = (existing.variants || []).filter((v) => Object.keys(v.options || {}).length).length
         for (let i = 0; i < variants.length; i++) {
-          await deps.createVariant(projectRef, existing.id, {
+          const row = await deps.createVariant(projectRef, existing.id, {
             ...variants[i],
             default: had === 0 && i === 0,
           })
+          if (!row) throw new Error(`Could not create variant ${variants[i]?.sku}`)
         }
         const snapshot = await loadSnapshot()
         const command = createCommand(
