@@ -19,7 +19,29 @@ export type { BusinessRuntimeState }
 export { isForbiddenAgentClaim }
 
 export type BusinessSnapshotSummary = {
-  products: Array<{ id?: string; name?: string; priceMinor?: number; slug?: string; stock?: number }>
+  products: Array<{
+    id?: string
+    name?: string
+    priceMinor?: number
+    slug?: string
+    stock?: number
+    variants?: Array<{
+      id?: string
+      sku?: string
+      title?: string
+      options?: Record<string, string>
+      priceMinor?: number
+      stock?: number
+      default?: boolean
+    }>
+  }>
+  collections?: Array<{
+    id?: string
+    name?: string
+    slug?: string
+    productIds?: string[]
+    rule?: { category?: string; tag?: string } | null
+  }>
   orders: Array<{
     id?: string
     orderNumber?: string
@@ -62,6 +84,15 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       name: p.name || p.id || '',
       priceMinor: p.priceMinor,
       stock: typeof p.stock === 'number' ? p.stock : undefined,
+      variants: (p.variants || []).map((v) => ({
+        id: v.id || '',
+        sku: v.sku,
+        title: v.title,
+        options: v.options,
+        priceMinor: v.priceMinor,
+        stock: v.stock,
+        default: v.default,
+      })),
     }))
   const orders = (snap?.orders || [])
     .filter((o) => o.id || o.orderNumber)
@@ -112,6 +143,17 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
     products,
     customers,
     orders,
+    catalog: {
+      collections: (snap?.collections || [])
+        .filter((c) => c.id || c.name)
+        .map((c) => ({
+          id: c.id || c.name || '',
+          name: c.name || c.id || '',
+          slug: c.slug,
+          productIds: c.productIds || [],
+          rule: c.rule || null,
+        })),
+    },
     capabilities: truth.capabilities,
     jobs: truth.jobs,
     events: truth.events,

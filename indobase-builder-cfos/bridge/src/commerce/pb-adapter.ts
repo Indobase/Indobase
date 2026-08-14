@@ -13,7 +13,7 @@ import {
 } from '../pocketbase/managed.js'
 import { applyArchitectureBlueprint } from '../pocketbase/architecture.js'
 import { majorToMinor, minorToMajor } from './money.js'
-import type { CommerceProduct, PricedLine } from './types.js'
+import type { CommerceCollection, CommerceProduct, CommerceVariant, PricedLine } from './types.js'
 
 function newId(): string {
   // PocketBase default id pattern: ^[a-z0-9]+$ (typically 15 chars)
@@ -60,6 +60,10 @@ export function activeReservationFilter(productId: string, now: Date = new Date(
   return `product_id="${productId}" && status="reserved" && expires_at>"${pocketBaseDateTime(now)}"`
 }
 
+export function activeVariantReservationFilter(variantId: string, now: Date = new Date()): string {
+  return `variant_id="${variantId}" && status="reserved" && expires_at>"${pocketBaseDateTime(now)}"`
+}
+
 export function reservedForOrderFilter(orderId: string): string {
   return `order_id="${orderId}" && status="reserved"`
 }
@@ -101,7 +105,7 @@ export async function listCommerceProducts(projectRef: string): Promise<Commerce
     { headers: { Authorization: adminAuthHeader(token) } },
   )
   if (!ok) throw new Error(formatPbError(body, 'Failed to list products'))
-  return (body.items || [])
+  const products = (body.items || [])
     .filter((p) => p.active !== false)
     .map((p) => ({
       id: String(p.id || ''),
@@ -113,7 +117,10 @@ export async function listCommerceProducts(projectRef: string): Promise<Commerce
       stock: Number(p.stock || 0),
       imageUrl: String(p.image_url || ''),
       active: p.active !== false,
+      category: String(p.category || ''),
     }))
+  const variants = await listVariantRecords(projectRef)
+  return attachVariants(products, variants)
 }
 
 export async function getCommerceProduct(
@@ -128,7 +135,7 @@ export async function getCommerceProduct(
     { headers: { Authorization: adminAuthHeader(token) } },
   )
   if (!ok || !body.id) return null
-  return {
+  const product = {
     id: String(body.id),
     name: String(body.name || ''),
     slug: String(body.slug || ''),
@@ -138,7 +145,89 @@ export async function getCommerceProduct(
     stock: Number(body.stock || 0),
     imageUrl: String(body.image_url || ''),
     active: body.active !== false,
+    category: String(body.category || ''),
   }
+  const variants = (await listVariantRecords(projectRef)).filter((row) => String(row.product_id || '') === product.id)
+  return attachVariants([product], variants)[0] || product
+}
+
+function parseOptionsJson(raw: unknown): Record<string, string> {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (v != null) out[k] = String(v)
+    }
+    return out
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      return parseOptionsJson(JSON.parse(raw))
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
+function variantFromRecord(row: Record<string, unknown>, productId: string, index: number): CommerceVariant {
+  return {
+    id: String(row.id || ''),
+    productId,
+    sku: String(row.sku || ''),
+    title: String(row.title || ''),
+    options: parseOptionsJson(row.options_json),
+    priceMinor: majorToMinor(Number(row.price || 0), String(row.currency || 'INR')),
+    stock: Number(row.stock || 0),
+    currency: String(row.currency || 'INR'),
+    default: row.is_default === true || index === 0,
+  }
+}
+
+function defaultVariantFromProduct(p: CommerceProduct): CommerceVariant {
+  return {
+    id: p.id,
+    productId: p.id,
+    sku: p.slug || p.id,
+    title: 'Default',
+    options: {},
+    priceMinor: p.priceMinor,
+    stock: p.stock,
+    currency: p.currency,
+    default: true,
+  }
+}
+
+async function listVariantRecords(
+  projectRef: string,
+): Promise<Array<Record<string, unknown>>> {
+  const appId = sanitizeAppId(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'product_variants')
+  const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
+    `${base}/api/collections/${col}/records?perPage=500&sort=created_at`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  if (!ok) return []
+  return body.items || []
+}
+
+function attachVariants(
+  products: CommerceProduct[],
+  rows: Array<Record<string, unknown>>,
+): CommerceProduct[] {
+  const byProduct = new Map<string, CommerceVariant[]>()
+  for (const row of rows) {
+    const productId = String(row.product_id || '')
+    const list = byProduct.get(productId) || []
+    list.push(variantFromRecord(row, productId, list.length))
+    byProduct.set(productId, list)
+  }
+  return products.map((p) => {
+    const variants = byProduct.get(p.id) || []
+    const attached = variants.length ? variants.map((v, i) => ({ ...v, default: v.default || i === 0 })) : [defaultVariantFromProduct(p)]
+    const stock = variants.length ? variants.reduce((s, v) => s + v.stock, 0) : p.stock
+    return { ...p, variants: attached, stock }
+  })
 }
 
 function productFromRecord(row: Record<string, unknown>): CommerceProduct {
@@ -152,6 +241,7 @@ function productFromRecord(row: Record<string, unknown>): CommerceProduct {
     stock: Number(row.stock || 0),
     imageUrl: String(row.image_url || ''),
     active: row.active !== false,
+    category: String(row.category || ''),
   }
 }
 
@@ -164,6 +254,8 @@ export async function createCommerceProduct(
     priceMinor: number
     currency?: string
     stock?: number
+    category?: string
+    variants?: Array<{ sku: string; title: string; options: Record<string, string>; priceMinor: number; stock: number }>
   },
 ): Promise<CommerceProduct> {
   const appId = sanitizeAppId(projectRef)
@@ -196,11 +288,22 @@ export async function createCommerceProduct(
         stock: typeof input.stock === 'number' ? input.stock : 10,
         image_url: '',
         active: true,
+        category: input.category || '',
       }),
     },
   )
   if (!ok || !body.id) throw new Error(formatPbError(body, 'Could not create product'))
-  return productFromRecord(body)
+  let product = productFromRecord(body)
+  if (input.variants?.length) {
+    for (let i = 0; i < input.variants.length; i++) {
+      await createCommerceVariant(projectRef, product.id, { ...input.variants[i], default: i === 0 })
+    }
+    const loaded = await getCommerceProduct(projectRef, product.id)
+    if (loaded) product = loaded
+  } else {
+    product = attachVariants([product], [])[0] || product
+  }
+  return product
 }
 
 export async function patchCommerceProduct(
@@ -232,17 +335,213 @@ export async function patchCommerceProduct(
     },
   )
   if (!ok || !row.id) return null
-  return productFromRecord(row)
+  const loaded = await getCommerceProduct(projectRef, String(row.id))
+  return loaded
+}
+
+export async function createCommerceVariant(
+  projectRef: string,
+  productId: string,
+  input: {
+    sku: string
+    title: string
+    options: Record<string, string>
+    priceMinor: number
+    stock: number
+    currency?: string
+    default?: boolean
+  },
+): Promise<CommerceVariant | null> {
+  const appId = sanitizeAppId(projectRef)
+  await ensureCommerceSchema(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'product_variants')
+  const currency = input.currency || 'INR'
+  const { ok, body } = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${col}/records`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: adminAuthHeader(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: newId(),
+        owner: appId,
+        product_id: productId,
+        sku: input.sku,
+        title: input.title,
+        price: minorToMajor(input.priceMinor, currency),
+        currency,
+        stock: input.stock,
+        options_json: input.options || {},
+        is_default: Boolean(input.default),
+        active: true,
+      }),
+    },
+  )
+  if (!ok || !body.id) return null
+  return variantFromRecord(body, productId, 0)
+}
+
+export async function patchCommerceVariant(
+  projectRef: string,
+  variantId: string,
+  patch: { stock?: number; priceMinor?: number; currency?: string },
+): Promise<CommerceVariant | null> {
+  const appId = sanitizeAppId(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'product_variants')
+  const body: Record<string, unknown> = {}
+  if (typeof patch.stock === 'number') body.stock = Math.max(0, Math.round(patch.stock))
+  if (typeof patch.priceMinor === 'number') {
+    const currency = patch.currency || 'INR'
+    body.price = minorToMajor(patch.priceMinor, currency)
+  }
+  const { ok, body: row } = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${col}/records/${encodeURIComponent(variantId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: adminAuthHeader(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  )
+  if (!ok || !row.id) return null
+  return variantFromRecord(row, String(row.product_id || ''), 0)
+}
+
+function collectionFromRecords(
+  row: Record<string, unknown>,
+  members: Array<Record<string, unknown>>,
+): CommerceCollection {
+  const id = String(row.id || '')
+  const ruleRaw = row.rule_json
+  let rule: CommerceCollection['rule'] = null
+  if (ruleRaw && typeof ruleRaw === 'object') {
+    const rec = ruleRaw as Record<string, unknown>
+    rule = {
+      category: rec.category ? String(rec.category) : undefined,
+      tag: rec.tag ? String(rec.tag) : undefined,
+    }
+  }
+  return {
+    id,
+    name: String(row.name || ''),
+    slug: String(row.slug || ''),
+    productIds: members.filter((m) => String(m.collection_id || '') === id).map((m) => String(m.product_id || '')),
+    rule,
+  }
+}
+
+export async function listCatalogCollections(projectRef: string): Promise<CommerceCollection[]> {
+  const appId = sanitizeAppId(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'catalog_collections')
+  const membersCol = physicalCollectionName(appId, 'catalog_collection_products')
+  const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
+    `${base}/api/collections/${col}/records?perPage=200&sort=-created_at`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  if (!ok) return []
+  const members = await pbJson<{ items?: Array<Record<string, unknown>> }>(
+    `${base}/api/collections/${membersCol}/records?perPage=500`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  const memberRows = members.ok ? members.body.items || [] : []
+  let products: CommerceProduct[] = []
+  try {
+    products = await listCommerceProducts(projectRef)
+  } catch {
+    products = []
+  }
+  return (body.items || []).map((row) => {
+    const collection = collectionFromRecords(row, memberRows)
+    const rule = collection.rule
+    if (rule?.category) {
+      const extra = products.filter((p) => (p.category || '').toLowerCase() === rule.category!.toLowerCase()).map((p) => p.id)
+      collection.productIds = [...new Set([...collection.productIds, ...extra])]
+    }
+    return collection
+  })
+}
+
+export async function createCatalogCollection(
+  projectRef: string,
+  input: { name: string; slug?: string; rule?: { category?: string; tag?: string } | null },
+): Promise<CommerceCollection> {
+  const appId = sanitizeAppId(projectRef)
+  await ensureCommerceSchema(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'catalog_collections')
+  const slug =
+    (input.slug || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || `c-${newId().slice(0, 10)}`
+  const { ok, body } = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${col}/records`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: adminAuthHeader(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: newId(),
+        owner: appId,
+        name: input.name,
+        slug,
+        rule_json: input.rule || {},
+      }),
+    },
+  )
+  if (!ok || !body.id) throw new Error(formatPbError(body, 'Could not create collection'))
+  return collectionFromRecords(body, [])
+}
+
+export async function assignCatalogCollectionProduct(
+  projectRef: string,
+  collectionId: string,
+  productId: string,
+): Promise<CommerceCollection | null> {
+  const appId = sanitizeAppId(projectRef)
+  await ensureCommerceSchema(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'catalog_collection_products')
+  await pbJson(`${base}/api/collections/${col}/records`, {
+    method: 'POST',
+    headers: {
+      Authorization: adminAuthHeader(token),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      id: newId(),
+      owner: appId,
+      collection_id: collectionId,
+      product_id: productId,
+    }),
+  })
+  const all = await listCatalogCollections(projectRef)
+  return all.find((c) => c.id === collectionId) || null
 }
 
 export async function sumActiveReservations(
   projectRef: string,
   productId: string,
+  variantId?: string,
 ): Promise<number> {
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const col = physicalCollectionName(appId, 'inventory_reservations')
-  const filter = encodeURIComponent(activeReservationFilter(productId))
+  const filter = encodeURIComponent(
+    variantId && variantId !== productId
+      ? activeVariantReservationFilter(variantId)
+      : activeReservationFilter(productId),
+  )
   const { ok, body } = await pbJson<{ items?: Array<{ quantity?: number }> }>(
     `${base}/api/collections/${col}/records?perPage=200&filter=${filter}`,
     { headers: { Authorization: adminAuthHeader(token) } },
@@ -278,6 +577,7 @@ export async function createReservation(input: {
   projectRef: string
   orderId: string
   productId: string
+  variantId?: string
   quantity: number
   expiresAt: string
 }): Promise<{ id: string }> {
@@ -298,6 +598,7 @@ export async function createReservation(input: {
         owner: appId,
         order_id: input.orderId,
         product_id: input.productId,
+        variant_id: input.variantId || '',
         quantity: input.quantity,
         status: 'reserved',
         expires_at: pocketBaseDateTime(input.expiresAt),
@@ -360,6 +661,7 @@ export async function createOrderRecord(input: {
         guest_token_hash: input.guestTokenHash || '',
         items_json: input.lines.map((l) => ({
           product_id: l.productId,
+          variant_id: l.variantId || l.productId,
           product_slug: l.slug,
           quantity: l.quantity,
           unit_price_minor: l.unitPriceMinor,
@@ -383,6 +685,7 @@ export async function createOrderRecord(input: {
         order_id: body.id,
         product_slug: line.slug,
         product_id: line.productId,
+        variant_id: line.variantId || '',
         quantity: line.quantity,
         unit_price: line.unitPriceMinor / 100,
         unit_price_minor: line.unitPriceMinor,
@@ -451,7 +754,31 @@ async function decrementProductStock(
   })
 }
 
-function linesFromOrder(order: Record<string, unknown>): Array<{ productId: string; quantity: number }> {
+async function decrementVariantStock(
+  base: string,
+  token: string,
+  variantsCol: string,
+  variantId: string,
+  qty: number,
+): Promise<void> {
+  if (!variantId || qty <= 0) return
+  const row = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${variantsCol}/records/${encodeURIComponent(variantId)}`,
+    { headers: { Authorization: adminAuthHeader(token) } },
+  )
+  if (!row.ok) return
+  const stock = Number(row.body.stock || 0)
+  await pbJson(`${base}/api/collections/${variantsCol}/records/${encodeURIComponent(variantId)}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: adminAuthHeader(token),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ stock: Math.max(0, stock - qty) }),
+  })
+}
+
+function linesFromOrder(order: Record<string, unknown>): Array<{ productId: string; variantId?: string; quantity: number }> {
   const raw = order.items_json
   if (!Array.isArray(raw)) return []
   return raw
@@ -459,6 +786,7 @@ function linesFromOrder(order: Record<string, unknown>): Array<{ productId: stri
       const item = row && typeof row === 'object' ? (row as Record<string, unknown>) : {}
       return {
         productId: String(item.product_id || item.productId || ''),
+        variantId: String(item.variant_id || item.variantId || '') || undefined,
         quantity: Number(item.quantity || 0),
       }
     })
@@ -473,6 +801,7 @@ export async function commitReservationsForOrder(
   const { token, base } = await adminToken()
   const resCol = physicalCollectionName(appId, 'inventory_reservations')
   const productsCol = physicalCollectionName(appId, 'products')
+  const variantsCol = physicalCollectionName(appId, 'product_variants')
   const filter = encodeURIComponent(reservedForOrderFilter(orderId))
   const { ok, body } = await pbJson<{ items?: Array<Record<string, unknown>> }>(
     `${base}/api/collections/${resCol}/records?perPage=100&filter=${filter}`,
@@ -481,13 +810,18 @@ export async function commitReservationsForOrder(
   const reserved = ok ? body.items || [] : []
   if (reserved.length) {
     for (const row of reserved) {
-      await decrementProductStock(
-        base,
-        token,
-        productsCol,
-        String(row.product_id || ''),
-        Number(row.quantity || 0),
-      )
+      const variantId = String(row.variant_id || '')
+      if (variantId && variantId !== String(row.product_id || '')) {
+        await decrementVariantStock(base, token, variantsCol, variantId, Number(row.quantity || 0))
+      } else {
+        await decrementProductStock(
+          base,
+          token,
+          productsCol,
+          String(row.product_id || ''),
+          Number(row.quantity || 0),
+        )
+      }
       if (row.id) {
         await pbJson(`${base}/api/collections/${resCol}/records/${encodeURIComponent(String(row.id))}`, {
           method: 'PATCH',
@@ -506,7 +840,11 @@ export async function commitReservationsForOrder(
   const order = await getOrderRecord(projectRef, orderId)
   if (!order) return
   for (const line of linesFromOrder(order)) {
-    await decrementProductStock(base, token, productsCol, line.productId, line.quantity)
+    if (line.variantId && line.variantId !== line.productId) {
+      await decrementVariantStock(base, token, variantsCol, line.variantId, line.quantity)
+    } else {
+      await decrementProductStock(base, token, productsCol, line.productId, line.quantity)
+    }
   }
   const anyFilter = encodeURIComponent(`order_id="${orderId}"`)
   const leftover = await pbJson<{ items?: Array<{ id?: string; status?: string }> }>(

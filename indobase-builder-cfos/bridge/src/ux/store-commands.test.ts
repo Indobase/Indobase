@@ -40,6 +40,7 @@ describe('store commands (internal, not tools)', () => {
     assert.equal(result.ok, true)
     assert.equal(result.kind, 'product.create')
     assert.equal(result.snapshot.products.length, 1)
+    assert.equal(result.snapshot.products[0]?.variants?.length, 5)
     assert.equal(result.snapshot.products[0]?.priceMinor, 899900)
     assert.match(result.snapshot.products[0]?.name || '', /running shoe/i)
     assert.doesNotMatch(result.message, /PocketBase/i)
@@ -150,5 +151,72 @@ describe('store commands (internal, not tools)', () => {
     const after = await deps.listOrders!('storeaaaa01')
     assert.equal(after[0]?.payment_status, 'paid')
     assert.equal(after[0]?.fulfillment_status, 'fulfilled')
+  })
+
+  it('sizes 7-11 create one product with variants, not five products', async () => {
+    const deps = createMemoryStoreCommandDeps()
+    const result = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Add the black Apex Runner in sizes 7, 8, 9, 10, and 11.',
+      deps,
+    })
+    assert.equal(result.ok, true)
+    assert.equal(result.kind, 'product.create')
+    assert.equal(result.snapshot.products.length, 1)
+    assert.equal(result.snapshot.products[0]?.variants?.length, 5)
+    assert.match(result.message, /5 variants/i)
+    const catalog = await deps.listProducts('storeaaaa01')
+    assert.equal(catalog.length, 1)
+    assert.equal(catalog[0]?.variants?.length, 5)
+  })
+
+  it('inventory.update targets a size variant', async () => {
+    const deps = createMemoryStoreCommandDeps()
+    await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Add the black Apex Runner in sizes 7, 8, 9, 10, and 11.',
+      deps,
+    })
+    const result = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Set stock of Apex Runner size 8 to 3',
+      deps,
+    })
+    assert.equal(result.ok, true)
+    assert.equal(result.kind, 'inventory.update')
+    const catalog = await deps.listProducts('storeaaaa01')
+    const eight = catalog[0]?.variants?.find((v) => v.options?.Size === '8')
+    assert.equal(eight?.stock, 3)
+  })
+
+  it('creates and assigns a collection without mutating another workspace', async () => {
+    const deps = createMemoryStoreCommandDeps()
+    await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Add the black Apex Runner in sizes 7, 8, 9.',
+      deps,
+    })
+    const created = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Create a collection called Running Shoes',
+      deps,
+    })
+    assert.equal(created.kind, 'collection.create')
+    const assigned = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Assign Apex Runner to collection Running Shoes',
+      deps,
+    })
+    assert.equal(assigned.kind, 'collection.assign')
+    assert.equal(assigned.snapshot.collections?.[0]?.productIds?.length, 1)
+    const denied = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      requestedProjectRef: 'storebbbb01',
+      message: 'Create a collection called Stolen',
+      deps,
+    })
+    assert.equal(denied.status, 403)
+    const b = deps.listCollections ? await deps.listCollections('storebbbb01') : []
+    assert.equal(b.length, 0)
   })
 })

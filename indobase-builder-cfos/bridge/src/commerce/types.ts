@@ -15,6 +15,7 @@ export type CommerceShippingAddress = {
 
 export type CommerceCheckoutItemInput = {
   productId: string
+  variantId?: string
   quantity: number
 }
 
@@ -58,6 +59,26 @@ export type CommerceCheckoutError = {
   message: string
 }
 
+export type CommerceVariant = {
+  id: string
+  productId: string
+  sku: string
+  title: string
+  options: Record<string, string>
+  priceMinor: number
+  stock: number
+  currency: string
+  default?: boolean
+}
+
+export type CommerceCollection = {
+  id: string
+  name: string
+  slug: string
+  productIds: string[]
+  rule?: { category?: string; tag?: string } | null
+}
+
 export type CommerceProduct = {
   id: string
   name: string
@@ -68,10 +89,13 @@ export type CommerceProduct = {
   stock: number
   imageUrl: string
   active: boolean
+  category?: string
+  variants?: CommerceVariant[]
 }
 
 export type PricedLine = {
   productId: string
+  variantId?: string
   slug: string
   name: string
   quantity: number

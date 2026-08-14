@@ -72,27 +72,33 @@ async function api(path, init){
 var cartApi={
   get:function(){return loadCart()},
   clear:function(){saveCart([]); return []},
-  add:function(productId, quantity){
+  add:function(productId, quantity, variantId){
     var qty=Math.max(1, Math.floor(Number(quantity)||1));
+    var vid=variantId?String(variantId):"";
     var items=loadCart();
-    var hit=items.find(function(i){return i.productId===productId});
-    if(hit) hit.quantity+=qty; else items.push({productId:String(productId), quantity:qty});
+    var hit=items.find(function(i){return i.productId===productId && String(i.variantId||"")===vid});
+    if(hit) hit.quantity+=qty; else items.push({productId:String(productId), variantId:vid||undefined, quantity:qty});
     saveCart(items); return items;
   },
-  set:function(productId, quantity){
+  set:function(productId, quantity, variantId){
     var qty=Math.floor(Number(quantity)||0);
-    var items=loadCart().filter(function(i){return i.productId!==productId});
-    if(qty>0) items.push({productId:String(productId), quantity:qty});
+    var vid=variantId?String(variantId):"";
+    var items=loadCart().filter(function(i){return !(i.productId===productId && String(i.variantId||"")===vid)});
+    if(qty>0) items.push({productId:String(productId), variantId:vid||undefined, quantity:qty});
     saveCart(items); return items;
   },
-  remove:function(productId){
-    var items=loadCart().filter(function(i){return i.productId!==productId});
+  remove:function(productId, variantId){
+    var vid=variantId?String(variantId):"";
+    var items=loadCart().filter(function(i){return !(i.productId===productId && String(i.variantId||"")===vid)});
     saveCart(items); return items;
   }
 };
 var productsApi={
   list:function(){return api("/products?projectRef="+encodeURIComponent(PROJECT_REF)).then(function(r){return r.products||[]})},
   get:function(id){return api("/products/"+encodeURIComponent(id)+"?projectRef="+encodeURIComponent(PROJECT_REF)).then(function(r){return r.product})}
+};
+var collectionsApi={
+  list:function(){return api("/collections?projectRef="+encodeURIComponent(PROJECT_REF)).then(function(r){return r.collections||[]})}
 };
 var checkoutApi={
   create:function(input){
@@ -150,6 +156,7 @@ window.indobase.commerce={
   projectRef: PROJECT_REF,
   baseUrl: BASE,
   products: productsApi,
+  collections: collectionsApi,
   cart: cartApi,
   checkout: checkoutApi,
   orders: ordersApi,

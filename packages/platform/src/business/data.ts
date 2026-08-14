@@ -5,6 +5,16 @@
  * Never “query PocketBase”. PocketBase is one BusinessDataAdapter impl.
  */
 
+export type BusinessProductVariant = {
+  id: string
+  sku?: string
+  title?: string
+  options?: Record<string, string>
+  priceMinor?: number
+  stock?: number
+  default?: boolean
+}
+
 export type BusinessProduct = {
   id: string
   name: string
@@ -13,6 +23,9 @@ export type BusinessProduct = {
   status?: string
   /** On-hand units from catalog — never invented analytics. */
   stock?: number
+  category?: string
+  tags?: string[]
+  variants?: BusinessProductVariant[]
 }
 
 export type BusinessCustomer = {
@@ -36,6 +49,7 @@ export type BusinessOrder = {
 export type BusinessInventoryItem = {
   id: string
   productId?: string
+  variantId?: string
   sku?: string
   quantity?: number
 }

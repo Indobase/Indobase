@@ -46,6 +46,7 @@ export function buildManagedShopStorefrontHtml(opts: {
       stock: Number(p.stock || 0),
       imageUrl: p.image_url || '',
       active: p.active !== false,
+      variants: p.variants || [],
     })),
   )
 
@@ -92,6 +93,9 @@ export function buildManagedShopStorefrontHtml(opts: {
   .empty { color:var(--muted); padding:28px 8px; text-align:center; }
   .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px; }
   .toolbar input { flex:1; min-width:180px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+  .filters { display:flex; gap:6px; flex-wrap:wrap; width:100%; }
+  .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:4px 10px; cursor:pointer; font:inherit; font-size:13px; }
+  .chip[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
   .card { cursor:pointer; }
   @media (max-width:720px) { .grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); } header { padding:16px; } }
   @media (min-width:1100px) { .grid { grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); } }
@@ -116,6 +120,7 @@ export function buildManagedShopStorefrontHtml(opts: {
   <p id="error" hidden></p>
   <div class="toolbar">
     <input id="search" type="search" placeholder="Search products" aria-label="Search products"/>
+    <div id="collectionFilters" class="filters" hidden></div>
   </div>
   <div class="grid" id="grid"></div>
 </main>
@@ -123,6 +128,7 @@ export function buildManagedShopStorefrontHtml(opts: {
   <div class="dlg">
     <h2 id="pdpName">Product</h2>
     <p class="meta" id="pdpMeta"></p>
+    <label id="pdpVariantRow" hidden>Option<select id="pdpVariant"></select></label>
     <div class="row"><span class="price" id="pdpPrice"></span><span class="meta" id="pdpStock"></span></div>
     <div class="actions">
       <button type="button" id="closePdp">Close</button>
@@ -182,6 +188,8 @@ export function buildManagedShopStorefrontHtml(opts: {
 <script>
 const commerce=window.indobase.commerce;
 let products=${snapshot};
+let collections=[];
+let activeCollection="";
 function moneyMinor(minor,c){
   var n=Number(minor||0)/100; var cur=c||'INR';
   try{return new Intl.NumberFormat('en-IN',{style:'currency',currency:cur}).format(n)}catch(e){return '₹'+n.toLocaleString('en-IN')}
@@ -203,10 +211,19 @@ function renderCart(){
 }
 function visibleProducts(){
   var q=(document.querySelector('#search')&&document.querySelector('#search').value||'').trim().toLowerCase();
-  if(!q) return products;
-  return products.filter(function(p){
+  var list=products;
+  if(activeCollection){
+    var col=collections.find(function(c){return c.id===activeCollection||c.slug===activeCollection});
+    var ids=col&&col.productIds||[];
+    list=list.filter(function(p){return ids.indexOf(p.id)>=0});
+  }
+  if(!q) return list;
+  return list.filter(function(p){
     return String(p.name||'').toLowerCase().indexOf(q)>=0 || String(p.description||p.slug||'').toLowerCase().indexOf(q)>=0;
   });
+}
+function realVariants(p){
+  return (p&&p.variants||[]).filter(function(v){return v&&v.id&&v.id!==p.id});
 }
 function openPdp(id){
   var p=productById(id); if(!p) return;
@@ -214,6 +231,20 @@ function openPdp(id){
   document.querySelector('#pdpMeta').textContent=p.description||p.slug||'';
   document.querySelector('#pdpPrice').textContent=moneyMinor(p.priceMinor,p.currency);
   document.querySelector('#pdpStock').textContent=Number(p.stock||0)+' in stock';
+  var row=document.querySelector('#pdpVariantRow');
+  var sel=document.querySelector('#pdpVariant');
+  var vars=realVariants(p);
+  if(vars.length){
+    row.hidden=false;
+    sel.innerHTML=vars.map(function(v){
+      return '<option value="'+v.id+'">'+(v.title||v.sku||v.id)+'</option>';
+    }).join('');
+    document.querySelector('#pdpAdd').setAttribute('data-variant', vars[0].id);
+  } else {
+    row.hidden=true;
+    sel.innerHTML='';
+    document.querySelector('#pdpAdd').removeAttribute('data-variant');
+  }
   document.querySelector('#pdpAdd').setAttribute('data-id', p.id);
   document.querySelector('#pdpAdd').disabled=Number(p.stock||0)<=0;
   document.querySelector('#pdpDlg').showModal();
@@ -246,6 +277,11 @@ async function loadProducts(){
   try{
     var live=await commerce.products.list();
     if(live&&live.length) products=live;
+    if(commerce.collections&&commerce.collections.list){
+      var cols=await commerce.collections.list().catch(function(){return []});
+      if(cols&&cols.length) collections=cols;
+    }
+    renderCollectionFilters();
     render();
     document.querySelector('#status').textContent=products.length+' products';
   }catch(e){
@@ -255,6 +291,22 @@ async function loadProducts(){
   }
   renderCart();
 }
+function renderCollectionFilters(){
+  var el=document.querySelector('#collectionFilters');
+  if(!el) return;
+  if(!collections.length){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false;
+  el.innerHTML='<button type="button" class="chip" data-col="" aria-pressed="'+(activeCollection?'false':'true')+'">All</button>'+collections.map(function(c){
+    return '<button type="button" class="chip" data-col="'+c.id+'" aria-pressed="'+(activeCollection===c.id?'true':'false')+'">'+(c.name||c.slug)+'</button>';
+  }).join('');
+  el.querySelectorAll('.chip').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      activeCollection=btn.getAttribute('data-col')||'';
+      renderCollectionFilters();
+      render();
+    });
+  });
+}
 document.querySelector('#cartList').addEventListener('click', function(ev){
   var btn=ev.target&&ev.target.closest?ev.target.closest('.qty-btn'):null;
   if(!btn) return;
@@ -262,9 +314,10 @@ document.querySelector('#cartList').addEventListener('click', function(ev){
   var id=btn.getAttribute('data-id'); var act=btn.getAttribute('data-act');
   var items=commerce.cart.get(); var hit=items.find(function(i){return i.productId===id});
   var qty=hit?hit.quantity:0;
-  if(act==='inc') commerce.cart.set(id, qty+1);
-  else if(act==='dec') commerce.cart.set(id, qty-1);
-  else if(act==='rm') commerce.cart.remove(id);
+  var vid=hit&&hit.variantId;
+  if(act==='inc') commerce.cart.set(id, qty+1, vid);
+  else if(act==='dec') commerce.cart.set(id, qty-1, vid);
+  else if(act==='rm') commerce.cart.remove(id, vid);
   renderCart();
 });
 document.querySelector('#openCart').addEventListener('click', function(){ renderCart(); document.querySelector('#cartDlg').showModal(); });
@@ -314,9 +367,13 @@ document.querySelector('#checkoutForm').addEventListener('submit', async functio
 document.querySelector('#search').addEventListener('input', render);
 document.querySelector('#closePdp').addEventListener('click', function(){ document.querySelector('#pdpDlg').close(); });
 document.querySelector('#pdpAdd').addEventListener('click', function(){
-  commerce.cart.add(document.querySelector('#pdpAdd').getAttribute('data-id'), 1);
+  var add=document.querySelector('#pdpAdd');
+  commerce.cart.add(add.getAttribute('data-id'), 1, add.getAttribute('data-variant')||undefined);
   renderCart();
   document.querySelector('#pdpDlg').close();
+});
+document.querySelector('#pdpVariant').addEventListener('change', function(){
+  document.querySelector('#pdpAdd').setAttribute('data-variant', document.querySelector('#pdpVariant').value);
 });
 document.querySelector('#closeConfirm').addEventListener('click', function(){ document.querySelector('#confirmDlg').close(); });
 async function refreshAccountChrome(){

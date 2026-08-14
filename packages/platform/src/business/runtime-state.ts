@@ -11,15 +11,22 @@ import type {
   BusinessOrder,
   BusinessProduct,
 } from './data'
+import {
+  catalogStatsFromProducts,
+  inventoryFromCatalogProducts,
+  LOW_STOCK_THRESHOLD,
+  type BusinessCatalogCollection,
+} from './catalog'
 import { formatOrderRuntimeLine, normalizePaymentStatus } from './order-lifecycle'
 
-/** Products at or below this on-hand count are “low stock”. Not a forecast. */
-export const LOW_STOCK_THRESHOLD = 5
+export { LOW_STOCK_THRESHOLD }
 
 export type BusinessRuntimeCatalog = {
   productCount: number
   inStockCount: number
   lowStockCount: number
+  variantCount?: number
+  collections?: BusinessCatalogCollection[]
 }
 
 export type BusinessRuntimeCommerce = {
@@ -28,13 +35,14 @@ export type BusinessRuntimeCommerce = {
 }
 
 export function catalogFromProducts(products: BusinessProduct[]): BusinessRuntimeCatalog {
-  const productCount = products.length
-  const inStockCount = products.filter((p) => (p.stock ?? 0) > 0).length
-  const lowStockCount = products.filter((p) => {
-    const stock = p.stock
-    return typeof stock === 'number' && stock > 0 && stock <= LOW_STOCK_THRESHOLD
-  }).length
-  return { productCount, inStockCount, lowStockCount }
+  const stats = catalogStatsFromProducts(products)
+  return {
+    productCount: stats.productCount,
+    inStockCount: stats.inStockCount,
+    lowStockCount: stats.lowStockCount,
+    variantCount: stats.variantCount,
+    collections: [],
+  }
 }
 
 export function commerceFromOrders(orders: BusinessOrder[]): BusinessRuntimeCommerce {
@@ -46,14 +54,7 @@ export function commerceFromOrders(orders: BusinessOrder[]): BusinessRuntimeComm
 }
 
 export function inventoryFromProducts(products: BusinessProduct[]): BusinessInventoryItem[] {
-  return products
-    .filter((p) => typeof p.stock === 'number')
-    .map((p) => ({
-      id: p.id,
-      productId: p.id,
-      sku: p.sku,
-      quantity: p.stock,
-    }))
+  return inventoryFromCatalogProducts(products)
 }
 
 export type BusinessRuntimeIdentity = {
@@ -250,7 +251,8 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
         ? ` ₹${Math.round(p.priceMinor / 100)}`
         : ''
     const stock = typeof p.stock === 'number' ? ` stock=${p.stock}` : ''
-    return `- ${p.name || p.id}${price}${stock}`
+    const variantN = p.variants?.length ? ` variants=${p.variants.length}` : ''
+    return `- ${p.name || p.id}${price}${stock}${variantN}`
   })
   const orderLines = state.orders.slice(0, 8).map((o) => {
     const id = o.orderNumber || o.id || '?'
@@ -298,6 +300,7 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
     `catalog.productCount: ${state.catalog.productCount}`,
     `catalog.inStockCount: ${state.catalog.inStockCount}`,
     `catalog.lowStockCount: ${state.catalog.lowStockCount}`,
+    `catalog.variantCount: ${state.catalog.variantCount ?? state.inventory.length}`,
     `commerce.orderCount: ${state.commerce.orderCount}`,
     `commerce.pendingOrderCount: ${state.commerce.pendingOrderCount}`,
   ]
@@ -332,6 +335,13 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
   if (productLines.length) {
     lines.push('products (from BusinessRuntimeState):')
     lines.push(...productLines)
+  }
+  const collectionLines = (state.catalog.collections || []).slice(0, 8).map((c) => {
+    return `- ${c.name || c.id} (${(c.productIds || []).length} products)`
+  })
+  if (collectionLines.length) {
+    lines.push('catalog.collections (from BusinessRuntimeState):')
+    lines.push(...collectionLines)
   }
   const inventoryLines = state.inventory.slice(0, 8).map((row) => {
     const qty = typeof row.quantity === 'number' ? String(row.quantity) : '?'

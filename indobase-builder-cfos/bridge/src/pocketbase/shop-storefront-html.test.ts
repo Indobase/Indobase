@@ -19,6 +19,7 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.match(html, /commerce\.checkout\.create/)
     assert.match(html, /INDOBASE_COMMERCE_URL/)
     assert.match(html, /id="search"/)
+    assert.match(html, /id="collectionFilters"/)
     assert.match(html, /id="pdpDlg"/)
     assert.match(html, /id="confirmDlg"/)
     assert.match(html, /qty-btn/)

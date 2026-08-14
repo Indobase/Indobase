@@ -183,7 +183,10 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
     /**
      * Physical collection names: ib_{sanitizeAppId(projectRef)}_{logicalName}
      * Canonical field names (do not rename without fleet migration):
-     *   products — name, slug, price, currency, stock, image_url, active, owner
+     *   products — name, slug, price, currency, stock, image_url, active, category, owner
+     *   product_variants — product_id, sku, title, price, stock, options_json, is_default
+     *   catalog_collections — name, slug, rule_json
+     *   catalog_collection_products — collection_id, product_id
      *   orders — email, status, total, currency, items_json, owner
      *   order_items — order_id, product_slug, quantity, unit_price, owner
      * Spec aliases (docs only): title→name, inventory→stock, customer_email→email
@@ -201,6 +204,45 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'stock', type: 'number' },
           { name: 'image_url', type: 'text' },
           { name: 'active', type: 'bool' },
+          { name: 'category', type: 'text' },
+          CREATED,
+        ],
+        rules: 'public_read_admin_write',
+      },
+      {
+        name: 'product_variants',
+        fields: [
+          OWNER,
+          { name: 'product_id', type: 'text', required: true },
+          { name: 'sku', type: 'text', required: true },
+          { name: 'title', type: 'text' },
+          { name: 'price', type: 'number', required: true },
+          { name: 'currency', type: 'text' },
+          { name: 'stock', type: 'number' },
+          { name: 'options_json', type: 'json' },
+          { name: 'is_default', type: 'bool' },
+          { name: 'active', type: 'bool' },
+          CREATED,
+        ],
+        rules: 'public_read_admin_write',
+      },
+      {
+        name: 'catalog_collections',
+        fields: [
+          OWNER,
+          { name: 'name', type: 'text', required: true },
+          { name: 'slug', type: 'text', required: true },
+          { name: 'rule_json', type: 'json' },
+          CREATED,
+        ],
+        rules: 'public_read_admin_write',
+      },
+      {
+        name: 'catalog_collection_products',
+        fields: [
+          OWNER,
+          { name: 'collection_id', type: 'text', required: true },
+          { name: 'product_id', type: 'text', required: true },
           CREATED,
         ],
         rules: 'public_read_admin_write',
@@ -271,6 +313,7 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'order_id', type: 'text', required: true },
           { name: 'product_slug', type: 'text', required: true },
           { name: 'product_id', type: 'text' },
+          { name: 'variant_id', type: 'text' },
           { name: 'quantity', type: 'number', required: true },
           { name: 'unit_price', type: 'number' },
           { name: 'unit_price_minor', type: 'number' },
@@ -284,6 +327,7 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           OWNER,
           { name: 'order_id', type: 'text', required: true },
           { name: 'product_id', type: 'text', required: true },
+          { name: 'variant_id', type: 'text' },
           { name: 'quantity', type: 'number', required: true },
           { name: 'status', type: 'text', required: true },
           { name: 'expires_at', type: 'date', required: true },

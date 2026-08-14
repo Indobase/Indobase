@@ -122,6 +122,7 @@ export async function executeCheckout(
 
     for (const item of items) {
       const productId = String(item.productId || '').trim()
+      const variantId = String(item.variantId || '').trim()
       const quantity = Math.floor(Number(item.quantity || 0))
       if (!productId || quantity < 1) {
         return { ok: false, code: 'invalid_request', message: 'Each item needs productId and quantity ≥ 1' }
@@ -130,10 +131,17 @@ export async function executeCheckout(
       if (!product || !product.active) {
         return { ok: false, code: 'invalid_product', message: `Product not found: ${productId}` }
       }
-      // Cross-tenant: getCommerceProduct only reads this projectRef's collection.
+      const variants = product.variants?.length ? product.variants : []
+      const variant =
+        (variantId && variants.find((v) => v.id === variantId)) ||
+        variants.find((v) => v.default) ||
+        variants[0]
+      const skuId = variant?.id || product.id
+      const unitPrice = variant?.priceMinor ?? product.priceMinor
+      const onHand = typeof variant?.stock === 'number' ? variant.stock : product.stock
       currency = product.currency || currency
-      const reserved = await sumActiveReservations(projectRef, productId)
-      const available = product.stock - reserved
+      const reserved = await sumActiveReservations(projectRef, product.id, skuId !== product.id ? skuId : undefined)
+      const available = onHand - reserved
       if (available < quantity) {
         return {
           ok: false,
@@ -143,11 +151,12 @@ export async function executeCheckout(
       }
       lines.push({
         productId: product.id,
+        variantId: skuId,
         slug: product.slug,
-        name: product.name,
+        name: variant && variant.title && variant.title !== 'Default' ? `${product.name} (${variant.title})` : product.name,
         quantity,
-        unitPriceMinor: product.priceMinor,
-        lineTotalMinor: product.priceMinor * quantity,
+        unitPriceMinor: unitPrice,
+        lineTotalMinor: unitPrice * quantity,
         currency: product.currency,
       })
     }
@@ -191,6 +200,7 @@ export async function executeCheckout(
         projectRef,
         orderId,
         productId: line.productId,
+        variantId: line.variantId,
         quantity: line.quantity,
         expiresAt,
       })

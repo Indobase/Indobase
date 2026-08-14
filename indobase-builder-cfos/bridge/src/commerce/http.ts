@@ -18,6 +18,7 @@ import { authorizeControlCenterAccess, resolvePublicCatalogProjectRef, resolveTe
 import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
+  listCatalogCollections,
   listCommerceOrders,
   listCommerceProducts,
 } from './pb-adapter.js'
@@ -162,6 +163,26 @@ export async function handleCommerceProductsList(
   }
 }
 
+export async function handleCommerceCollectionsList(
+  c: Context,
+  isPublished: (projectRef: string) => boolean = defaultIsPublishedStorefront,
+) {
+  const bound = bindPublicCatalogProjectRef(c, isPublished)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  try {
+    const collections = await listCatalogCollections(bound.projectRef)
+    return c.json({ ok: true, collections }, 200, commerceCorsHeaders())
+  } catch (err) {
+    return c.json(
+      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'List failed' },
+      502,
+      commerceCorsHeaders(),
+    )
+  }
+}
+
 export async function handleCommerceProductGet(
   c: Context,
   isPublished: (projectRef: string) => boolean = defaultIsPublishedStorefront,
@@ -215,6 +236,7 @@ export async function handleCommerceCheckout(c: Context) {
       const row = it && typeof it === 'object' ? (it as Record<string, unknown>) : {}
       return {
         productId: String(row.productId || row.product_id || ''),
+        variantId: String(row.variantId || row.variant_id || '') || undefined,
         quantity: Number(row.quantity || 0),
       }
     }),

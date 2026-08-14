@@ -4,7 +4,7 @@
  */
 import type { Session } from '../auth.js'
 import { isGuestSession } from '../auth.js'
-import { listCommerceOrders, listCommerceProducts } from '../commerce/pb-adapter.js'
+import { listCatalogCollections, listCommerceOrders, listCommerceProducts } from '../commerce/pb-adapter.js'
 import type { LaunchStatusSnapshot } from '../launch-journey.js'
 import { getLatestProductionLaunchJob, type ProductionLaunchJob } from '../production-launch/index.js'
 import { getLaunchStatus } from '../static-launch.js'
@@ -51,11 +51,13 @@ function itemsSummary(
 }
 
 export function snapshotFromCommerceRows(
-  products: Array<Record<string, unknown> | { id?: string; name?: string; priceMinor?: number; slug?: string; stock?: number }>,
+  products: Array<Record<string, unknown> | { id?: string; name?: string; priceMinor?: number; slug?: string; stock?: number; variants?: unknown }>,
   orders: Array<Record<string, unknown>>,
+  collections?: Array<Record<string, unknown> | { id?: string; name?: string; slug?: string; productIds?: string[] }>,
 ): BusinessSnapshotSummary {
   const productRows = products.map((p) => {
     const row = asRecord(p) || (p as Record<string, unknown>)
+    const variantsRaw = Array.isArray(row.variants) ? row.variants : []
     return {
       id: String(row.id || ''),
       name: String(row.name || row.id || ''),
@@ -72,6 +74,17 @@ export function snapshotFromCommerceRows(
           : typeof row.quantity === 'number'
             ? row.quantity
             : undefined,
+      variants: variantsRaw
+        .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+        .map((v) => ({
+          id: String(v.id || ''),
+          sku: typeof v.sku === 'string' ? v.sku : undefined,
+          title: typeof v.title === 'string' ? v.title : undefined,
+          options: v.options && typeof v.options === 'object' ? (v.options as Record<string, string>) : undefined,
+          priceMinor: typeof v.priceMinor === 'number' ? v.priceMinor : undefined,
+          stock: typeof v.stock === 'number' ? v.stock : undefined,
+          default: v.default === true,
+        })),
     }
   })
   return {
@@ -80,7 +93,18 @@ export function snapshotFromCommerceRows(
       name: p.name,
       priceMinor: p.priceMinor,
       stock: p.stock,
+      variants: p.variants,
     })),
+    collections: (collections || []).map((c) => {
+      const row = asRecord(c) || (c as Record<string, unknown>)
+      return {
+        id: String(row.id || ''),
+        name: String(row.name || row.id || ''),
+        slug: typeof row.slug === 'string' ? row.slug : undefined,
+        productIds: Array.isArray(row.productIds) ? row.productIds.map((id) => String(id)) : [],
+        rule: (row.rule as { category?: string; tag?: string } | null) || null,
+      }
+    }),
     orders: orders
       .map((o) => {
         const amount =
@@ -120,11 +144,12 @@ export async function loadBusinessSnapshot(
   const ref = (projectRef || '').trim()
   if (!ref || ref.startsWith('draft_')) return null
   try {
-    const [products, orders] = await Promise.all([
+    const [products, orders, collections] = await Promise.all([
       listCommerceProducts(ref),
       listCommerceOrders(ref),
+      listCatalogCollections(ref).catch(() => []),
     ])
-    return snapshotFromCommerceRows(products, orders)
+    return snapshotFromCommerceRows(products, orders, collections)
   } catch {
     return { products: [], orders: [], customers: [] }
   }

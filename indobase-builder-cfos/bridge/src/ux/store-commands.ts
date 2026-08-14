@@ -13,22 +13,57 @@ import {
 } from '../commerce/checkout-service.js'
 import { majorToMinor } from '../commerce/money.js'
 import {
+  assignCatalogCollectionProduct,
+  createCatalogCollection,
   createCommerceProduct,
+  createCommerceVariant,
+  listCatalogCollections,
   listCommerceOrders,
   listCommerceProducts,
   patchCommerceProduct,
+  patchCommerceVariant,
+  type CommerceCollection,
   type CommerceProduct,
+  type CommerceVariant,
 } from '../commerce/pb-adapter.js'
 import { snapshotFromCommerceRows, type BusinessSnapshotSummary } from './authoritative-turn.js'
+import {
+  parseCollectionName,
+  parseProductOptions,
+  parseSizeValues,
+  productNameFromCreateIntent,
+  variantRowsFromOptions,
+} from './catalog-domain.js'
 
 export type StoreCommandKind =
   | 'product.create'
   | 'product.update'
+  | 'variant.create'
   | 'inventory.update'
+  | 'collection.create'
+  | 'collection.assign'
   | 'order.status'
   | 'order.fulfill'
   | 'orders.query'
   | 'catalog.query'
+
+export type StoreVariantRecord = {
+  id: string
+  sku?: string
+  title?: string
+  options?: Record<string, string>
+  priceMinor?: number
+  stock?: number
+  default?: boolean
+}
+
+export type StoreCollectionRecord = {
+  id: string
+  name: string
+  slug?: string
+  productIds: string[]
+  rule?: { category?: string; tag?: string } | null
+}
 
 export type ClassifiedStoreCommand = {
   kind: StoreCommandKind
@@ -39,10 +74,13 @@ export type ClassifiedStoreCommand = {
   stock?: number
   percent?: number
   productHint?: string
+  variantHint?: string
+  collectionHint?: string
+  options?: Record<string, string[]>
   orderHint?: string
   orderStatus?: 'paid' | 'failed' | 'cancelled'
   fulfillmentStatus?: 'processing' | 'fulfilled' | 'cancelled'
-  query?: 'low-stock' | 'catalog' | 'orders'
+  query?: 'low-stock' | 'catalog' | 'orders' | 'collections'
 }
 
 export type StoreProductRecord = {
@@ -52,19 +90,49 @@ export type StoreProductRecord = {
   priceMinor: number
   stock: number
   currency?: string
+  category?: string
+  variants?: StoreVariantRecord[]
 }
 
 export type StoreCommandDeps = {
   listProducts: (projectRef: string) => Promise<StoreProductRecord[]>
   createProduct: (
     projectRef: string,
-    input: { name: string; slug?: string; description?: string; priceMinor: number; stock: number },
+    input: {
+      name: string
+      slug?: string
+      description?: string
+      priceMinor: number
+      stock: number
+      options?: Record<string, string[]>
+      variants?: Array<{ sku: string; title: string; options: Record<string, string>; priceMinor: number; stock: number }>
+    },
   ) => Promise<StoreProductRecord>
   updateProduct: (
     projectRef: string,
     productId: string,
     patch: { name?: string; priceMinor?: number; stock?: number },
   ) => Promise<StoreProductRecord | null>
+  createVariant?: (
+    projectRef: string,
+    productId: string,
+    input: { sku: string; title: string; options: Record<string, string>; priceMinor: number; stock: number },
+  ) => Promise<StoreVariantRecord | null>
+  updateVariant?: (
+    projectRef: string,
+    variantId: string,
+    patch: { stock?: number; priceMinor?: number },
+  ) => Promise<StoreVariantRecord | null>
+  listCollections?: (projectRef: string) => Promise<StoreCollectionRecord[]>
+  createCollection?: (
+    projectRef: string,
+    input: { name: string; slug?: string; rule?: { category?: string; tag?: string } | null },
+  ) => Promise<StoreCollectionRecord>
+  assignCollectionProduct?: (
+    projectRef: string,
+    collectionId: string,
+    productId: string,
+  ) => Promise<StoreCollectionRecord | null>
   listOrders?: (projectRef: string) => Promise<Array<Record<string, unknown>>>
   updateOrderStatus?: (
     projectRef: string,
@@ -125,24 +193,13 @@ function parsePercent(text: string): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
-function stripAddPrefix(text: string): string {
-  return text
-    .replace(
-      /^(?:please\s+)?(?:add|create|list)\s+(?:a |an |new )?(?:product(?:\s+called|\s+named)?\s+)?/i,
-      '',
-    )
-    .trim()
-}
-
 function extractCreatedName(text: string): string {
-  const stripped = stripAddPrefix(text)
-  const cut = stripped.split(/\s+(?:at|for|priced|with|₹|rs\.?|inr|stock)\b/i)[0] || stripped
-  return cut.replace(/[.?!]+$/, '').trim() || 'New product'
+  return productNameFromCreateIntent(text)
 }
 
 function extractProductHint(text: string): string | undefined {
   const named = text.match(
-    /\b(?:of|for|on)\s+(?:the\s+)?["']?([A-Za-z][\w\s-]{1,60}?)["']?(?:\s+(?:to|at|by|₹)|$)/i,
+    /\b(?:of|for|on|to)\s+(?:the\s+)?["']?([A-Za-z][\w\s-]{1,60}?)["']?(?:\s+(?:to|at|by|₹|size|collection)|$)/i,
   )
   if (named?.[1]) return named[1].trim()
   return undefined
@@ -160,6 +217,9 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
 
   if (/\b(low stock|out of stock|which products are low)\b/.test(q)) {
     return { kind: 'catalog.query', readOnly: true, query: 'low-stock' }
+  }
+  if (/\b(show|list)\b/.test(q) && /\bcollections?\b/.test(q)) {
+    return { kind: 'catalog.query', readOnly: true, query: 'collections' }
   }
   if (/\b(show|list|today'?s|latest)\b/.test(q) && /\borders?\b/.test(q)) {
     return { kind: 'orders.query', readOnly: true }
@@ -198,11 +258,13 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
     (/\b(set|update|change|restock)\b/.test(q) && /\b(stock|inventory|qty)\b/.test(q)) ||
     /\bincrease (?:the )?stock\b/.test(q)
   ) {
+    const sizes = parseSizeValues(text)
     return {
       kind: 'inventory.update',
       readOnly: false,
       stock: parseStock(text),
       productHint: extractProductHint(text),
+      variantHint: sizes[0],
     }
   }
 
@@ -217,29 +279,74 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
   }
 
   if (
-    /^(?:please\s+)?(?:add|create)\b/.test(q) &&
-    /\b(product|sku|item|shoe|sneaker|runner|shirt|bag)\b/.test(q)
+    (/\b(put|add|assign)\b/.test(q) && /\b(in|to|into)\b/.test(q) && /\bcollection\b/.test(q)) ||
+    (/\bassign\b/.test(q) && /\bto\b/.test(q) && /\bcollection\b/.test(q))
   ) {
-    const sizes = text.match(/\bsizes?\s+([0-9]+(?:\s*[–-]\s*[0-9]+)?)/i)?.[0]
+    const productFromAssign = text.match(
+      /\b(?:assign|put|add)\s+(?:the\s+)?(.+?)\s+(?:to|in|into)\s+(?:the\s+)?collection\b/i,
+    )?.[1]
     return {
-      kind: 'product.create',
+      kind: 'collection.assign',
       readOnly: false,
-      name: extractCreatedName(text),
-      description: sizes ? sizes : undefined,
-      priceMajor: parsePriceMajor(text) ?? 0,
+      productHint: productFromAssign?.trim() || extractProductHint(text),
+      collectionHint: parseCollectionName(text) || text.match(/\bcollection\s+["']?([A-Za-z][\w\s-]{1,48})/i)?.[1],
+    }
+  }
+
+  if (/\b(create|add)\b/.test(q) && /\bcollection\b/.test(q)) {
+    const name = parseCollectionName(text) || 'New collection'
+    const category = text.match(/\b(?:category|tag)\s+([A-Za-z][\w-]{1,32})/i)?.[1]
+    return {
+      kind: 'collection.create',
+      readOnly: false,
+      name,
+      collectionHint: name,
+      description: category,
+    }
+  }
+
+  if (/\b(add|create)\b/.test(q) && /\bvariant\b/.test(q)) {
+    const sizes = parseSizeValues(text)
+    const options = parseProductOptions(text)
+    return {
+      kind: 'variant.create',
+      readOnly: false,
+      productHint: extractProductHint(text),
+      options,
+      variantHint: sizes[0],
+      priceMajor: parsePriceMajor(text),
       stock: parseStock(text) ?? 10,
     }
   }
 
-  if (/^(?:please\s+)?add\s+(?:a|an|new)\b/.test(q) && parsePriceMajor(text) != null) {
-    const sizes = text.match(/\bsizes?\s+([0-9]+(?:\s*[–-]\s*[0-9]+)?)/i)?.[0]
+  if (
+    /^(?:please\s+)?(?:add|create)\b/.test(q) &&
+    /\b(product|sku|item|shoe|sneaker|runner|shirt|bag)\b/.test(q)
+  ) {
+    const options = parseProductOptions(text)
+    const sizes = parseSizeValues(text)
     return {
       kind: 'product.create',
       readOnly: false,
       name: extractCreatedName(text),
-      description: sizes || undefined,
-      priceMajor: parsePriceMajor(text),
+      description: sizes.length ? `sizes ${sizes.join(', ')}` : undefined,
+      priceMajor: parsePriceMajor(text) ?? 0,
       stock: parseStock(text) ?? 10,
+      options,
+    }
+  }
+
+  if (/^(?:please\s+)?add\s+(?:a|an|new|the)\b/.test(q) && (parsePriceMajor(text) != null || parseSizeValues(text).length)) {
+    const options = parseProductOptions(text)
+    const sizes = parseSizeValues(text)
+    return {
+      kind: 'product.create',
+      readOnly: false,
+      name: extractCreatedName(text),
+      description: sizes.length ? `sizes ${sizes.join(', ')}` : undefined,
+      priceMajor: parsePriceMajor(text) ?? 0,
+      stock: parseStock(text) ?? 10,
+      options,
     }
   }
 
@@ -253,6 +360,7 @@ export function looksLikeStoreCommand(message: string): boolean {
 function toSnapshot(
   products: StoreProductRecord[],
   orders: Array<Record<string, unknown>>,
+  collections?: StoreCollectionRecord[],
 ): BusinessSnapshotSummary {
   return snapshotFromCommerceRows(
     products.map((p) => ({
@@ -261,9 +369,23 @@ function toSnapshot(
       slug: p.slug,
       priceMinor: p.priceMinor,
       stock: p.stock,
+      variants: p.variants,
     })),
     orders,
+    collections,
   )
+}
+
+function fromVariant(v: CommerceVariant): StoreVariantRecord {
+  return {
+    id: v.id,
+    sku: v.sku,
+    title: v.title,
+    options: v.options,
+    priceMinor: v.priceMinor,
+    stock: v.stock,
+    default: v.default,
+  }
 }
 
 function fromCommerceProduct(p: CommerceProduct): StoreProductRecord {
@@ -274,6 +396,18 @@ function fromCommerceProduct(p: CommerceProduct): StoreProductRecord {
     priceMinor: p.priceMinor,
     stock: p.stock,
     currency: p.currency,
+    category: p.category,
+    variants: (p.variants || []).map(fromVariant),
+  }
+}
+
+function fromCommerceCollection(c: CommerceCollection): StoreCollectionRecord {
+  return {
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    productIds: c.productIds || [],
+    rule: c.rule,
   }
 }
 
@@ -287,11 +421,26 @@ export const defaultStoreCommandDeps: StoreCommandDeps = {
         description: input.description,
         priceMinor: input.priceMinor,
         stock: input.stock,
+        variants: input.variants,
       }),
     ),
   updateProduct: async (ref, id, patch) => {
     const row = await patchCommerceProduct(ref, id, patch)
     return row ? fromCommerceProduct(row) : null
+  },
+  createVariant: async (ref, productId, input) => {
+    const row = await createCommerceVariant(ref, productId, input)
+    return row ? fromVariant(row) : null
+  },
+  updateVariant: async (ref, variantId, patch) => {
+    const row = await patchCommerceVariant(ref, variantId, patch)
+    return row ? fromVariant(row) : null
+  },
+  listCollections: async (ref) => (await listCatalogCollections(ref)).map(fromCommerceCollection),
+  createCollection: async (ref, input) => fromCommerceCollection(await createCatalogCollection(ref, input)),
+  assignCollectionProduct: async (ref, collectionId, productId) => {
+    const row = await assignCatalogCollectionProduct(ref, collectionId, productId)
+    return row ? fromCommerceCollection(row) : null
   },
   listOrders: listCommerceOrders,
   updateOrderStatus: async (ref, id, status) => {
@@ -320,30 +469,46 @@ export const defaultStoreCommandDeps: StoreCommandDeps = {
 export function createMemoryStoreCommandDeps(
   seed?: Record<string, StoreProductRecord[]>,
   seedOrders?: Record<string, Array<Record<string, unknown>>>,
+  seedCollections?: Record<string, StoreCollectionRecord[]>,
 ): StoreCommandDeps {
   const catalogs = new Map<string, StoreProductRecord[]>()
   const orders = new Map<string, Array<Record<string, unknown>>>()
+  const collections = new Map<string, StoreCollectionRecord[]>()
   for (const [ref, rows] of Object.entries(seed || {})) {
-    catalogs.set(ref, rows.map((r) => ({ ...r })))
+    catalogs.set(ref, rows.map((r) => ({ ...r, variants: (r.variants || []).map((v) => ({ ...v })) })))
   }
   for (const [ref, rows] of Object.entries(seedOrders || {})) {
     orders.set(ref, rows.map((r) => ({ ...r })))
   }
+  for (const [ref, rows] of Object.entries(seedCollections || {})) {
+    collections.set(ref, rows.map((r) => ({ ...r, productIds: [...(r.productIds || [])] })))
+  }
   let seq = 1
   return {
-    listProducts: async (ref) => (catalogs.get(ref) || []).map((r) => ({ ...r })),
+    listProducts: async (ref) => (catalogs.get(ref) || []).map((r) => ({ ...r, variants: (r.variants || []).map((v) => ({ ...v })) })),
     createProduct: async (ref, input) => {
+      const variants: StoreVariantRecord[] = (input.variants || []).map((v, i) => ({
+        id: `v${seq++}`,
+        sku: v.sku,
+        title: v.title,
+        options: v.options,
+        priceMinor: v.priceMinor,
+        stock: v.stock,
+        default: i === 0,
+      }))
+      const stock = variants.length ? variants.reduce((s, v) => s + (v.stock || 0), 0) : input.stock
       const row: StoreProductRecord = {
         id: `p${seq++}`,
         name: input.name,
         slug: input.slug || slugify(input.name),
         priceMinor: input.priceMinor,
-        stock: input.stock,
+        stock,
+        variants,
       }
       const list = catalogs.get(ref) || []
       list.push(row)
       catalogs.set(ref, list)
-      return { ...row }
+      return { ...row, variants: variants.map((v) => ({ ...v })) }
     },
     updateProduct: async (ref, id, patch) => {
       const list = catalogs.get(ref) || []
@@ -353,6 +518,56 @@ export function createMemoryStoreCommandDeps(
       if (typeof patch.priceMinor === 'number') row.priceMinor = patch.priceMinor
       if (typeof patch.stock === 'number') row.stock = patch.stock
       return { ...row }
+    },
+    createVariant: async (ref, productId, input) => {
+      const list = catalogs.get(ref) || []
+      const product = list.find((p) => p.id === productId)
+      if (!product) return null
+      const variant: StoreVariantRecord = {
+        id: `v${seq++}`,
+        sku: input.sku,
+        title: input.title,
+        options: input.options,
+        priceMinor: input.priceMinor,
+        stock: input.stock,
+        default: !(product.variants || []).length,
+      }
+      product.variants = [...(product.variants || []), variant]
+      product.stock = product.variants.reduce((s, v) => s + (v.stock || 0), 0)
+      return { ...variant }
+    },
+    updateVariant: async (ref, variantId, patch) => {
+      const list = catalogs.get(ref) || []
+      for (const product of list) {
+        const variant = (product.variants || []).find((v) => v.id === variantId)
+        if (!variant) continue
+        if (typeof patch.stock === 'number') variant.stock = patch.stock
+        if (typeof patch.priceMinor === 'number') variant.priceMinor = patch.priceMinor
+        product.stock = (product.variants || []).reduce((s, v) => s + (v.stock || 0), 0)
+        return { ...variant }
+      }
+      return null
+    },
+    listCollections: async (ref) => (collections.get(ref) || []).map((c) => ({ ...c, productIds: [...c.productIds] })),
+    createCollection: async (ref, input) => {
+      const row: StoreCollectionRecord = {
+        id: `c${seq++}`,
+        name: input.name,
+        slug: input.slug || slugify(input.name),
+        productIds: [],
+        rule: input.rule || null,
+      }
+      const list = collections.get(ref) || []
+      list.push(row)
+      collections.set(ref, list)
+      return { ...row, productIds: [] }
+    },
+    assignCollectionProduct: async (ref, collectionId, productId) => {
+      const list = collections.get(ref) || []
+      const row = list.find((c) => c.id === collectionId || c.slug === collectionId || c.name.toLowerCase() === collectionId.toLowerCase())
+      if (!row) return null
+      if (!row.productIds.includes(productId)) row.productIds.push(productId)
+      return { ...row, productIds: [...row.productIds] }
     },
     listOrders: async (ref) => [...(orders.get(ref) || [])],
     updateOrderStatus: async (ref, id, status) => {
@@ -393,6 +608,19 @@ function matchProduct(products: StoreProductRecord[], hint?: string): StoreProdu
   )
 }
 
+function matchVariant(product: StoreProductRecord, hint?: string): StoreVariantRecord | undefined {
+  const variants = product.variants || []
+  if (!hint) return variants.find((v) => v.default) || variants[0]
+  const q = hint.toLowerCase()
+  return variants.find(
+    (v) =>
+      v.id === hint ||
+      (v.sku || '').toLowerCase() === q ||
+      (v.title || '').toLowerCase() === q ||
+      Object.values(v.options || {}).some((val) => String(val).toLowerCase() === q),
+  )
+}
+
 export async function executeStoreCommand(input: {
   session: { projectRef: string }
   guest?: boolean
@@ -427,11 +655,12 @@ export async function executeStoreCommand(input: {
   const deps = input.deps || defaultStoreCommandDeps
 
   const loadSnapshot = async (): Promise<BusinessSnapshotSummary> => {
-    const [products, orderRows] = await Promise.all([
+    const [products, orderRows, collectionRows] = await Promise.all([
       deps.listProducts(projectRef),
       deps.listOrders ? deps.listOrders(projectRef) : Promise.resolve([]),
+      deps.listCollections ? deps.listCollections(projectRef) : Promise.resolve([]),
     ])
-    return toSnapshot(products, orderRows)
+    return toSnapshot(products, orderRows, collectionRows)
   }
 
   try {
@@ -443,6 +672,10 @@ export async function executeStoreCommand(input: {
           ? snapshot.orders.length
             ? `${snapshot.orders.length} orders.`
             : 'No orders yet.'
+          : classified.query === 'collections'
+            ? snapshot.collections?.length
+              ? `${snapshot.collections.length} collections.`
+              : 'No collections yet.'
           : snapshot.products.length
             ? `${snapshot.products.length} products in the catalog.`
             : 'Catalog is empty.'
@@ -451,21 +684,41 @@ export async function executeStoreCommand(input: {
 
     if (classified.kind === 'product.create') {
       const name = classified.name || 'New product'
+      const slug = slugify(name)
+      const priceMinor = majorToMinor(classified.priceMajor ?? 0, 'INR')
+      const stockEach = classified.stock ?? 10
+      const variants = classified.options
+        ? variantRowsFromOptions(slug, classified.options, priceMinor, stockEach)
+        : []
       const created = await deps.createProduct(projectRef, {
         name,
-        slug: slugify(name),
+        slug,
         description: classified.description,
-        priceMinor: majorToMinor(classified.priceMajor ?? 0, 'INR'),
-        stock: classified.stock ?? 10,
+        priceMinor,
+        stock: variants.length ? variants.reduce((s, v) => s + v.stock, 0) : stockEach,
+        options: classified.options,
+        variants,
       })
       const snapshot = await loadSnapshot()
-      const command = createCommand('product.create', { projectRef, productId: created.id, name: created.name }, { projectRef })
+      const command = createCommand(
+        'product.create',
+        {
+          projectRef,
+          productId: created.id,
+          name: created.name,
+          variantCount: created.variants?.length || 0,
+        },
+        { projectRef },
+      )
+      const variantNote = created.variants?.length
+        ? ` with ${created.variants.length} variants`
+        : ''
       return {
         ok: true,
         status: 200,
         kind: 'product.create',
         command,
-        message: `Added ${created.name} to the catalog.`,
+        message: `Added ${created.name} to the catalog${variantNote}.`,
         snapshot,
         mutated: true,
       }
@@ -533,6 +786,26 @@ export async function executeStoreCommand(input: {
           mutated: false,
         }
       }
+      const realVariants = (target.variants || []).filter((v) => v.id && v.id !== target.id)
+      const variant = matchVariant(target, classified.variantHint)
+      if (realVariants.length && variant && variant.id !== target.id && deps.updateVariant) {
+        await deps.updateVariant(projectRef, variant.id, { stock: classified.stock })
+        const snapshot = await loadSnapshot()
+        const command = createCommand(
+          'inventory.update',
+          { projectRef, productId: target.id, variantId: variant.id, stock: classified.stock },
+          { projectRef },
+        )
+        return {
+          ok: true,
+          status: 200,
+          kind: 'inventory.update',
+          command,
+          message: `Stock for ${target.name} ${variant.title || variant.sku || ''} is now ${classified.stock}.`.replace(/\s+/g, ' ').trim(),
+          snapshot,
+          mutated: true,
+        }
+      }
       await deps.updateProduct(projectRef, target.id, { stock: classified.stock })
       const snapshot = await loadSnapshot()
       const command = createCommand('inventory.update', { projectRef, productId: target.id, stock: classified.stock }, { projectRef })
@@ -542,6 +815,111 @@ export async function executeStoreCommand(input: {
         kind: 'inventory.update',
         command,
         message: `Stock for ${target.name} is now ${classified.stock}.`,
+        snapshot,
+        mutated: true,
+      }
+    }
+
+    if (classified.kind === 'variant.create') {
+      const target = matchProduct(products, classified.productHint)
+      if (!target || !deps.createVariant) {
+        return {
+          ok: false,
+          status: 404,
+          code: 'not_found',
+          kind: classified.kind,
+          message: 'No matching product in this catalog.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      const rows = classified.options
+        ? variantRowsFromOptions(target.slug || slugify(target.name), classified.options, target.priceMinor, classified.stock ?? 10)
+        : []
+      const row = rows[0] || {
+        sku: `${target.slug || target.id}-${classified.variantHint || 'var'}`,
+        title: classified.variantHint || 'Variant',
+        options: classified.variantHint ? { Size: classified.variantHint } : {},
+        priceMinor: target.priceMinor,
+        stock: classified.stock ?? 10,
+      }
+      const created = await deps.createVariant(projectRef, target.id, row)
+      const snapshot = await loadSnapshot()
+      const command = createCommand('variant.create', { projectRef, productId: target.id, variantId: created?.id }, { projectRef })
+      return {
+        ok: Boolean(created),
+        status: created ? 200 : 400,
+        kind: 'variant.create',
+        command,
+        message: created ? `Added variant ${created.title || created.sku} to ${target.name}.` : 'Could not add variant.',
+        snapshot,
+        mutated: Boolean(created),
+      }
+    }
+
+    if (classified.kind === 'collection.create') {
+      if (!deps.createCollection) {
+        return {
+          ok: false,
+          status: 400,
+          code: 'invalid_request',
+          kind: classified.kind,
+          message: 'Collections are not available.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      const name = classified.name || 'New collection'
+      const category = classified.description
+      const created = await deps.createCollection(projectRef, {
+        name,
+        slug: slugify(name),
+        rule: category ? { category } : null,
+      })
+      const snapshot = await loadSnapshot()
+      const command = createCommand('collection.create', { projectRef, collectionId: created.id, name }, { projectRef })
+      return {
+        ok: true,
+        status: 200,
+        kind: 'collection.create',
+        command,
+        message: `Created collection ${created.name}.`,
+        snapshot,
+        mutated: true,
+      }
+    }
+
+    if (classified.kind === 'collection.assign') {
+      const target = matchProduct(products, classified.productHint)
+      const collectionRows = deps.listCollections ? await deps.listCollections(projectRef) : []
+      const hint = (classified.collectionHint || '').toLowerCase()
+      const collection =
+        collectionRows.find((c) => c.id === classified.collectionHint || (c.slug || '').toLowerCase() === hint || c.name.toLowerCase() === hint) ||
+        collectionRows.find((c) => c.name.toLowerCase().includes(hint))
+      if (!target || !collection || !deps.assignCollectionProduct) {
+        return {
+          ok: false,
+          status: 404,
+          code: 'not_found',
+          kind: classified.kind,
+          message: 'Say which product and which collection.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      await deps.assignCollectionProduct(projectRef, collection.id, target.id)
+      const snapshot = await loadSnapshot()
+      const command = createCommand(
+        'collection.assign',
+        { projectRef, collectionId: collection.id, productId: target.id },
+        { projectRef },
+      )
+      return {
+        ok: true,
+        status: 200,
+        kind: 'collection.assign',
+        command,
+        message: `Added ${target.name} to ${collection.name}.`,
         snapshot,
         mutated: true,
       }

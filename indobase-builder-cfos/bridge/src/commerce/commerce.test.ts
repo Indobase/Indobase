@@ -32,6 +32,7 @@ describe('commerce runtime ABI', () => {
     })
     assert.match(js, /window\.indobase\.commerce/)
     assert.match(js, /productsApi/)
+    assert.match(js, /collectionsApi/)
     assert.match(js, /checkoutApi/)
     assert.match(js, /\/checkout/)
     assert.match(js, /customer\/otp\/start/)

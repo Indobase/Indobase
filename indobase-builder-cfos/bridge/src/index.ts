@@ -53,6 +53,7 @@ import {
 } from './launch-business-tool.js'
 import {
   handleCommerceAdminSnapshot,
+  handleCommerceCollectionsList,
   handleCommerceCheckout,
   handleCommerceMarkFailed,
   handleCommerceMarkPaid,
@@ -1859,6 +1860,7 @@ app.options('/api/os/commerce/*', handleCommerceOptions)
 app.get('/api/os/commerce/runtime.js', handleCommerceRuntimeJs)
 app.get('/api/os/commerce/products', handleCommerceProductsList)
 app.get('/api/os/commerce/products/:id', handleCommerceProductGet)
+app.get('/api/os/commerce/collections', handleCommerceCollectionsList)
 app.post('/api/os/commerce/checkout', handleCommerceCheckout)
 app.post('/api/os/commerce/customer/otp/start', handleCustomerOtpStart)
 app.post('/api/os/commerce/customer/otp/verify', handleCustomerOtpVerify)

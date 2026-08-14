@@ -54,6 +54,22 @@ export type StorefrontCatalogProduct = {
   priceMinor?: number
   stock?: number
   currency?: string
+  variants?: Array<{
+    id?: string
+    sku?: string
+    title?: string
+    options?: Record<string, string>
+    priceMinor?: number
+    stock?: number
+    default?: boolean
+  }>
+}
+
+export type StorefrontCatalogCollection = {
+  id?: string
+  name?: string
+  slug?: string
+  productIds?: string[]
 }
 
 /** Baked `let products=[…]` fallback. Live grid still prefers commerce.products.list(). */
@@ -69,25 +85,15 @@ export function serializeStorefrontCatalogSnapshot(products: StorefrontCatalogPr
       stock: Number(p.stock || 0),
       imageUrl: '',
       active: true,
+      variants: p.variants || [],
     })),
   )
 }
 
-export function injectStorefrontProductSnapshot(
-  html: string,
-  products: StorefrontCatalogProduct[],
-): string {
-  if (!html) return html
-  const snapshot = serializeStorefrontCatalogSnapshot(products)
-  const needle = 'let products='
+function replaceLetArray(html: string, name: string, snapshot: string): string {
+  const needle = `let ${name}=`
   const start = html.indexOf(needle)
-  if (start < 0) {
-    if (!storefrontHasCommerceAbi(html)) return html
-    return html.replace(
-      /(const commerce=window\.indobase\.commerce;\s*)/,
-      `$1let products=${snapshot};\n`,
-    )
-  }
+  if (start < 0) return html
   const jsonStart = start + needle.length
   if (html[jsonStart] !== '[') {
     const semi = html.indexOf(';', jsonStart)
@@ -126,6 +132,39 @@ export function injectStorefrontProductSnapshot(
     }
   }
   return html
+}
+
+export function injectStorefrontProductSnapshot(
+  html: string,
+  products: StorefrontCatalogProduct[],
+  collections: StorefrontCatalogCollection[] = [],
+): string {
+  if (!html) return html
+  const snapshot = serializeStorefrontCatalogSnapshot(products)
+  const collectionSnapshot = JSON.stringify(
+    collections.map((c) => ({
+      id: c.id || '',
+      name: c.name || '',
+      slug: c.slug || '',
+      productIds: c.productIds || [],
+    })),
+  )
+  let next = html
+  if (!next.includes('let products=')) {
+    if (!storefrontHasCommerceAbi(next)) return next
+    next = next.replace(
+      /(const commerce=window\.indobase\.commerce;\s*)/,
+      `$1let products=${snapshot};\n`,
+    )
+  } else {
+    next = replaceLetArray(next, 'products', snapshot)
+  }
+  if (next.includes('let collections=')) {
+    next = replaceLetArray(next, 'collections', collectionSnapshot)
+  } else if (next.includes('let products=')) {
+    next = next.replace('let products=', `let collections=${collectionSnapshot};\nlet products=`)
+  }
+  return next
 }
 
 export function saasAppHasRuntimeAbi(html: string | null | undefined): boolean {

@@ -842,7 +842,14 @@ async function applyPersistedPreviewEdit(
   return { runtime: getWorkspaceRuntime(session.projectRef) || runtime, commandId: command.id, mutated: true, headline }
 }
 
-const STOREFRONT_VISIBLE_KINDS = new Set(['product.create', 'product.update', 'inventory.update'])
+const STOREFRONT_VISIBLE_KINDS = new Set([
+  'product.create',
+  'product.update',
+  'inventory.update',
+  'variant.create',
+  'collection.create',
+  'collection.assign',
+])
 
 async function persistCatalogProjection(
   session: Session,
@@ -859,7 +866,7 @@ async function persistCatalogProjection(
   if (!html) html = job?.html || job?.files?.['index.html'] || ''
   if (!html || !storefrontHasCommerceAbi(html)) return runtime
 
-  const nextHtml = injectStorefrontProductSnapshot(html, snapshot.products || [])
+  const nextHtml = injectStorefrontProductSnapshot(html, snapshot.products || [], snapshot.collections || [])
   if (!nextHtml || nextHtml === html) return runtime
 
   const files = { ...(runtime.artifactFiles || {}), 'index.html': nextHtml }
