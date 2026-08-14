@@ -90,6 +90,9 @@ describe('session-payload', () => {
     assert.doesNotMatch(payload.agent_hint, /GUEST ACCOUNT GATE/)
     assert.equal(payload.usage.quota?.remaining, 4)
     assert.equal(payload.usage.exhausted, false)
+    assert.ok(payload.ux)
+    assert.ok(['BUILD', 'PREVIEW', 'READY', 'LIVE', 'OPERATING'].includes(payload.ux.lifecycle.current))
+    assert.doesNotMatch(JSON.stringify(payload.ux), /launchBusiness|PocketBase|executeProductionLaunchJob|jobId/)
     assert.ok(payload.actions.some((a) => a.id === 'go-live'))
     assert.ok(payload.actions.some((a) => a.id === 'add-login'))
     assert.equal(

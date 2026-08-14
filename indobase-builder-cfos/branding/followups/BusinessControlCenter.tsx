@@ -1,37 +1,21 @@
 /**
- * Post-launch Business Control Center — visual UI + persistent AI.
- * Nav comes from the application contract/capabilities, not a hardcoded Shopify clone.
+ * Persistent Control Center — derived from BusinessRuntimeState via presentation.
+ * Ecommerce vs SaaS vs landing show only relevant capabilities.
  */
 import { useEffect, useMemo, useState } from 'react'
 
 import styles from './BusinessControlCenter.module.css'
+import {
+  composePresentation,
+  type PresentationSurface,
+  type RuntimeView,
+} from './presentation'
 import {
   type ControlCenterSection,
   type ProjectCapability,
   type WorkspaceScreen,
   formatScreenMessage,
 } from './ux-conductor'
-
-type Snapshot = {
-  products?: Array<{ id?: string; name?: string; priceMinor?: number; currency?: string }>
-  orders?: Array<{
-    id?: string
-    orderNumber?: string
-    amountMinor?: number
-    currency?: string
-    status?: string
-    payment_status?: string
-  }>
-}
-
-function money(minor?: number, currency = 'INR'): string {
-  if (typeof minor !== 'number' || Number.isNaN(minor)) return '—'
-  try {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(minor / 100)
-  } catch {
-    return `${Math.round(minor / 100)} ${currency}`
-  }
-}
 
 function greeting(name?: string | null): string {
   const hour = new Date().getHours()
@@ -40,13 +24,30 @@ function greeting(name?: string | null): string {
   return who ? `${when}, ${who.split(/\s+/)[0]}` : when
 }
 
+function readRuntime(): RuntimeView | null {
+  try {
+    const runtime = (window as unknown as { __INDOBASE_RUNTIME__?: RuntimeView }).__INDOBASE_RUNTIME__
+    return runtime?.business ? runtime : null
+  } catch {
+    return null
+  }
+}
+
+function readUx(): PresentationSurface | null {
+  try {
+    const ux = (window as unknown as { __INDOBASE_UX__?: PresentationSurface }).__INDOBASE_UX__
+    return ux?.lifecycle ? ux : null
+  } catch {
+    return null
+  }
+}
+
 export function BusinessControlCenter({
   brand,
   displayName,
   liveUrl,
   nav,
-  capabilities,
-  projectRef,
+  capabilities: _capabilities,
   disabled,
   onPick,
   onOpenStorefront,
@@ -66,7 +67,7 @@ export function BusinessControlCenter({
   const [section, setSection] = useState(nav[0]?.id || 'overview')
   const [entityId, setEntityId] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
-  const [snap, setSnap] = useState<Snapshot>({})
+  const [tick, setTick] = useState(0)
   const current = nav.find((n) => n.id === section) || nav[0]
   const screen = useMemo<WorkspaceScreen>(
     () => ({ section, entityId, label: current?.label || section }),
@@ -78,22 +79,29 @@ export function BusinessControlCenter({
   }, [onScreen, screen])
 
   useEffect(() => {
-    if (!projectRef || !capabilities.includes('commerce')) return
-    let cancelled = false
-    void fetch('/api/os/commerce/admin/snapshot', {
-      credentials: 'same-origin',
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && data?.ok) setSnap({ products: data.products || [], orders: data.orders || [] })
-      })
-      .catch(() => {
-        /* visual UI still renders */
-      })
+    const refresh = () => setTick((n) => n + 1)
+    window.addEventListener('indobase:context', refresh)
+    window.addEventListener('indobase:runtime-updated', refresh)
     return () => {
-      cancelled = true
+      window.removeEventListener('indobase:context', refresh)
+      window.removeEventListener('indobase:runtime-updated', refresh)
     }
-  }, [capabilities, projectRef])
+  }, [])
+
+  const surface = useMemo(() => {
+    void tick
+    const fromWindow = readUx()
+    if (fromWindow) return fromWindow
+    const runtime = readRuntime()
+    if (runtime) return composePresentation(runtime)
+    return null
+  }, [tick])
+
+  const home = surface?.home
+  const rail = surface?.lifecycle
+  const visibleNav = surface?.control.nav?.length ? surface.control.nav : nav
+  const kind = home?.kind
+  const store = kind === 'store' || kind === 'ecommerce' || kind === 'ordering'
 
   const send = (request: string) => {
     const text = request.trim()
@@ -104,7 +112,7 @@ export function BusinessControlCenter({
   return (
     <div className={styles.root}>
       <nav className={styles.nav} aria-label="Business">
-        {nav.map((item) => (
+        {visibleNav.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -125,126 +133,164 @@ export function BusinessControlCenter({
       <section className={styles.main}>
         <h2 className={styles.hello}>{greeting(displayName)}</h2>
         <p className={styles.muted}>
-          {brand}
+          {home?.name || brand}
+          {home?.typeLabel ? ` · ${home.typeLabel}` : ''}
           {liveUrl ? ` · ${hostOf(liveUrl)}` : ''}
         </p>
+        {rail ? (
+          <ol className={styles.lifecycle} aria-label="Business lifecycle">
+            {rail.stages.map((step) => (
+              <li key={step.id} data-status={step.status}>
+                {step.label}
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {home?.loading ? <p className={styles.muted}>Updating your business…</p> : null}
+        {home?.error ? <p className={styles.error}>{home.error}</p> : null}
+        {home?.empty ? <p className={styles.muted}>Nothing here yet — tell me what to build in chat.</p> : null}
         {section === 'overview' ? (
           <>
+            {surface?.copy.liveBanner ? <div className={styles.banner}>{surface.copy.liveBanner}</div> : null}
             <div className={styles.metrics}>
-              <div className={styles.metric}>
-                <b>{snap.orders?.length ?? '—'}</b>
-                <span>Orders</span>
-              </div>
-              <div className={styles.metric}>
-                <b>{snap.products?.length ?? '—'}</b>
-                <span>Products</span>
-              </div>
-              <div className={styles.metric}>
-                <b>
-                  {money(
-                    (snap.orders || []).reduce((n, o) => n + Number(o.amountMinor || 0), 0),
-                    snap.orders?.[0]?.currency,
-                  )}
-                </b>
-                <span>Sales</span>
-              </div>
-            </div>
-            <ul className={styles.list}>
-              {(snap.orders || []).slice(0, 6).map((o) => (
-                <li key={o.id || o.orderNumber}>
-                  <button
-                    type="button"
-                    className={styles.row}
-                    onClick={() => {
-                      setSection('orders')
-                      setEntityId(String(o.orderNumber || o.id || ''))
-                    }}
-                  >
-                    <span>#{o.orderNumber || o.id}</span>
-                    <span>{money(o.amountMinor, o.currency)}</span>
-                    <span>{o.payment_status || o.status || ''}</span>
-                  </button>
-                </li>
+              {(home?.metrics || []).map((m) => (
+                <div key={m.id} className={styles.metric}>
+                  <b>{m.value}</b>
+                  <span>{m.label}</span>
+                </div>
               ))}
-            </ul>
-            <div className={styles.actions}>
-              <button type="button" onClick={() => send('Show me today’s orders.')}>
-                Show today’s orders
-              </button>
-              <button type="button" data-secondary="" onClick={onOpenStorefront}>
-                Edit storefront
-              </button>
             </div>
-          </>
-        ) : null}
-        {section === 'products' ? (
-          <>
-            <ul className={styles.list}>
-              {(snap.products || []).slice(0, 20).map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    className={styles.row}
-                    data-active={entityId === p.id ? 'true' : 'false'}
-                    onClick={() => setEntityId(p.id || null)}
-                  >
-                    <span>{p.name || p.id}</span>
-                    <span>{money(p.priceMinor, p.currency)}</span>
-                  </button>
-                </li>
+            {home?.checkoutStatus ? <p className={styles.muted}>{home.checkoutStatus}</p> : null}
+            {home?.paymentsStatus ? <p className={styles.muted}>{home.paymentsStatus}</p> : null}
+            {store && (home?.products.length || home?.orders.length) ? (
+              <div className={styles.overviewLists}>
+                {home?.products.length ? (
+                  <div>
+                    <p className={styles.muted}>Products</p>
+                    <ul className={styles.list}>
+                      {home.products.slice(0, 8).map((p) => (
+                        <li key={p.name} className={styles.row}>
+                          <span>
+                            {p.name}
+                            <span className={styles.muted}>
+                              {' '}
+                              · {p.variantCount} variant{p.variantCount === 1 ? '' : 's'}
+                              {typeof p.stock === 'number' ? ` · ${p.stock} in stock` : ''}
+                            </span>
+                          </span>
+                          <b>{p.price}</b>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {home?.orders.length ? (
+                  <div>
+                    <p className={styles.muted}>Orders</p>
+                    <ul className={styles.list}>
+                      {home.orders.slice(0, 8).map((o) => (
+                        <li key={o.id} className={styles.row}>
+                          <span>
+                            {o.id}
+                            <span className={styles.muted}>
+                              {' '}
+                              · {o.status}
+                              {o.createdAt ? ` · ${o.createdAt.slice(0, 10)}` : ''}
+                            </span>
+                          </span>
+                          <b>{o.amount}</b>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className={styles.actions}>
+              {(surface?.actions || []).map((a) => (
+                <button key={a.label} type="button" onClick={() => onPick(a.message)}>
+                  {a.label}
+                </button>
               ))}
-            </ul>
-            <div className={styles.actions}>
-              <button type="button" onClick={() => send('Add 10 summer products.')}>
-                Add products
-              </button>
-            </div>
-          </>
-        ) : null}
-        {section === 'orders' ? (
-          <>
-            <ul className={styles.list}>
-              {(snap.orders || []).slice(0, 20).map((o) => {
-                const id = String(o.orderNumber || o.id || '')
-                return (
-                  <li key={id}>
-                    <button
-                      type="button"
-                      className={styles.row}
-                      data-active={entityId === id ? 'true' : 'false'}
-                      onClick={() => setEntityId(id)}
-                    >
-                      <span>#{id}</span>
-                      <span>{money(o.amountMinor, o.currency)}</span>
-                      <span>{o.payment_status || o.status || ''}</span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-            <div className={styles.actions}>
-              <button type="button" onClick={() => send('Show me today’s orders.')}>
-                Find an order
-              </button>
-              {entityId ? (
-                <button type="button" data-secondary="" onClick={() => send(`Mark #${entityId} as shipped.`)}>
-                  Mark shipped
+              {liveUrl ? (
+                <button type="button" data-secondary="" onClick={onOpenStorefront}>
+                  Preview
                 </button>
               ) : null}
             </div>
           </>
         ) : null}
-        {section === 'payments' ? (
+        {store && section === 'products' ? (
+          <div>
+            {home?.products.length ? (
+              <ul className={styles.list}>
+                {home.products.map((p) => (
+                  <li key={p.name} className={styles.row}>
+                    <span>
+                      {p.name}
+                      <span className={styles.muted}>
+                        {' '}
+                        · {p.variantCount} variant{p.variantCount === 1 ? '' : 's'}
+                        {typeof p.stock === 'number' ? ` · ${p.stock} in stock` : ''}
+                      </span>
+                    </span>
+                    <b>{p.price}</b>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.muted}>No products yet.</p>
+            )}
+            <div className={styles.actions}>
+              <button type="button" onClick={() => send('Add products to my catalog.')}>
+                Manage products
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {store && section === 'orders' ? (
+          <div>
+            {home?.orders.length ? (
+              <ul className={styles.list}>
+                {home.orders.map((o) => (
+                  <li key={o.id} className={styles.row}>
+                    <span>
+                      {o.id}
+                      <span className={styles.muted}>
+                        {' '}
+                        · {o.status}
+                        {o.createdAt ? ` · ${o.createdAt.slice(0, 10)}` : ''}
+                      </span>
+                    </span>
+                    <b>{o.amount}</b>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.muted}>No orders yet.</p>
+            )}
+            <div className={styles.actions}>
+              <button type="button" onClick={() => send("Show me today's orders.")}>
+                View orders
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {store && section === 'payments' ? (
           <div className={styles.actions}>
-            <button
-              type="button"
-              onClick={() => send('Connect payments so customers can pay online.')}
-            >
+            <button type="button" onClick={() => send('Connect payments so customers can pay online.')}>
               Connect payments
             </button>
           </div>
         ) : null}
-        {section === 'settings' || section === 'customers' || section === 'users' || section === 'data' ? (
+        {section === 'settings' ||
+        section === 'customers' ||
+        section === 'users' ||
+        section === 'data' ||
+        section === 'content' ||
+        section === 'leads' ||
+        section === 'website' ||
+        section === 'application' ? (
           <div className={styles.actions}>
             <button type="button" onClick={() => send(`Help me with ${current?.label || section}.`)}>
               Open {current?.label || section}
@@ -270,7 +316,7 @@ export function BusinessControlCenter({
         <input
           value={ask}
           onChange={(e) => setAsk(e.target.value)}
-          placeholder='Ask AI anything about your business…'
+          placeholder="Ask about your business…"
           disabled={disabled}
           aria-label="Ask AI"
         />

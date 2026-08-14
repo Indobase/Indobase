@@ -12,6 +12,7 @@ import {
   uxJobHeadline,
   workspaceViewModel,
 } from './ux-conductor'
+import { type PresentationSurface } from './presentation'
 
 type LaunchJourneyStage = {
   id: string
@@ -66,6 +67,15 @@ export function readProductionJobFromWindow(): ProductionJobSnapshot | null {
     const w = window as unknown as { __INDOBASE_PRODUCTION_JOB__?: ProductionJobSnapshot | null }
     const job = w.__INDOBASE_PRODUCTION_JOB__
     return job && typeof job === 'object' && typeof job.jobId === 'string' ? job : null
+  } catch {
+    return null
+  }
+}
+
+function readUx(): PresentationSurface | null {
+  try {
+    const ux = (window as unknown as { __INDOBASE_UX__?: PresentationSurface }).__INDOBASE_UX__
+    return ux?.lifecycle ? ux : null
   } catch {
     return null
   }
@@ -221,15 +231,24 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
   if (!journey || journey.guest || isSignedOut() || !isActive) return null
 
   const authority = readAuthority()
+  const ux = readUx()
   const verifiedLive =
     authority?.state === 'live' || (job?.status === 'live' && Boolean(job.url))
-  const live_url = verifiedLive ? journey.live_url || job?.url || null : null
-  const headline = verifiedLive
-    ? journey.headline
-    : /is live/i.test(journey.headline)
-      ? 'Building your store'
-      : journey.headline
-  const { stages, next_action } = journey
+  const live_url = verifiedLive ? journey.live_url || job?.url || ux?.home.liveUrl || null : null
+  const headline = ux?.copy.headline
+    ? ux.copy.headline
+    : verifiedLive
+      ? journey.headline
+      : /is live/i.test(journey.headline)
+        ? 'Building your store'
+        : journey.headline
+  const stages =
+    ux?.lifecycle.stages.map((s) => ({
+      id: s.id,
+      label: s.label,
+      status: s.status,
+    })) || journey.stages
+  const next_action = ux?.failure?.actions[0] || ux?.actions[0] || journey.next_action
   const lastFail = job?.failures?.[job.failures.length - 1]
   const failure =
     job?.status === 'blocked'
@@ -248,13 +267,15 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
     >
       <div className={styles.header}>
         <div>
-          <div className={styles.kicker}>{live_url ? 'LIVE' : failure ? 'Needs attention' : 'Building'}</div>
+          <div className={styles.kicker}>
+            {live_url ? 'LIVE' : failure ? 'Needs attention' : ux?.lifecycle.current || 'Building'}
+          </div>
           <div className={styles.headline}>{headline}</div>
           {failure?.body ? <p className={styles.failureBody}>{failure.body}</p> : null}
         </div>
         {live_url ? (
           <a className={styles.liveLink} href={live_url} target="_blank" rel="noreferrer">
-            Visit store
+            Visit
           </a>
         ) : null}
       </div>

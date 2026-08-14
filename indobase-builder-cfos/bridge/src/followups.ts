@@ -79,7 +79,7 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Connect my domain',
     message:
-      'Connect a domain I already own — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; Indobase does not auto-verify yet)',
+      'Connect a domain I already own.',
   },
   {
     label: 'Add customer login',
@@ -92,16 +92,15 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Add payments',
     message:
-      'I want to connect payments — ask me India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout',
+      'I want to connect payments — ask me India (Razorpay) vs International (Stripe).',
   },
   {
     label: 'Production checklist',
-    message:
-      'Run productionChecklist for this app_type with the live_url and honest checks — only claim production ready if claim_production_ready is true',
+    message: 'Review the production checklist for this app.',
   },
   {
     label: 'Refine then Go Live',
-    message: 'Refine the design briefly, then Go Live with launchBusiness — full launch is the goal',
+    message: 'Refine the design briefly, then launch my store on Indobase.',
   },
 ] as const
 
@@ -228,15 +227,15 @@ export function landingSingleTurnFollowups(brand?: string | null): StageFollowUp
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live now — POST /api/os/apps/launch { appType: "landing", production: true } for ${name}. Quote the job live URL when status=live, then emit Domain / Checklist chips.`,
+        message: `Launch my website on Indobase now.`,
       },
       {
         label: 'Connect my domain',
-        message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www → sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet`,
+        message: `Connect a domain I already own.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist app_type=landing for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+        message: `Review the launch checklist for ${name}.`,
       },
     ],
   }
@@ -254,7 +253,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — call launchProductionApp for ${name} (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then Domain / Add payments / Checklist chips`,
+        message: `Launch my store on Indobase now.`,
       },
       {
         label: 'Create admin dashboard',
@@ -262,7 +261,7 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
       },
       {
         label: 'Wire then Go Live',
-        message: `Publish ${name} storefront_html (window.indobase.commerce) then Go Live with launchBusiness in one pass`,
+        message: `Launch my store on Indobase now.`,
       },
     ],
   }
@@ -274,12 +273,12 @@ export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
     label: v.label,
     message:
       `Niche ${v.label} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
-      `Build a preview first. After preview, emit Go Live–first FOLLOWUPS and keep advancing until live.`,
+      `Build a preview first. After preview, keep going until the store is live.`,
   })),
   {
     label: "I'll type my specific niche",
     message:
-      "I'll type my specific niche — invent brand + build a preview storefront; after preview keep emitting Go Live–first chips",
+      "I'll type my specific niche — invent brand + build a preview storefront; after preview keep going until live.",
   },
 ]
 
@@ -372,7 +371,53 @@ export function stripOperatorInfraLeak(message: string): string {
 }
 
 const CHIP_TOOL_NAMES =
-  /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase)\b/gi
+  /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase|productionChecklist)\b/gi
+
+const CUSTOMER_MACHINERY =
+  /do not restart guest\/?auth|emit Wire\s*\/\s*Go Live|I can['’]t truthfully|I won['’]t claim|Call for Go Live|prove with `?placeTestShopOrder|Commerce ABI|window\.indobase\.commerce|POST \/api\/os\/[^\s]+|executionId|jobId\b/gi
+
+/** Strip tool names and conductor instructions from operator-visible prose. */
+export function stripCustomerMachinery(message: string): string {
+  if (!message) return message
+  let t = message
+  t = t.replace(/```[\s\S]*?```/g, '')
+  t = t.replace(/`[^`]*`/g, (m) => (CHIP_TOOL_NAMES.test(m) ? '' : m))
+  t = t.replace(CHIP_TOOL_NAMES, '')
+  t = t.replace(CUSTOMER_MACHINERY, '')
+  t = t.replace(/^[^\n]*(?:do not restart guest|emit Wire|Call for Go Live|I can['’]t truthfully)[^\n]*$/gim, '')
+  t = t.replace(/\b(?:execution|operation|job)[ -]?id[:\s]+[a-z0-9_-]{6,}\b/gi, '')
+  t = t.replace(/[ \t]{2,}/g, ' ')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** Chip send-back text: business language only. */
+export function sanitizeChipMessage(message: string, label?: string): string {
+  const raw = (message || '').trim()
+  const lab = (label || '').toLowerCase()
+  const blob = `${lab} ${raw}`.toLowerCase()
+  if (/connect (my )?domain|customdomain|cname/.test(blob)) {
+    return 'Connect a domain I already own.'
+  }
+  if (/add (a )?product|new product/.test(blob)) {
+    return 'Add a product to my catalog.'
+  }
+  if (/change the hero|polish hero|hero/.test(blob) && /change|polish|refine|edit/.test(blob)) {
+    return 'Change the hero.'
+  }
+  if (/\b(go live|launch my (store|shop|site|website|app|business)|launch store|take live)\b/.test(blob)) {
+    if (/\b(website|landing)\b/.test(blob) || /launch website/.test(lab)) return 'Launch my website on Indobase now.'
+    if (/\b(app|saas)\b/.test(blob) || /launch app/.test(lab)) return 'Launch my app on Indobase now.'
+    return 'Launch my store on Indobase now.'
+  }
+  const cleaned = stripCustomerMachinery(raw)
+  if (!cleaned || CHIP_TOOL_NAMES.test(cleaned) || /\/api\/os\//.test(cleaned)) {
+    CHIP_TOOL_NAMES.lastIndex = 0
+    return lab.includes('launch') || lab.includes('go live')
+      ? 'Launch my store on Indobase now.'
+      : cleaned || 'Continue'
+  }
+  return cleaned
+}
 
 /** Operator-visible chip labels must never name internal tools. */
 export function operatorChipLabel(label: string, appKind?: JourneyChipFlags['appKind']): string {
@@ -408,6 +453,7 @@ export function stripToolCapsuleNoise(message: string): string {
   t = t.replace(/\bfetch failed\b/gi, "I couldn't complete the order yet. I'll fix the checkout connection.")
   t = t.replace(/\bpaymentStatus\b/gi, '')
   t = t.replace(/\bWorking\b/g, 'Creating')
+  t = stripCustomerMachinery(t)
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -441,7 +487,12 @@ export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRew
   if (!t) return t
   const reply = (opts?.conductorReply || readWindowString('__INDOBASE_OPERATOR_MESSAGE__') || '').trim()
   const name = (opts?.businessName || readWindowString('__INDOBASE_BUSINESS_NAME__') || '').trim()
-  if (BLOCKED_BUILD_SPEECH.test(t)) {
+  const leaky =
+    BLOCKED_BUILD_SPEECH.test(t) ||
+    /I can['’]t truthfully|please call launchBusiness|Call for Go Live|placeTestShopOrder|do not restart guest/i.test(
+      t,
+    )
+  if (leaky) {
     t = reply || DEFAULT_CONDUCTOR_REPLY
   }
   if (name && !/^your business$/i.test(name)) {
@@ -452,7 +503,7 @@ export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRew
 
 export function cleanOperatorMessage(message: string, opts?: BuilderChatRewriteOpts): string {
   return rewriteBlockedBuildSpeech(
-    stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message))),
+    stripCustomerMachinery(stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message)))),
     opts,
   )
 }
@@ -722,17 +773,17 @@ export const PAYMENTS_MARKET_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'India (Razorpay)',
     message:
-      'Connect payments for India with Razorpay — POST /api/os/runtime/ensure { capability: "payments", settlement_market: "india" }, send me to https://dashboard.razorpay.com to finish KYC and copy API keys, then call connectGateway with key_id + key_secret',
+      'Connect payments for India with Razorpay — send me to the Razorpay dashboard for KYC and API keys, then connect my keys.',
   },
   {
     label: 'International (Stripe)',
     message:
-      'Connect payments internationally with Stripe — POST /api/os/runtime/ensure { capability: "payments", settlement_market: "international" }, send me to https://dashboard.stripe.com to finish verification and copy API keys, then call connectGateway with secret_key + publishable_key',
+      'Connect payments internationally with Stripe — send me to the Stripe dashboard for verification and API keys, then connect my keys.',
   },
   {
     label: "I'll describe my market",
     message:
-      "I'll describe where my customers pay so you can choose Razorpay (India) or Stripe (international), send me to their dashboard for KYC/keys, then call connectGateway with my API keys",
+      "I'll describe where my customers pay so you can choose Razorpay (India) or Stripe (international).",
   },
 ] as const
 
@@ -742,22 +793,19 @@ export const PAYMENTS_SETUP_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Complete KYC on Razorpay/Stripe',
     message:
-      'Send me to the Razorpay or Stripe dashboard (whichever rail we picked) to create the merchant account and finish KYC, then come back with API keys',
+      'Send me to the Razorpay or Stripe dashboard to finish merchant verification, then I will paste API keys.',
   },
   {
     label: 'Paste API keys',
-    message:
-      'I will paste my Razorpay or Stripe API keys — call connectGateway (POST /api/os/tools/connectGateway) with settlement_market and the keys so Indobase validates and stores them for direct checkout',
+    message: 'I will paste my Razorpay or Stripe API keys so you can connect payments.',
   },
   {
     label: 'Wire checkout into the site',
-    message:
-      'Call wireCheckout (POST /api/os/tools/wireCheckout) with plan_name, price, currency, and customer_email — then set the site Subscribe/Buy CTA href to the returned checkout_url',
+    message: 'Wire checkout so the Buy button takes customers to pay.',
   },
   {
     label: 'Wire checkout + checklist',
-    message:
-      'Call wireCheckout then run productionChecklist with checkout_wired true — finish the full launch path',
+    message: 'Finish checkout on the site and review the launch checklist.',
   },
 ] as const
 
@@ -766,23 +814,19 @@ export const PAYMENTS_LIVE_TITLE = 'Payments are live — what next?'
 export const PAYMENTS_LIVE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Wire checkout into the site',
-    message:
-      'Call wireCheckout (POST /api/os/tools/wireCheckout) with mode one_time or subscription, plan_name, price, currency, and customer_email — then set the site Subscribe/Buy CTA href to the returned checkout_url',
+    message: 'Wire checkout so the Buy button takes customers to pay.',
   },
   {
     label: 'Add shop catalog + admin',
-    message:
-      'Call resolveProductImages then setupShopCatalog with products + image_url, placeTestShopOrder, then publish admin_html once via launchBusiness as admin.html (live REST refresh)',
+    message: 'Add products to my catalog and keep the admin dashboard in sync.',
   },
   {
     label: 'Production checklist',
-    message:
-      'Finish the production site checklist — login if needed, SEO title/description, privacy/terms links, custom domain CNAME, and confirm checkout CTA uses wireCheckout checkout_url',
+    message: 'Review the production checklist for this store.',
   },
   {
     label: 'Connect my domain',
-    message:
-      'Connect a domain I already own — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; no auto-verify yet)',
+    message: 'Connect a domain I already own.',
   },
 ] as const
 
@@ -791,22 +835,19 @@ export const SHOP_BACKEND_TITLE = 'Shop backend is live — what next?'
 export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Publish commerce storefront',
-    message:
-      'Publish storefront_html with window.indobase.commerce — keep Buy CTA via commerce.checkout; then emit Go Live chips',
+    message: 'Keep the storefront product grid, cart, and checkout ready for customers.',
   },
   {
     label: 'Go Live on Indobase',
-    message:
-      'Go Live — call launchProductionApp (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then emit Domain / Add payments / Checklist chips',
+    message: 'Launch my store on Indobase now.',
   },
   {
     label: 'Publish admin dashboard',
-    message:
-      'Publish admin_html from listShopOrders via launchBusiness as admin.html once — it live-refreshes from project REST; do not republish just to refresh orders',
+    message: 'Open the admin dashboard for orders and catalog.',
   },
   {
     label: 'Wire then Go Live',
-    message: 'Publish storefront_html (window.indobase.commerce) then Go Live with launchBusiness — full launch is the goal',
+    message: 'Launch my store on Indobase now.',
   },
 ] as const
 
@@ -870,11 +911,11 @@ export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollow
       },
       {
         label: 'Go Live when wired',
-        message: `When auth and data are wired, Go Live with launchBusiness app_type=saas and quote the exact url`,
+        message: `Launch my app on Indobase now.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist app_type=saas with the live_url and honest checks — only claim production ready if claim_production_ready is true`,
+        message: `Review the production checklist for ${name}.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -891,19 +932,19 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Publish commerce storefront',
-        message: `Publish ${name} storefront_html with window.indobase.commerce (product grid + cart + checkout); then emit Go Live chips`,
+        message: `Keep the ${name} storefront ready with products, cart, and checkout.`,
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips`,
+        message: `Launch my store on Indobase now.`,
       },
       {
         label: 'Publish admin dashboard',
-        message: `Publish admin_html for ${name} via launchBusiness as admin.html once (live REST refresh), then continue to Go Live if the storefront is not live yet`,
+        message: `Open the admin dashboard for ${name}.`,
       },
       {
         label: 'Wire then Go Live',
-        message: `Publish ${name} storefront_html then Go Live with launchBusiness in one pass — full launch is the goal`,
+        message: `Launch my store on Indobase now.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -925,13 +966,12 @@ export function postGoLiveFollowups(
   if (store && paymentsReady) {
     return postPaymentsFollowups(brand)
   }
-  const domainMsg = `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www value=sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet — quote tool dns instructions`
+  const domainMsg = `Connect a domain I already own.`
   const items: FollowUpItem[] = []
-  // Store: payments first (matches journey Payments stage); domain is secondary.
   if (store) {
     items.push({
       label: 'Add payments',
-      message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`,
+      message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe).`,
     })
   }
   items.push({
@@ -941,17 +981,17 @@ export function postGoLiveFollowups(
   if (store) {
     items.push({
       label: 'Production checklist',
-      message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+      message: `Review the production checklist for ${name}.`,
     })
   } else {
     items.push(
       {
         label: 'Add a real backend',
-        message: `Add customer accounts and data for ${name}, then Go Live`,
+        message: `Add customer accounts and data for ${name}, then launch.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist app_type=landing for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+        message: `Review the production checklist for ${name}.`,
       },
     )
   }
@@ -968,11 +1008,11 @@ export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Wire checkout into the site',
-        message: `Call wireCheckout for ${name} (mode one_time, prefer INR if India) and set Buy CTA href to checkout_url`,
+        message: `Wire checkout so customers can pay on ${name}.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist for ${name} with checkout_wired true when CTA uses wireCheckout url — finish full launch`,
+        message: `Review the production checklist for ${name}.`,
       },
       {
         label: 'Publish admin dashboard',
@@ -980,7 +1020,7 @@ export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Connect my domain',
-        message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; no auto-verify yet)`,
+        message: `Connect a domain I already own.`,
       },
     ],
   }
@@ -993,11 +1033,11 @@ export function parseFollowUpLine(line: string): FollowUpItem | null {
 
   const pipe = trimmed.indexOf('|')
   if (pipe === -1) {
-    return { label: operatorChipLabel(trimmed), message: trimmed }
+    return { label: operatorChipLabel(trimmed), message: sanitizeChipMessage(trimmed) }
   }
 
   const label = operatorChipLabel(trimmed.slice(0, pipe).trim())
-  const message = trimmed.slice(pipe + 1).trim() || label
+  const message = sanitizeChipMessage(trimmed.slice(pipe + 1).trim() || label, label)
   if (!label) return null
   return { label, message }
 }
@@ -1311,8 +1351,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
     items: [
       {
         label: 'Go Live on Indobase',
-        message:
-          'Go Live — publish this business with launchBusiness using the real html/files, quote the exact live url, then emit Domain / Add payments / Production checklist chips.',
+        message: 'Launch my store on Indobase now.',
       },
       {
         label: 'Keep building',
@@ -1361,6 +1400,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
       items: filtered.items.map((item) => ({
         ...item,
         label: operatorChipLabel(item.label),
+        message: sanitizeChipMessage(item.message, item.label),
       })),
     }
   }

@@ -6,6 +6,7 @@
 
 import { isManagedPublicKey, getManagedBackendConfig } from './pocketbase/managed.js'
 import { buildManagedShopStorefrontHtml } from './pocketbase/shop-storefront-html.js'
+import { injectCommerceRuntimeIntoHtml } from './ux/preview-artifact.js'
 import type { BackendConfig } from './auth.js'
 import { injectIndobaseEnvIntoLaunchContent } from './publish-env-inject.js'
 import { explainGovernanceGate } from './governance-gates.js'
@@ -173,8 +174,8 @@ function resolvePublicUrl(backend: BackendConfig): string {
 }
 
 /**
- * After guidedBackend / before launchBusiness: inject __INDOBASE_ENV__ into html/files.
- * If still unwired (env-only / localStorage), replace index.html with managed storefront.
+ * After guidedBackend / before launchBusiness: inject __INDOBASE_ENV__ and commerce runtime.js.
+ * Never replace a non-empty generated index.html. Template substitution is last-resort empty index only.
  */
 export function autoWireLaunchArtifacts(input: {
   html?: string | null
@@ -184,7 +185,7 @@ export function autoWireLaunchArtifacts(input: {
   backend?: BackendConfig | null
   brand?: string | null
   products?: Array<Record<string, unknown>> | null
-  /** When true (default), replace unwired storefront with managed template. */
+  /** Opt-in last resort: replace empty index.html only. Default false. */
   replaceUnwiredStorefront?: boolean
 }): {
   html?: string
@@ -219,7 +220,8 @@ export function autoWireLaunchArtifacts(input: {
 
   const publicUrl = resolvePublicUrl(input.backend)
   const appId = input.backend.project_ref || 'app'
-  if (!storefront && publicUrl) {
+  const allowReplace = input.replaceUnwiredStorefront === true
+  if (!storefront && publicUrl && allowReplace) {
     storefront = buildManagedShopStorefrontHtml({
       brand: input.brand || undefined,
       appId,
@@ -230,6 +232,10 @@ export function autoWireLaunchArtifacts(input: {
 
   let html =
     typeof input.html === 'string' && input.html.trim() ? input.html.trim() : undefined
+  if (html) html = injectCommerceRuntimeIntoHtml(html)
+  if (typeof files['index.html'] === 'string' && files['index.html'].trim()) {
+    files['index.html'] = injectCommerceRuntimeIntoHtml(files['index.html'])
+  }
 
   let injected = injectIndobaseEnvIntoLaunchContent({
     html,
@@ -249,22 +255,11 @@ export function autoWireLaunchArtifacts(input: {
   })
 
   let replaced = false
-  const allowReplace = input.replaceUnwiredStorefront !== false
-  const liveText = collectLaunchText({ html: injected.html, files: injected.files })
-  const shouldReplace =
-    allowReplace &&
-    Boolean(storefront) &&
-    (!proof.ok ||
-      !contentHasLiveDataWire(liveText) ||
-      contentNeedsCommerceAbi(liveText) ||
-      contentHasForbiddenStorefrontCheckout(liveText))
-
-  // Always publish a functional storefront when we only have admin.html or empty index.
   const indexMissing =
     !injected.html &&
     !(typeof injected.files?.['index.html'] === 'string' && injected.files['index.html'].trim())
 
-  if ((shouldReplace || (allowReplace && indexMissing)) && storefront) {
+  if (allowReplace && indexMissing && storefront) {
     replaced = true
     html = storefront
     const nextFiles = { ...(injected.files || {}) }
@@ -301,7 +296,7 @@ export function autoWireLaunchArtifacts(input: {
     message: !proof.ok
       ? proof.message
       : replaced
-        ? 'Replaced unwired/localStorage storefront with managed Indobase commerce storefront (window.indobase.commerce).'
-        : 'Injected session.backend public_env and verified live Commerce ABI / records API wiring.',
+        ? 'Filled empty index.html with a last-resort storefront shell.'
+        : 'Injected session.backend public_env and commerce runtime without replacing the generated page.',
   }
 }

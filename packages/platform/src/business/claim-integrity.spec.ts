@@ -93,4 +93,16 @@ describe('claim integrity', () => {
     const cleaned = sanitizeAgentNarration(speech, ready)
     expect(cleaned).not.toMatch(/isn.?t available/i)
   })
+
+  it('rewrites tool-name and refuse-launch leaks from runtime state', () => {
+    const ready = emptyBusinessRuntimeState({
+      preview: { status: 'ready', url: 'https://builder.indobase.in/live/x/' },
+      health: { catalogReady: false, paymentsReady: false, previewReady: true },
+    })
+    const leaked =
+      'Call for Go Live, prove with placeTestShopOrder, emit Wire / Go Live chips — do not restart guest/auth. I can\'t truthfully confirm a production launch.'
+    const cleaned = sanitizeAgentNarration(leaked, ready)
+    expect(cleaned).not.toMatch(/placeTestShopOrder|truthfully|do not restart|Wire \/ Go Live/i)
+    expect(cleaned).toMatch(/ready to review/i)
+  })
 })

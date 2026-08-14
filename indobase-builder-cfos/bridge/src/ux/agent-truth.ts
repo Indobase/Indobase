@@ -6,6 +6,7 @@
 import {
   agentMayClaimLive as runtimeMayClaimLive,
   agentMayClaimPreview as runtimeMayClaimPreview,
+  commerceFromOrders,
   composeBusinessRuntimeStateHint,
   catalogFromProducts,
   inventoryFromProducts,
@@ -56,6 +57,8 @@ export type BusinessSnapshotSummary = {
     email?: string
     customer_name?: string
     items?: string
+    created_at?: string
+    createdAt?: string
   }>
   customers?: Array<{ id?: string; email?: string; name?: string }>
 }
@@ -112,6 +115,7 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       email: o.email,
       customerName: o.customer_name,
       itemsSummary: o.items,
+      createdAt: typeof (o.createdAt || o.created_at) === 'string' ? String(o.createdAt || o.created_at) : undefined,
     }))
   const customers = (snap?.customers || [])
     .filter((c) => c.id || c.email)
@@ -169,10 +173,6 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl),
     },
   })
-  const pendingOrderCount = orders.filter((o) => {
-    const status = String(o.paymentStatus || o.status || '').toLowerCase()
-    return !status || status === 'pending' || status === 'open' || status === 'unpaid'
-  }).length
   const catalogStats = catalogFromProducts(products)
   return {
     ...state,
@@ -180,10 +180,7 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       ...catalogStats,
       collections: state.catalog.collections || [],
     },
-    commerce: {
-      orderCount: orders.length,
-      pendingOrderCount,
-    },
+    commerce: commerceFromOrders(orders),
     inventory: inventoryFromProducts(products),
   }
 }

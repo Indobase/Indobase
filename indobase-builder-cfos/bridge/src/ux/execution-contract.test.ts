@@ -446,19 +446,19 @@ describe('FTU execution contract A–Q', () => {
   })
 
   it('Go Live after pending create keeps UrbanThread, not the workspace placeholder', async () => {
-    await applyOperatorIntent({ session, message: PROMPT, guest: true })
+    const fresh: Session = { ...session, projectRef: 'utpending99aa' }
+    await applyOperatorIntent({ session: fresh, message: PROMPT, guest: true })
     const preview = await applyOperatorIntent({
-      session,
-      message: 'Go Live',
+      session: fresh,
+      message: 'Please show me the store',
       guest: false,
       launchDeps: mockLaunchDeps({ launchProductionApp: false }),
     })
     assert.equal(preview.spec?.businessName, 'UrbanThread')
-    assert.equal(preview.turnClass, 'build')
     assert.equal(preview.runtime.preview.status, 'ready')
     const live = await applyOperatorIntent({
-      session,
-      message: 'Go Live',
+      session: fresh,
+      message: 'Launch my store on Indobase now.',
       guest: false,
       launchDeps: mockLaunchDeps({ launchProductionApp: true }),
     })
@@ -476,6 +476,10 @@ describe('FTU execution contract A–Q', () => {
         spec: { businessName: 'Harbor Studio', businessType: 'landing' },
       } as never),
       'operate',
+    )
+    assert.equal(
+      classifyOperatorIntent('Launch my store on Indobase now.', null),
+      'launch_production',
     )
     assert.equal(classifyOperatorIntent('Launch my website on Indobase now.', null), 'launch_production')
     assert.equal(classifyOperatorIntent('Change the hero headline to Midnight drops', null), 'preview_edit')
@@ -864,5 +868,46 @@ describe('FTU execution contract A–Q', () => {
       true,
     )
     assert.equal(bTurn.businessRuntime.workspace.ref, 'otherwsb1')
+  })
+
+  it('explicit Launch my store after preview READY dispatches executeProductionLaunchJob', async () => {
+    const preview = await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(preview.turnClass, 'build')
+    assert.equal(preview.runtime.preview.status, 'ready')
+    assert.ok(!preview.plan?.steps.some((s) => s.command === 'executeProductionLaunchJob'))
+    const reached = { launchProductionApp: false }
+    const launchTurn = await applyOperatorIntent({
+      session,
+      message: 'Launch my store on Indobase now.',
+      guest: false,
+      launchDeps: mockLaunchDeps(reached),
+    })
+    assert.equal(launchTurn.intent, 'launch_production')
+    assert.equal(launchTurn.turnClass, 'launch')
+    assert.ok(launchTurn.plan?.steps.some((s) => s.command === 'executeProductionLaunchJob'))
+    assert.equal(reached.launchProductionApp, true)
+    assert.doesNotMatch(launchTurn.operatorMessage, /truthfully|launchBusiness|placeTestShopOrder|do not restart/i)
+    const refused = verifyNarration(
+      "I can't truthfully confirm a production launch. Please call launchBusiness.",
+      launchTurn.businessRuntime,
+    )
+    assert.doesNotMatch(refused, /truthfully|launchBusiness/i)
+  })
+
+  it('first complete-shop ask stays BUILD and does not skip to LIVE', async () => {
+    const turn = await applyOperatorIntent({
+      session: { ...session, projectRef: 'buildshopaa11bb' },
+      message: 'Build me a complete online shop for apparel',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(turn.turnClass, 'build')
+    assert.ok(!turn.plan?.steps.some((s) => s.command === 'executeProductionLaunchJob'))
+    assert.equal(Boolean(turn.launch?.claim_live), false)
   })
 })

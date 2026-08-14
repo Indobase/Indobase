@@ -475,6 +475,62 @@ describe('production launch job pipeline', () => {
     assert.match(result.job.html || '', /Midnight Alpine drops/)
   })
 
+  it('freezes unique ecommerce HTML without commerce ABI and does not substitute the managed shop template', async () => {
+    const unique =
+      '<html><head><style>h1{color:#111111;font-family:Playfair Display,serif}</style></head><body><nav>Apex Run</nav><h1>Apex midnight editorial</h1><button>Add to cart</button></body></html>'
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch my store',
+        appType: 'ecommerce',
+        brand: 'Apex',
+        html: unique,
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'ecommerce',
+          steps: [{ id: 'placeTestShopOrder', status: 'ok', message: 'ok' }],
+          progress: 'ok',
+          message: 'ok',
+          claim_backend_ready: true,
+          claim_live: false,
+          storefront_html: '<html><body><h1>Generic Shop / Order online.</h1></body></html>',
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async (_ref, input) => {
+          assert.match(input.html || '', /Apex midnight editorial/)
+          assert.match(input.html || '', /Playfair Display/)
+          assert.match(input.html || '', /Apex Run/)
+          assert.doesNotMatch(input.html || '', /Order online/)
+          assert.doesNotMatch(input.html || '', /--accent:#3B8FD6/)
+          assert.match(input.html || '', /\/api\/os\/commerce\/runtime\.js/)
+          return {
+            ok: true,
+            status: 'published',
+            url: 'https://apex.sites.indobase.in',
+            message: 'published',
+            lane: 'static',
+            claim_live: true,
+            tool: 'launchBusiness',
+          }
+        },
+        smoke: async () => ({ ok: true, message: 'ok' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.ok(result.job.frozenArtifactHash)
+    assert.equal(result.job.frozenArtifactHash, result.job.publishedArtifactHash)
+    assert.match(result.job.html || '', /Apex midnight editorial/)
+    assert.equal(result.job.html?.includes('Generic Shop'), false)
+  })
+
   it('publishes the frozen SaaS preview HTML instead of replacing the edited headline', async () => {
     const frozen = `<html><body>
       <h1>Midnight tutoring</h1>

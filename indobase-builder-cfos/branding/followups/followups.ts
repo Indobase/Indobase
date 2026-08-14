@@ -376,7 +376,45 @@ export function stripOperatorInfraLeak(message: string): string {
 }
 
 const CHIP_TOOL_NAMES =
-  /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase)\b/gi
+  /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase|productionChecklist)\b/gi
+
+const CUSTOMER_MACHINERY =
+  /do not restart guest\/?auth|emit Wire\s*\/\s*Go Live|I can['’]t truthfully|I won['’]t claim|Call for Go Live|prove with `?placeTestShopOrder|Commerce ABI|window\.indobase\.commerce|POST \/api\/os\/[^\s]+|executionId|jobId\b/gi
+
+export function stripCustomerMachinery(message: string): string {
+  if (!message) return message
+  let t = message
+  t = t.replace(/```[\s\S]*?```/g, '')
+  t = t.replace(/`[^`]*`/g, (m) => (CHIP_TOOL_NAMES.test(m) ? '' : m))
+  t = t.replace(CHIP_TOOL_NAMES, '')
+  t = t.replace(CUSTOMER_MACHINERY, '')
+  t = t.replace(/^[^\n]*(?:do not restart guest|emit Wire|Call for Go Live|I can['’]t truthfully)[^\n]*$/gim, '')
+  t = t.replace(/\b(?:execution|operation|job)[ -]?id[:\s]+[a-z0-9_-]{6,}\b/gi, '')
+  t = t.replace(/[ \t]{2,}/g, ' ')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+export function sanitizeChipMessage(message: string, label?: string): string {
+  const raw = (message || '').trim()
+  const lab = (label || '').toLowerCase()
+  const blob = `${lab} ${raw}`.toLowerCase()
+  if (/connect (my )?domain|customdomain|cname/.test(blob)) return 'Connect a domain I already own.'
+  if (/add (a )?product|new product/.test(blob)) return 'Add a product to my catalog.'
+  if (/change the hero|polish hero|hero/.test(blob) && /change|polish|refine|edit/.test(blob)) {
+    return 'Change the hero.'
+  }
+  if (/\b(go live|launch my (store|shop|site|website|app|business)|launch store|take live)\b/.test(blob)) {
+    if (/\b(website|landing)\b/.test(blob) || /launch website/.test(lab)) return 'Launch my website on Indobase now.'
+    if (/\b(app|saas)\b/.test(blob) || /launch app/.test(lab)) return 'Launch my app on Indobase now.'
+    return 'Launch my store on Indobase now.'
+  }
+  const cleaned = stripCustomerMachinery(raw)
+  if (!cleaned || CHIP_TOOL_NAMES.test(cleaned) || /\/api\/os\//.test(cleaned)) {
+    CHIP_TOOL_NAMES.lastIndex = 0
+    return lab.includes('launch') || lab.includes('go live') ? 'Launch my store on Indobase now.' : cleaned || 'Continue'
+  }
+  return cleaned
+}
 
 /** Operator-visible chip labels must never name internal tools. */
 export function operatorChipLabel(label: string, appKind?: JourneyChipFlags['appKind']): string {
@@ -442,7 +480,7 @@ export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRew
   if (!t) return t
   const reply = (opts?.conductorReply || readWindowString('__INDOBASE_OPERATOR_MESSAGE__') || '').trim()
   const name = (opts?.businessName || readWindowString('__INDOBASE_BUSINESS_NAME__') || '').trim()
-  if (BLOCKED_BUILD_SPEECH.test(t)) {
+  if (BLOCKED_BUILD_SPEECH.test(t) || /I can['’]t truthfully|please call launchBusiness|placeTestShopOrder|do not restart guest/i.test(t)) {
     t = reply || DEFAULT_CONDUCTOR_REPLY
   }
   if (name && !/^your business$/i.test(name)) {
@@ -453,7 +491,7 @@ export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRew
 
 export function cleanOperatorMessage(message: string, opts?: BuilderChatRewriteOpts): string {
   return rewriteBlockedBuildSpeech(
-    stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message))),
+    stripCustomerMachinery(stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message)))),
     opts,
   )
 }
@@ -837,19 +875,19 @@ export function postPreviewFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} to my Indobase subdomain with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips`,
+        message: `Launch my store on Indobase now.`,
       },
       {
-        label: 'Add a real backend',
-        message: `Call guidedBackend mode=ecommerce for ${name}, prove with placeTestShopOrder, then emit Wire / Go Live chips — do not restart guest/auth`,
+        label: 'Add a product',
+        message: `Add a product to my catalog.`,
       },
       {
         label: 'Refine then Go Live',
-        message: `Refine the design and branding for ${name}, then Go Live with launchBusiness (full launch is the goal)`,
+        message: `Refine the design and branding for ${name}, then launch my store on Indobase.`,
       },
       {
-        label: 'Wire + Go Live',
-        message: `If catalog exists, publish ${name} storefront_html (Commerce ABI) then Go Live with launchBusiness`,
+        label: 'Change the hero',
+        message: `Change the hero.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -994,11 +1032,11 @@ export function parseFollowUpLine(line: string): FollowUpItem | null {
 
   const pipe = trimmed.indexOf('|')
   if (pipe === -1) {
-    return { label: operatorChipLabel(trimmed), message: trimmed }
+    return { label: operatorChipLabel(trimmed), message: sanitizeChipMessage(trimmed) }
   }
 
   const label = operatorChipLabel(trimmed.slice(0, pipe).trim())
-  const message = trimmed.slice(pipe + 1).trim() || label
+  const message = sanitizeChipMessage(trimmed.slice(pipe + 1).trim() || label, label)
   if (!label) return null
   return { label, message }
 }
@@ -1368,6 +1406,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
       items: filtered.items.map((item) => ({
         ...item,
         label: operatorChipLabel(item.label),
+        message: sanitizeChipMessage(item.message, item.label),
       })),
     }
   }

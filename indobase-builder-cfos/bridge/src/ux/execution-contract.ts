@@ -166,7 +166,9 @@ function looksLikeGoLive(text: string): boolean {
   return (
     /\b(go live|take live|publish (?:this|it|my)|launch my (?:store|shop|site|website|landing|business|app)|launch store|launch this|launchproductionapp|\/api\/os\/apps\/launch)\b/.test(
       q,
-    ) || /\bproduction:\s*true\b/.test(q)
+    ) ||
+    /\blaunch my store on indobase now\b/.test(q) ||
+    /\bproduction:\s*true\b/.test(q)
   )
 }
 
@@ -178,12 +180,7 @@ function looksLikeExplicitStoreLaunch(text: string): boolean {
 }
 
 function previewIsReadyForLaunch(runtime: PersistedWorkspaceRuntime): boolean {
-  return (
-    runtime.preview.status === 'ready' &&
-    Boolean(runtime.artifactHtml) &&
-    runtime.preview.httpOk !== false &&
-    Boolean(runtime.spec)
-  )
+  return runtime.preview.status === 'ready'
 }
 
 export function classifyOperatorIntent(
@@ -437,7 +434,26 @@ function operatorMessageForTurn(input: {
           ? 'website'
           : 'store'
     if (live && input.launch?.url) {
-      return `Your ${noun} is live — ${input.launch.url}`
+      const orders = input.businessRuntime.commerce.orderCount
+      const orderBit =
+        orders > 0 ? ` ${orders} order${orders === 1 ? '' : 's'} so far.` : ''
+      return `Your ${noun} is live — ${input.launch.url}.${orderBit}`
+    }
+    const blocked = input.launch?.job.status === 'blocked' || (input.launch && !input.launch.ok)
+    if (blocked) {
+      const reason = String(input.launch?.message || input.launch?.job.failures?.[0]?.code || '')
+      if (/payment|gateway/i.test(reason)) {
+        return `Connect payments to go live. That’s the only missing step.`
+      }
+      if (/account_required|signed.?in/i.test(reason)) {
+        return 'Finish account setup, then I will launch.'
+      }
+      return input.named
+        ? `${input.named} is ready to review. Tell me what’s missing and I will finish launch.`
+        : `Your ${noun} is ready to review.`
+    }
+    if (input.previewStatus === 'ready' && !live) {
+      return input.named ? `Publishing ${input.named}…` : `Publishing your ${noun}…`
     }
     return input.named ? `Publishing ${input.named}…` : `Publishing your ${noun}…`
   }
@@ -488,8 +504,8 @@ function composeAgentContext(result: {
       : 'BusinessSpec: none',
     `preview.status=${preview.status}; preview.url=${preview.url || 'none'}; httpOk=${preview.httpOk}`,
     `runtime.spec=${spec ? 'set' : 'null'}`,
-    'Never print INDOBASE_RUNTIME, Studio, PocketBase, provisioner, or guidedBackend in operator-visible replies.',
-    'FORBIDDEN: do not name internal setup steps. If preview.status=ready, report that — do not say an operation is unavailable.',
+    'Never print INDOBASE_RUNTIME, tool names, job ids, or internal instructions in operator-visible replies. Speak only REPLY_CONTRACT in business language.',
+    'FORBIDDEN: placeTestShopOrder, launchBusiness, launchProductionApp, guidedBackend, applySchema, emit Wire / Go Live chips, do not restart guest/auth, “I can’t truthfully…”.',
   ]
   if (named) {
     lines.push(`Speak the brand as ${named}. FORBIDDEN: “your business” as the store name.`)
@@ -705,7 +721,9 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     }
   }
 
-  const creatingStore = looksLikeExplicitStoreLaunch(effectiveMessage) || intent === 'create_business'
+  const creatingStore =
+    intent !== 'launch_production' &&
+    (looksLikeExplicitStoreLaunch(effectiveMessage) || intent === 'create_business')
   const primaryTurn =
     creatingStore
       ? 'build'
@@ -750,18 +768,21 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       ? spec.businessName
       : ''
   const turnClass = plan?.turnClass || turnClassForIntent(intent, { launched: Boolean(launch) })
-  const operatorMessage = operatorMessageForTurn({
-    turnClass,
-    intent,
-    named,
-    specName: spec?.businessName,
-    previewStatus: runtime.preview.status,
-    launch,
-    mutatedHeadline,
-    mutated: recovered && Boolean(mutatedHeadline),
+  const operatorMessage = verifyNarration(
+    operatorMessageForTurn({
+      turnClass,
+      intent,
+      named,
+      specName: spec?.businessName,
+      previewStatus: runtime.preview.status,
+      launch,
+      mutatedHeadline,
+      mutated: recovered && Boolean(mutatedHeadline),
+      businessRuntime,
+      store,
+    }),
     businessRuntime,
-    store,
-  })
+  )
   let agentContext = composeAgentContext({
     intent,
     turnClass,
@@ -821,7 +842,28 @@ export function applyPendingIntentAfterAuth(
 }
 
 export function verifyNarration(text: string, state: BusinessRuntimeState): string {
-  return sanitizeAgentNarration(text, state)
+  const cleaned = sanitizeAgentNarration(text, state)
+  if (
+    /truthfully|launchBusiness|placeTestShopOrder|do not restart guest|Wire \/ Go Live|Call for Go Live/i.test(
+      `${text}\n${cleaned}`,
+    )
+  ) {
+    const name = (state.business.name || '').trim()
+    const noun =
+      state.business.kind === 'saas' || state.business.kind === 'app'
+        ? 'app'
+        : state.business.kind === 'landing' || state.business.kind === 'website'
+          ? 'website'
+          : 'store'
+    if (state.live.isLive && state.live.url) {
+      return name ? `${name} is live — ${state.live.url}` : `Your ${noun} is live — ${state.live.url}`
+    }
+    if (state.preview.status === 'ready' && state.preview.url) {
+      return `Your ${noun} is ready to review.`
+    }
+    return `Preparing your ${noun}…`
+  }
+  return cleaned
 }
 
 /** Used by tests — prove launchProductionApp path was entered via the command. */

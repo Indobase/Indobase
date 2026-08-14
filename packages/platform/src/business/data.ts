@@ -46,6 +46,8 @@ export type BusinessOrder = {
   email?: string
   customerName?: string
   itemsSummary?: string
+  /** ISO-8601 instant. Absent on legacy rows — those are omitted from “today” stats. */
+  createdAt?: string
 }
 
 export type BusinessInventoryItem = {

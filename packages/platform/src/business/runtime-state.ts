@@ -19,7 +19,13 @@ import {
   LOW_STOCK_THRESHOLD,
   type BusinessCatalogCollection,
 } from './catalog'
-import { formatOrderRuntimeLine, normalizePaymentStatus } from './order-lifecycle'
+import { formatOrderRuntimeLine, normalizePaymentStatus, parseOrderCreatedAtIso } from './order-lifecycle'
+import {
+  capabilityPlanFromBusinessType,
+  evaluateApplicationReleaseGate,
+  type ApplicationCapabilityPlan,
+  type ApplicationReleaseGate,
+} from './application-engine'
 
 export { LOW_STOCK_THRESHOLD }
 
@@ -31,9 +37,53 @@ export type BusinessRuntimeCatalog = {
   collections?: BusinessCatalogCollection[]
 }
 
+/**
+ * Calendar day for commerce “today” metrics (Indobase default).
+ * Orders without createdAt are omitted — never attributed to today.
+ */
+export const BUSINESS_COMMERCE_TIMEZONE = 'Asia/Kolkata'
+
 export type BusinessRuntimeCommerce = {
   orderCount: number
   pendingOrderCount: number
+  /** IANA timezone used for today* fields (Asia/Kolkata). */
+  timezone?: string
+  /** Count of orders whose createdAt falls on the current calendar day in timezone. */
+  todayOrderCount?: number
+  /**
+   * Sum of amountMinor for today’s orders that have a numeric amount.
+   * Undefined when no today-dated orders carry an amount (do not invent GMV).
+   */
+  todayRevenueMinor?: number
+}
+
+export function calendarDateInTimeZone(
+  iso: string,
+  timeZone: string = BUSINESS_COMMERCE_TIMEZONE,
+): string | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const y = parts.find((p) => p.type === 'year')?.value
+  const m = parts.find((p) => p.type === 'month')?.value
+  const d = parts.find((p) => p.type === 'day')?.value
+  if (!y || !m || !d) return null
+  return `${y}-${m}-${d}`
+}
+
+export function orderIsOnCalendarDay(
+  order: BusinessOrder,
+  day: string,
+  timeZone: string = BUSINESS_COMMERCE_TIMEZONE,
+): boolean {
+  const iso = parseOrderCreatedAtIso(order.createdAt)
+  if (!iso) return false
+  return calendarDateInTimeZone(iso, timeZone) === day
 }
 
 export function catalogFromProducts(products: BusinessProduct[]): BusinessRuntimeCatalog {
@@ -47,12 +97,29 @@ export function catalogFromProducts(products: BusinessProduct[]): BusinessRuntim
   }
 }
 
-export function commerceFromOrders(orders: BusinessOrder[]): BusinessRuntimeCommerce {
+export function commerceFromOrders(
+  orders: BusinessOrder[],
+  options: { now?: Date; timeZone?: string } = {},
+): BusinessRuntimeCommerce {
+  const timeZone = options.timeZone || BUSINESS_COMMERCE_TIMEZONE
+  const now = options.now || new Date()
+  const today = calendarDateInTimeZone(now.toISOString(), timeZone)
   const pendingOrderCount = orders.filter((o) => {
     const payment = normalizePaymentStatus(o.paymentStatus || o.status)
     return payment === 'pending'
   }).length
-  return { orderCount: orders.length, pendingOrderCount }
+  const todays = today ? orders.filter((o) => orderIsOnCalendarDay(o, today, timeZone)) : []
+  const withAmount = todays.filter((o) => typeof o.amountMinor === 'number' && Number.isFinite(o.amountMinor))
+  const todayRevenueMinor = withAmount.length
+    ? withAmount.reduce((n, o) => n + (o.amountMinor as number), 0)
+    : undefined
+  return {
+    orderCount: orders.length,
+    pendingOrderCount,
+    timezone: timeZone,
+    todayOrderCount: todays.length,
+    todayRevenueMinor,
+  }
 }
 
 export function inventoryFromProducts(products: BusinessProduct[]): BusinessInventoryItem[] {
@@ -147,6 +214,11 @@ export type BusinessRuntimeState = {
   jobs: BusinessRuntimeJob[]
   health: BusinessRuntimeHealth
   events: BusinessRuntimeEvent[]
+  /** Capability plan + ReleaseGate — not a second source of truth. */
+  application?: {
+    capabilityPlan: ApplicationCapabilityPlan
+    releaseGate: ApplicationReleaseGate
+  }
 }
 
 export type AgentRuntimeClaim =
@@ -167,7 +239,8 @@ function productsWithDisplayPrice(products: BusinessProduct[]): BusinessProduct[
 export function emptyBusinessRuntimeState(
   overrides: Partial<BusinessRuntimeState> = {},
 ): BusinessRuntimeState {
-  return {
+  const products = productsWithDisplayPrice(persistCatalogProjection(overrides.products ?? []))
+  const state: BusinessRuntimeState = {
     identity: {
       signedIn: false,
       email: null,
@@ -186,7 +259,7 @@ export function emptyBusinessRuntimeState(
     preview: { status: 'absent', url: null, ...overrides.preview },
     deployment: { status: null, jobId: null, ...overrides.deployment },
     live: { isLive: false, url: null, ...overrides.live },
-    products: productsWithDisplayPrice(persistCatalogProjection(overrides.products ?? [])),
+    products,
     customers: overrides.customers ?? [],
     orders: overrides.orders ?? [],
     catalog: {
@@ -208,6 +281,23 @@ export function emptyBusinessRuntimeState(
       ...overrides.health,
     },
   }
+  const capabilityPlan = capabilityPlanFromBusinessType(state.spec?.businessType || state.business.kind)
+  const jobLive =
+    state.deployment.status === 'live' || state.jobs.some((job) => job.status === 'live')
+  state.application = overrides.application || {
+    capabilityPlan,
+    releaseGate: evaluateApplicationReleaseGate({
+      businessType: capabilityPlan.businessType,
+      products: state.products,
+      catalogReady: state.health.catalogReady,
+      previewReady: state.preview.status === 'ready',
+      previewUrl: state.preview.url,
+      liveIsLive: state.live.isLive,
+      liveUrl: state.live.url,
+      jobLive,
+    }),
+  }
+  return state
 }
 
 export function agentMayClaimPreview(state: BusinessRuntimeState): boolean {
@@ -215,12 +305,22 @@ export function agentMayClaimPreview(state: BusinessRuntimeState): boolean {
   return state.preview.status === 'ready' && Boolean(state.preview.url) && reachable
 }
 
+export function agentMayClaimStoreReady(state: BusinessRuntimeState): boolean {
+  const plan = state.application?.capabilityPlan || capabilityPlanFromBusinessType(state.spec?.businessType || state.business.kind)
+  if (plan.businessType !== 'ecommerce') return agentMayClaimPreview(state)
+  return Boolean(state.application?.releaseGate.claimPreviewReady)
+}
+
 export function agentMayClaimLive(state: BusinessRuntimeState): boolean {
   const jobLive =
     state.deployment.status === 'live' ||
     state.jobs.some((job) => job.status === 'live') ||
     (state.live.isLive && Boolean(state.live.url) && state.business.state === 'live')
-  return state.live.isLive && Boolean(state.live.url) && jobLive
+  const base = state.live.isLive && Boolean(state.live.url) && jobLive
+  if (!base) return false
+  const plan = state.application?.capabilityPlan || capabilityPlanFromBusinessType(state.spec?.businessType || state.business.kind)
+  if (plan.businessType !== 'ecommerce') return true
+  return Boolean(state.application?.releaseGate.claimLive)
 }
 
 /** True when the agent must NOT invent “connection unavailable” for this entity. */
@@ -277,6 +377,7 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
       amount,
       who: o.customerName || o.email || '',
       items: o.itemsSummary || '',
+      createdAt: o.createdAt,
     })
   })
   const customerLines = state.customers
@@ -313,7 +414,12 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
     `catalog.variantCount: ${state.catalog.variantCount ?? state.inventory.length}`,
     `commerce.orderCount: ${state.commerce.orderCount}`,
     `commerce.pendingOrderCount: ${state.commerce.pendingOrderCount}`,
+    `commerce.timezone: ${state.commerce.timezone || BUSINESS_COMMERCE_TIMEZONE}`,
+    `commerce.todayOrderCount: ${state.commerce.todayOrderCount ?? 0}`,
   ]
+  if (typeof state.commerce.todayRevenueMinor === 'number') {
+    lines.push(`commerce.todayRevenueMinor: ${state.commerce.todayRevenueMinor}`)
+  }
   if (state.spec) {
     const spec = state.spec
     lines.push(

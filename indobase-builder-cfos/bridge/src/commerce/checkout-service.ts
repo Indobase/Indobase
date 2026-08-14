@@ -211,6 +211,7 @@ export async function executeCheckout(
       customerId: owned.customer.id,
       customerType: owned.customerType,
       guestTokenHash: owned.guestTokenHash,
+      createdAt: new Date().toISOString(),
     })
 
     for (const line of lines) {

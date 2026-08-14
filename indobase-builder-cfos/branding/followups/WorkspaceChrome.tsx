@@ -48,6 +48,16 @@ type LaunchWindow = {
   draft_preview_path?: string | null
 }
 
+function readUxLabel(): string | null {
+  try {
+    const ux = (window as unknown as { __INDOBASE_UX__?: { stream?: { label?: string }; lifecycle?: { current?: string } } })
+      .__INDOBASE_UX__
+    return ux?.stream?.label || ux?.lifecycle?.current || null
+  } catch {
+    return null
+  }
+}
+
 function readSnapshot(): WorkspaceSnapshot {
   try {
     const w = window as unknown as {
@@ -172,6 +182,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
         w.__INDOBASE_PROJECT_REF__ = s.project_ref || null
         if (s.project) w.__INDOBASE_PROJECT__ = s.project
         if (s.runtime) w.__INDOBASE_RUNTIME__ = s.runtime
+        if (s.ux) w.__INDOBASE_UX__ = s.ux
         if (typeof s.agent_hint === 'string' && s.agent_hint.trim()) {
           w.__INDOBASE_AGENT_HINT__ = s.agent_hint
         }
@@ -295,6 +306,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
         <div className={styles.brand}>Indobase</div>
         <div className={styles.actions}>
           {view.state === 'live' ? <span className={styles.liveBadge}>LIVE</span> : null}
+          {readUxLabel() && view.state !== 'live' ? (
+            <span className={styles.previewBadge}>{readUxLabel()}</span>
+          ) : null}
           <button type="button" className={styles.toggle} onClick={() => setPreviewOpen((v) => !v)}>
             {previewOpen ? 'Hide preview' : 'Preview'}
           </button>

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   agentMayClaimLive,
   agentMayClaimPreview,
+  BUSINESS_COMMERCE_TIMEZONE,
+  commerceFromOrders,
   composeBusinessRuntimeStateHint,
   emptyBusinessRuntimeState,
   isForbiddenAgentClaim,
@@ -60,10 +62,12 @@ describe('BusinessRuntimeState', () => {
   it('allows live/preview only when urls and flags agree', () => {
     const state = emptyBusinessRuntimeState({
       business: { ref: 'biz_ut', name: 'UrbanThread', kind: 'store', state: 'live' },
+      spec: { businessName: 'UrbanThread', businessType: 'ecommerce' },
       preview: { status: 'ready', url: 'https://urbanthread.sites.indobase.in' },
       live: { isLive: true, url: 'https://urbanthread.sites.indobase.in' },
       deployment: { status: 'live', jobId: 'job_live' },
       jobs: [{ id: 'job_live', status: 'live' }],
+      products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900, variants: [{ id: 'v0', priceMinor: 1299900 }] }],
       health: { catalogReady: true, paymentsReady: false, previewReady: true },
     })
     expect(agentMayClaimPreview(state)).toBe(true)
@@ -89,5 +93,30 @@ describe('BusinessRuntimeState', () => {
     })
     expect(state.products[0]?.priceMinor).toBe(1349900)
     expect(composeBusinessRuntimeStateHint(state)).toMatch(/₹13499/)
+  })
+
+  it('stamps today’s revenue in Asia/Kolkata and excludes yesterday and untimed orders', () => {
+    const now = new Date('2026-08-14T12:30:00.000Z') // 18:00 IST
+    const commerce = commerceFromOrders(
+      [
+        { id: 'today', createdAt: '2026-08-14T06:00:00.000Z', amountMinor: 50000, paymentStatus: 'paid' },
+        { id: 'yesterday', createdAt: '2026-08-13T06:00:00.000Z', amountMinor: 900000, paymentStatus: 'paid' },
+        { id: 'legacy', amountMinor: 100000, paymentStatus: 'paid' },
+      ],
+      { now },
+    )
+    expect(commerce.timezone).toBe(BUSINESS_COMMERCE_TIMEZONE)
+    expect(commerce.orderCount).toBe(3)
+    expect(commerce.todayOrderCount).toBe(1)
+    expect(commerce.todayRevenueMinor).toBe(50000)
+
+    const state = emptyBusinessRuntimeState({
+      orders: [
+        { id: 'today', createdAt: '2026-08-14T06:00:00.000Z', amountMinor: 50000 },
+        { id: 'yesterday', createdAt: '2026-08-13T06:00:00.000Z', amountMinor: 900000 },
+      ],
+    })
+    expect(state.orders[0]?.createdAt).toMatch(/T/)
+    expect(state.commerce.todayOrderCount).toBeGreaterThanOrEqual(0)
   })
 })

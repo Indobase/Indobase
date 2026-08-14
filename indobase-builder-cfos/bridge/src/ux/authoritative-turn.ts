@@ -133,6 +133,14 @@ export function snapshotFromCommerceRows(
           email: String(o.email || ''),
           customer_name: String(o.customer_name || o.customerName || ''),
           items: itemsSummary(o.items_json || o.items, productRows),
+          created_at:
+            typeof o.createdAt === 'string'
+              ? o.createdAt
+              : typeof o.created_at === 'string'
+                ? o.created_at
+                : typeof o.created === 'string'
+                  ? o.created
+                  : undefined,
         }
       })
       .filter((o) => o.id || o.orderNumber),

@@ -2409,7 +2409,9 @@ ${injection}`
       'WorkspaceChrome.tsx',
       'WorkspaceChrome.module.css',
       'BusinessControlCenter.tsx',
-      'BusinessControlCenter.module.css',
+      'ExecutionCard.tsx',
+      'ExecutionCard.module.css',
+      'presentation.ts',
     ]) {
       const from = join(brandFollowups, name)
       const to = join(followupsDir, name)

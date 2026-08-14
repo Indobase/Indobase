@@ -107,10 +107,22 @@ export function formatOrderRuntimeLine(input: {
   amount?: string
   who?: string
   items?: string
+  createdAt?: string
 }): string {
   const payment = normalizePaymentStatus(input.paymentStatus)
   const fulfillment = normalizeFulfillmentStatus(input.fulfillmentStatus)
-  return `- #${input.id} payment=${payment} fulfillment=${fulfillment} ${input.amount || ''} ${input.who || ''} ${input.items || ''}`
+  const when = input.createdAt ? ` at=${input.createdAt}` : ''
+  return `- #${input.id} payment=${payment} fulfillment=${fulfillment} ${input.amount || ''} ${input.who || ''} ${input.items || ''}${when}`
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/** PocketBase stores `YYYY-MM-DD HH:mm:ss.SSSZ`; normalize to ISO-8601. */
+export function parseOrderCreatedAtIso(raw?: string | null): string | undefined {
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined
+  const trimmed = raw.trim()
+  const normalized = /^\d{4}-\d{2}-\d{2} /.test(trimmed) ? trimmed.replace(' ', 'T') : trimmed
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) return undefined
+  return date.toISOString()
 }

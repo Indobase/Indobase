@@ -29,6 +29,8 @@ import {
   stripAuthoritativeTurnStamp,
   operatorChipLabel,
   parseFollowUpLine,
+  stripCustomerMachinery,
+  sanitizeChipMessage,
   injectJourneyNextActionFollowUps,
   filterChipsForLiveJourney,
   filterChipsForJourneyState,
@@ -52,7 +54,7 @@ INDOBASE_FOLLOWUPS>>>
     assert.equal(parsed.title, 'Where should I take MERIDIAN next?')
     assert.equal(parsed.items.length, 3)
     assert.equal(parsed.items[0].label, 'Go Live on Indobase')
-    assert.equal(parsed.items[0].message, 'Go Live now')
+    assert.equal(parsed.items[0].message, 'Launch my store on Indobase now.')
     assert.equal(parsed.items[2].message, 'Leave it as-is for now')
     assert.match(parsed.body, /Store is ready/)
     assert.doesNotMatch(parsed.body, /INDOBASE_FOLLOWUPS/)
@@ -524,7 +526,7 @@ INDOBASE_CHOICES>>>
     assert.ok(looksLikeLandingSingleTurnIntent('Build a landing page for my cafe'))
     assert.equal(looksLikeClearLandingAsk('Launch my apparel store'), false)
     const stage = landingSingleTurnFollowups('CRUMB')
-    assert.ok(stage.items.some((i) => /\/api\/os\/apps\/launch|appType:\s*"landing"|launchBusiness app_type=landing/i.test(i.message)))
+    assert.ok(stage.items.some((i) => /Launch my website on Indobase now/i.test(i.message)))
     assert.ok(stage.items.every((i) => !/guidedBackend mode=ecommerce/i.test(i.message)))
     assert.ok(stage.items.every((i) => !/ensureAnalytics|Add analytics/i.test(i.label + i.message)))
   })
@@ -535,8 +537,8 @@ INDOBASE_CHOICES>>>
     assert.ok(looksLikeLandingSingleTurnIntent(input))
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
-    assert.ok(resolved.items.some((i) => /\/api\/os\/apps\/launch|appType:\s*"landing"|launchBusiness app_type=landing|skip guidedBackend/i.test(i.message)))
+    assert.ok(resolved.items.some((i) => /Go Live|Launch my website/i.test(i.label)))
+    assert.ok(resolved.items.every((i) => !/\/api\/os\/apps\/launch|launchBusiness|guidedBackend/i.test(i.message)))
     assert.ok(resolved.items.every((i) => !/INDOBASE_GUIDED_BACKEND mode=ecommerce/i.test(i.message)))
   })
 
@@ -605,7 +607,8 @@ INDOBASE_CHOICES>>>
     const parsed = parseFollowUpLine('Go Live with launchBusiness | Go Live — call launchProductionApp')
     assert.ok(parsed)
     assert.doesNotMatch(parsed.label, /launchBusiness/)
-    assert.match(parsed.message, /launchProductionApp/)
+    assert.doesNotMatch(parsed.message, /launchProductionApp|launchBusiness/)
+    assert.match(parsed.message, /Launch my store on Indobase now/)
   })
 
   it('stamps authoritative runtime onto the outbound turn and strips it from operator display', () => {
@@ -681,6 +684,37 @@ The hero is ready.`
     assert.doesNotMatch(cleaned, /sessionStatus/)
     assert.doesNotMatch(cleaned, /Listed 12 blueprints/)
     assert.match(cleaned, /hero is ready/)
+  })
+
+  it('outbound sanitizer strips tool names and guest/auth conductor leaks', () => {
+    const leaked =
+      'Call for Go Live, prove with `placeTestShopOrder`, then emit Wire / Go Live chips — do not restart guest/auth. I can\'t truthfully confirm a production launch.'
+    const cleaned = cleanOperatorMessage(leaked, {
+      conductorReply: 'Your store is ready to review.',
+    })
+    assert.doesNotMatch(cleaned, /placeTestShopOrder|launchBusiness|do not restart guest|Wire \/ Go Live|truthfully/i)
+    assert.match(cleaned, /ready to review/)
+    const machinery = stripCustomerMachinery(
+      'Please call launchBusiness. jobId: abcdef123456. Commerce ABI window.indobase.commerce',
+    )
+    assert.doesNotMatch(machinery, /launchBusiness|jobId|Commerce ABI|indobase\.commerce/)
+  })
+
+  it('follow-up chips never include internal tool ids', () => {
+    const parsed = parseFollowUpLine(
+      'Add a real backend | Call guidedBackend, prove with placeTestShopOrder, emit Wire / Go Live chips — do not restart guest/auth',
+    )
+    assert.ok(parsed)
+    assert.doesNotMatch(parsed.message, /guidedBackend|placeTestShopOrder|launchBusiness|do not restart/i)
+    const resolved = resolveFollowUps("Here's what I built — preview ready. What's in it: shop grid.")
+    assert.ok(resolved)
+    for (const item of resolved.items) {
+      assert.doesNotMatch(
+        `${item.label} ${item.message}`,
+        /placeTestShopOrder|launchBusiness|launchProductionApp|guidedBackend|applySchema|ensureDatabase|wireCheckout|connectGateway/i,
+      )
+    }
+    assert.equal(sanitizeChipMessage('Go Live with launchBusiness'), 'Launch my store on Indobase now.')
   })
 
   it('injectJourneyNextActionFollowUps returns null when agent authored FOLLOWUPS', () => {

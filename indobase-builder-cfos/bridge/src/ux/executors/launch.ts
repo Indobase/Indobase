@@ -9,6 +9,7 @@ import {
 } from '../business-spec.js'
 import {
   executeProductionLaunchJob,
+  getLatestProductionLaunchJob,
   type ProductionLaunchExecuteResult,
 } from '../../production-launch/index.js'
 import { appendRuntimeEvent, getWorkspaceRuntime, issueRuntimeCommand } from '../runtime-store.js'
@@ -27,6 +28,27 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
   let recovered = false
   let commandId = plan.commandId
   let livePlan = currentPlan(plan)
+
+  const alreadyLive = getLatestProductionLaunchJob(session.projectRef)
+  if (alreadyLive?.status === 'live' && alreadyLive.url) {
+    if (!stepSucceeded(livePlan, PLAN_STEP.productionLaunch)) {
+      markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'succeeded', { resultRef: alreadyLive.jobId })
+    }
+    return {
+      plan: currentPlan(livePlan),
+      spec: runtime.spec,
+      launch: {
+        ok: true,
+        job: alreadyLive,
+        url: alreadyLive.url,
+        claim_live: true,
+        message: 'already live',
+      } as ProductionLaunchExecuteResult,
+      runtime: getWorkspaceRuntime(session.projectRef) || runtime,
+      recovered,
+      commandId,
+    }
+  }
 
   const previewReady = runtime.preview.status === 'ready' && Boolean(runtime.artifactHtml)
   const needsBuild =

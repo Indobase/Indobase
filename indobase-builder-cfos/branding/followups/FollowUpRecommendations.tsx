@@ -14,7 +14,9 @@ import {
   type ParsedFollowUps,
 } from './followups'
 
+import { ExecutionCard } from './ExecutionCard'
 import { LaunchJourneyCard, readLaunchJourneyFromWindow } from './LaunchJourneyCard'
+import { composePresentation, type PresentationSurface, type RuntimeView } from './presentation'
 
 import styles from './FollowUpRecommendations.module.css'
 
@@ -45,6 +47,17 @@ function isBrowserGuestSession(): boolean {
     /* ignore */
   }
   return false
+}
+
+function readPresentation(): PresentationSurface | null {
+  try {
+    const w = window as unknown as { __INDOBASE_UX__?: PresentationSurface; __INDOBASE_RUNTIME__?: RuntimeView }
+    if (w.__INDOBASE_UX__?.lifecycle) return w.__INDOBASE_UX__
+    if (w.__INDOBASE_RUNTIME__?.business) return composePresentation(w.__INDOBASE_RUNTIME__)
+  } catch {
+    /* ignore */
+  }
+  return null
 }
 
 function readProjectState(): string | null {
@@ -237,6 +250,7 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
     return raw
   }, [allowFallback, cleaned, journeyOpts])
   const body = resolved?.body ?? cleaned
+  const surface = useMemo(() => readPresentation(), [cleaned])
   const showJourney =
     showLaunchJourney &&
     isLatest &&
@@ -248,6 +262,9 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   return (
     <div data-indobase-chip-host={instanceId}>
       {children ? children(body, resolved) : null}
+      {isLatest && surface?.executionCard ? (
+        <ExecutionCard card={surface.executionCard} stream={surface.stream} />
+      ) : null}
       {showJourney && <LaunchJourneyCard onPick={onPick} disabled={disabled} sticky />}
       {isLatest && resolved && resolved.items.length > 0 && (
         <FollowUpChipGrid

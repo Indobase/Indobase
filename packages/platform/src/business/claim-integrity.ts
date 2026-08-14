@@ -6,6 +6,7 @@
 import {
   agentMayClaimLive,
   agentMayClaimPreview,
+  agentMayClaimStoreReady,
   type BusinessRuntimeState,
 } from './runtime-state'
 
@@ -57,6 +58,54 @@ const STORE_MISSING_SPEECH =
 
 const COMMAND_UNAVAILABLE_SPEECH =
   /\b(?:(?:launch|preview|persisted-preview|editing) command|launchProductionApp|launchBusiness)\b.{0,40}isn['’]?t (?:currently )?available|\bcommand isn['’]?t (?:currently )?available\b/i
+
+const AGENT_TOOL_NAMES =
+  /\b(?:placeTestShopOrder|launchBusiness|launchProductionApp|connectGateway|guidedBackend|setupShopCatalog|applySchema|ensureDatabase|ensureLogin|wireCheckout|listShopOrders|productionChecklist|authStart|authVerify)\b/i
+
+const MACHINERY_INSTRUCTION =
+  /do not restart guest\/?auth|emit Wire\s*\/\s*Go Live|I can['’]t truthfully|I won['’]t claim|I will not (?:truthfully )?claim|Call for Go Live|prove with `?placeTestShopOrder|Commerce ABI|window\.indobase\.commerce|POST \/api\/os\/|executionId|jobId\b|do not add a new agent tool/i
+
+const REFUSE_LAUNCH_ESSAY =
+  /I can['’]t truthfully confirm a production launch|I won['’]t claim.{0,80}launch|please call launchBusiness|call launchProductionApp|Call launchBusiness/i
+
+export function stripAgentMachinery(text: string): string {
+  if (!text) return text
+  let t = text
+  t = t.replace(/`[^`]{0,80}`/g, (m) => (AGENT_TOOL_NAMES.test(m) ? '' : m))
+  t = t.replace(new RegExp(AGENT_TOOL_NAMES.source, 'gi'), '')
+  t = t.replace(/^[^\n]*(?:do not restart guest\/?auth|emit Wire\s*\/\s*Go Live chips)[^\n]*$/gim, '')
+  t = t.replace(/^[^\n]*(?:I can['’]t truthfully|I won['’]t claim|I will not (?:truthfully )?claim)[^\n]*$/gim, '')
+  t = t.replace(/^[^\n]*Call for Go Live[^\n]*$/gim, '')
+  t = t.replace(/\b(?:execution|operation|job)[ -]?id[:\s]+[a-z0-9_-]{6,}\b/gi, '')
+  t = t.replace(/[ \t]{2,}/g, ' ')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+export function composeCustomerNarration(state: BusinessRuntimeState): string {
+  const name = (state.business.name || '').trim()
+  const noun =
+    state.business.kind === 'saas' || state.business.kind === 'app'
+      ? 'app'
+      : state.business.kind === 'landing' || state.business.kind === 'website'
+        ? 'website'
+        : 'store'
+  const named = name && !/^your (business|store|app|website)$/i.test(name) ? name : `your ${noun}`
+  if (agentMayClaimLive(state) && state.live.url) {
+    return `${named === `your ${noun}` ? `Your ${noun}` : named} is live — ${state.live.url}`
+  }
+  const paymentsMissing =
+    state.health.paymentsReady === false &&
+    state.capabilities.some(
+      (c) => /payment|gateway/i.test(`${c.id} ${c.label || ''}`) && c.status !== 'ready' && !c.enabled,
+    )
+  if (paymentsMissing && agentMayClaimPreview(state)) {
+    return `Your ${noun} is ready to review. Connect payments to go live — that’s the only missing step.`
+  }
+  if (agentMayClaimPreview(state)) {
+    return `Your ${noun} is ready to review.`
+  }
+  return `Preparing ${named}…`
+}
 
 export function detectFabricatedClaims(
   text: string,
@@ -151,9 +200,15 @@ function replaceAll(source: string, pattern: RegExp, replacement: string): strin
  * Rewrite fabricated success speech. Never invent preview/live/database/orders.
  */
 export function sanitizeAgentNarration(text: string, state: BusinessRuntimeState): string {
-  const hits = detectFabricatedClaims(text, state)
-  if (hits.length === 0) return text
-  let out = text
+  const raw = text || ''
+  const leaky =
+    /I can['’]t truthfully|please call launchBusiness|call launchProductionApp|placeTestShopOrder|do not restart guest|emit Wire/i.test(
+      raw,
+    ) || AGENT_TOOL_NAMES.test(raw)
+  if (leaky) return composeCustomerNarration(state)
+  const hits = detectFabricatedClaims(raw, state)
+  if (hits.length === 0) return stripAgentMachinery(raw)
+  let out = raw
   if (hits.includes('preview')) out = replaceAll(out, PREVIEW_READY_SPEECH, PREPARING)
   if (hits.includes('live')) out = replaceAll(out, LIVE_SPEECH, NOT_LIVE)
   if (hits.includes('capability')) out = replaceAll(out, DATABASE_SPEECH, NO_DATABASE)
@@ -178,10 +233,9 @@ export function sanitizeAgentNarration(text: string, state: BusinessRuntimeState
     )
   }
   if (hits.includes('products')) out = replaceAll(out, PRODUCTS_SPEECH, NO_PRODUCTS)
+  out = stripAgentMachinery(out)
   const remaining = detectFabricatedClaims(out, state)
   if (remaining.length === 0) return out
   if (!remaining.some((h) => h === 'preview' || h === 'live' || h === 'capability')) return out
-  return [PREPARING, hits.includes('capability') ? NO_DATABASE : '', hits.includes('live') ? NOT_LIVE : '']
-    .filter(Boolean)
-    .join(' ')
+  return composeCustomerNarration(state)
 }

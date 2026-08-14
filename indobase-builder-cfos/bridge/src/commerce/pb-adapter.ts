@@ -35,9 +35,19 @@ function newId(): string {
  * every reservation immediately.
  */
 export function pocketBaseDateTime(value: Date | string = new Date()): string {
-  const date = value instanceof Date ? value : new Date(value)
+  const date = value instanceof Date ? value : new Date(typeof value === 'string' ? value.replace(' ', 'T') : value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toISOString().replace('T', ' ')
+}
+
+/** Durable ISO-8601 for BusinessOrder.createdAt (from PB space-datetime or ISO). */
+export function toIsoTimestamp(value: unknown): string | undefined {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString()
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  const normalized = /^\d{4}-\d{2}-\d{2} /.test(value.trim()) ? value.trim().replace(' ', 'T') : value.trim()
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) return undefined
+  return date.toISOString()
 }
 
 /** True when a PB-stored expiry is still in the future under PB filter comparison. */
@@ -668,12 +678,15 @@ export async function createOrderRecord(input: {
   customerId?: string
   customerType?: 'guest' | 'registered'
   guestTokenHash?: string | null
-}): Promise<{ id: string }> {
+  /** ISO-8601. New checkouts always stamp this. */
+  createdAt?: string
+}): Promise<{ id: string; createdAt: string }> {
   const appId = sanitizeAppId(input.projectRef)
   const { token, base } = await adminToken()
   const ordersCol = physicalCollectionName(appId, 'orders')
   const itemsCol = physicalCollectionName(appId, 'order_items')
   const orderId = input.orderId || newId()
+  const createdAtIso = toIsoTimestamp(input.createdAt) || new Date().toISOString()
 
   const { ok, body } = await pbJson<{ id?: string } & PbErrorPayload>(
     `${base}/api/collections/${ordersCol}/records`,
@@ -698,7 +711,7 @@ export async function createOrderRecord(input: {
         idempotency_key: input.idempotencyKey,
         reservation_expires_at: pocketBaseDateTime(input.reservationExpiresAt),
         shipping_address: input.shippingAddress || {},
-        created_at: pocketBaseDateTime(),
+        created_at: pocketBaseDateTime(createdAtIso),
         customer_id: input.customerId || '',
         customer_type: input.customerType || '',
         guest_token_hash: input.guestTokenHash || '',
@@ -737,7 +750,7 @@ export async function createOrderRecord(input: {
     })
   }
 
-  return { id: String(body.id) }
+  return { id: String(body.id), createdAt: createdAtIso }
 }
 
 export async function patchOrderPayment(

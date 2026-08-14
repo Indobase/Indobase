@@ -14,6 +14,7 @@ export * from './workspace'
 export * from './documents'
 export * from './execution'
 export * from './business'
+export { parseOrderCreatedAtIso } from './business/order-lifecycle'
 
 export * from './contracts/runtime'
 export * from './contracts/capability-contract'

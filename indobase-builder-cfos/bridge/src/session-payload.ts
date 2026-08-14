@@ -57,6 +57,8 @@ import {
 import { getBusinessSpec, type BusinessSpec } from './ux/business-spec.js'
 import { resolvePreviewGate, type PreviewStatus } from './ux/preview-gate.js'
 import { getWorkspaceRuntime } from './ux/runtime-store.js'
+import { composePresentation, executionHintFromPersistedPlan } from './ux/presentation.js'
+import { getLatestExecutionPlan } from './ux/execution-store.js'
 
 export type SessionOnboardingGate = {
   account_required: true
@@ -378,6 +380,11 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       ? [{ id: input.productionJob.jobId, status: input.productionJob.status }]
       : [],
   })
+  const latestPlan = getLatestExecutionPlan(session.projectRef)
+  const ux = composePresentation(runtime, {
+    ...executionHintFromPersistedPlan(latestPlan, input.productionJob || null),
+    guest,
+  })
 
   return {
     email: session.email,
@@ -424,6 +431,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       paymentsReady: runtime.health.paymentsReady,
     }),
     runtime,
+    ux,
     onboarding,
     journey,
     auth: {

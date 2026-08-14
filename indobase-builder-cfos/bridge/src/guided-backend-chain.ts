@@ -775,7 +775,7 @@ async function maybeLaunch(
       backend: backendCfg,
       brand: base.brand || input.title,
       products: base.storefront_products,
-      replaceUnwiredStorefront: base.mode === 'ecommerce',
+      replaceUnwiredStorefront: false,
     })
     if (wired.admin_html) base.admin_html = wired.admin_html
     if (wired.storefront_html) base.storefront_html = wired.storefront_html

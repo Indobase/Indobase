@@ -181,20 +181,12 @@ export async function executeLaunchBusinessTool(
     input.app_type !== 'landing' &&
     input.app_type !== 'website'
   ) {
-    const looksShop = /add to cart|storefront|product grid|checkout|inventory/i.test(
-      `${launchHtml || ''}${JSON.stringify(launchFiles || {})}`,
-    )
     const wired = autoWireLaunchArtifacts({
       html: launchHtml,
       files: launchFiles,
       backend: defaults.backend,
       brand: typeof input.title === 'string' ? input.title : defaults.title,
-      replaceUnwiredStorefront:
-        looksShop ||
-        effectiveAppType === 'ecommerce' ||
-        input.app_type === 'ecommerce' ||
-        input.app_type === 'shop' ||
-        input.app_type === 'store',
+      replaceUnwiredStorefront: false,
     })
     launchHtml = wired.html
     launchFiles = wired.files

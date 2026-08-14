@@ -116,9 +116,9 @@ describe('launch-backend-gate', () => {
     assert.equal(wire.ok, true)
   })
 
-  it('autoWireLaunchArtifacts replaces localStorage storefront with managed shell', () => {
+  it('autoWireLaunchArtifacts binds commerce runtime without replacing unique HTML', () => {
     const out = autoWireLaunchArtifacts({
-      html: '<html><body><button>Add to cart</button><script>localStorage.setItem("cart","[]")</script></body></html>',
+      html: '<html><head></head><body><h1>Cedar Peak editorial</h1><button>Add to cart</button></body></html>',
       backend: {
         api_url: 'https://backend.indobase.in',
         anon_key: 'public',
@@ -133,13 +133,11 @@ describe('launch-backend-gate', () => {
         },
       },
       brand: 'Test Shop',
-      replaceUnwiredStorefront: true,
     })
-    assert.equal(out.wired, true)
-    assert.equal(out.replaced_storefront, true)
-    assert.match(out.html || '', /indobase\.commerce/)
-    assert.match(out.html || '', /commerce\.checkout\.create/)
-    assert.match(out.html || '', /\/api\/os\/commerce/)
+    assert.equal(out.replaced_storefront, false)
+    assert.match(out.html || '', /Cedar Peak editorial/)
+    assert.match(out.html || '', /\/api\/os\/commerce\/runtime\.js/)
+    assert.doesNotMatch(out.html || '', /--accent:#3B8FD6/)
   })
 
   it('autoWireLaunchArtifacts injects __INDOBASE_ENV__ into admin html', () => {

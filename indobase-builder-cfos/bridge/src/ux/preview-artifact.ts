@@ -48,6 +48,27 @@ export function storefrontHasCommerceAbi(html: string | null | undefined): boole
   return /indobase\.commerce|indobase\s*=\s*\{[\s\S]{0,80}commerce|\/api\/os\/commerce/i.test(html || '')
 }
 
+/** Bind commerce ABI without replacing layout/CSS. Idempotent. */
+export function injectCommerceRuntimeIntoHtml(html: string): string {
+  const text = html || ''
+  if (!text.trim() || storefrontHasCommerceAbi(text)) return text
+  const script = '<script src="/api/os/commerce/runtime.js"></script>'
+  if (/<\/head>/i.test(text)) return text.replace(/<\/head>/i, `${script}</head>`)
+  if (/<body[\s>]/i.test(text)) return text.replace(/<body([^>]*)>/i, `<body$1>${script}`)
+  return `${script}${text}`
+}
+
+/** Bind SaaS auth ABI without replacing layout. Idempotent. */
+export function injectSaasRuntimeIntoHtml(html: string): string {
+  const text = html || ''
+  if (!text.trim() || /auth-with-otp/i.test(text)) return text
+  const script =
+    '<script>window.indobase=window.indobase||{};window.indobase.auth=window.indobase.auth||{verify:function(e,c){return fetch("/api/collections/users/auth-with-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e,password:c})})}};</script>'
+  if (/<\/head>/i.test(text)) return text.replace(/<\/head>/i, `${script}</head>`)
+  if (/<body[\s>]/i.test(text)) return text.replace(/<body([^>]*)>/i, `<body$1>${script}`)
+  return `${script}${text}`
+}
+
 export type StorefrontCatalogProduct = {
   id: string
   name: string
@@ -228,10 +249,12 @@ export function ensureSaasAppFiles(input: {
   backend?: BackendConfig | null
 }): { html: string; files: Record<string, string>; rebuilt: boolean } {
   const current = input.files?.['index.html'] || input.html || ''
-  if (saasAppHasRuntimeAbi(current)) {
+  const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(current)
+  if (current.trim() && /<h1[\s>]/i.test(current) && !placeholderHero) {
+    const html = injectSaasRuntimeIntoHtml(current)
     return {
-      html: current,
-      files: { ...(input.files || {}), 'index.html': current },
+      html,
+      files: { ...(input.files || {}), 'index.html': html },
       rebuilt: false,
     }
   }
@@ -318,10 +341,12 @@ export function ensureEcommerceStorefrontFiles(input: {
   files?: Record<string, string> | null
 }): { html: string; files: Record<string, string>; rebuilt: boolean } {
   const current = input.files?.['index.html'] || input.html || ''
-  if (input.spec.businessType === 'ecommerce' && storefrontHasCommerceAbi(current)) {
+  const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(current)
+  if (current.trim() && /<h1[\s>]/i.test(current) && !placeholderHero) {
+    const html = injectCommerceRuntimeIntoHtml(current)
     return {
-      html: current,
-      files: { ...(input.files || {}), 'index.html': current },
+      html,
+      files: { ...(input.files || {}), 'index.html': html },
       rebuilt: false,
     }
   }

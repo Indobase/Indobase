@@ -28,6 +28,8 @@ import {
   ensureSaasAppFiles,
   landingAppHasPublishableArtifact,
   saasAppHasRuntimeAbi,
+  injectCommerceRuntimeIntoHtml,
+  injectSaasRuntimeIntoHtml,
   storefrontHasCommerceAbi,
 } from '../ux/preview-artifact.js'
 import { planProductionApp } from './application-planner.js'
@@ -172,12 +174,9 @@ async function freezeWorkspaceArtifact(
   if (!html) return job
   const files = job.files || runtime?.artifactFiles || { 'index.html': html }
   const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(html)
-  const freezeable =
-    /<h1[\s>]/i.test(html) &&
-    !placeholderHero &&
-    ((job.appType === 'ecommerce' && storefrontHasCommerceAbi(html)) ||
-      (job.appType === 'saas' && saasAppHasRuntimeAbi(html)) ||
-      (job.appType === 'landing' && landingAppHasPublishableArtifact(html)))
+  if (job.appType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html)
+  if (job.appType === 'saas') html = injectSaasRuntimeIntoHtml(html)
+  const freezeable = /<h1[\s>]/i.test(html) && !placeholderHero
   if (!freezeable) {
     return rememberProductionLaunchJob({
       ...job,
@@ -381,7 +380,7 @@ export async function executeProductionLaunchJob(
         finishedAt: nowIso(),
       }),
       backend,
-      html: job.frozenArtifactHash ? job.html : job.html || guided.storefront_html,
+      html: job.html,
       evidence: mergeEvidence(job.evidence, {
         backend_ready: true,
         catalog_seeded: job.appType !== 'ecommerce' || Boolean(guided.catalog_json) || testOrderOk,
@@ -486,26 +485,20 @@ export async function executeProductionLaunchJob(
   // 5. Wire
   job = patchStage(job, 'wire', { status: 'running', startedAt: nowIso() })
   if (job.backend && job.appType !== 'landing') {
-    const keepFrozen =
-      Boolean(job.frozenArtifactHash) &&
-      (storefrontHasCommerceAbi(job.html) ||
-        saasAppHasRuntimeAbi(job.html) ||
-        landingAppHasPublishableArtifact(job.html))
-    if (!keepFrozen) {
-      const wired = autoWireLaunchArtifacts({
-        html: job.html,
-        files: job.files,
-        backend: job.backend,
-        brand: job.brand || job.title,
-        replaceUnwiredStorefront: job.appType === 'ecommerce' && !job.frozenArtifactHash,
-      })
-      job = rememberProductionLaunchJob({
-        ...job,
-        html: wired.html || job.html,
-        files: wired.files || job.files,
-      })
-    }
+    const wired = autoWireLaunchArtifacts({
+      html: job.html,
+      files: job.files,
+      backend: job.backend,
+      brand: job.brand || job.title,
+      replaceUnwiredStorefront: false,
+    })
+    job = rememberProductionLaunchJob({
+      ...job,
+      html: wired.html || job.html,
+      files: wired.files || job.files,
+    })
   }
+  job = await freezeWorkspaceArtifact(session, job)
   job = patchStage(job, 'wire', {
     status: 'ok',
     message: job.backend ? 'Runtime bindings applied' : 'No backend to bind',

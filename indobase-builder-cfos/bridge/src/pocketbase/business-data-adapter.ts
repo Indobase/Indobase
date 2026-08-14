@@ -12,6 +12,15 @@ import type {
 
 import { listManagedShopSnapshot } from './architecture.js'
 
+function parseCreatedAt(raw?: string | null): string | undefined {
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined
+  const trimmed = raw.trim()
+  const normalized = /^\d{4}-\d{2}-\d{2} /.test(trimmed) ? trimmed.replace(' ', 'T') : trimmed
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) return undefined
+  return date.toISOString()
+}
+
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
@@ -21,12 +30,33 @@ function asNumber(value: unknown): number | undefined {
 }
 
 function mapProduct(row: Record<string, unknown>): BusinessProduct {
+  const variantsRaw = Array.isArray(row.variants)
+    ? row.variants
+    : Array.isArray(row.variants_json)
+      ? row.variants_json
+      : []
+  const variants = variantsRaw
+    .map((v) => {
+      const rec = v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+      if (!rec) return null
+      return {
+        id: asString(rec.id) || '',
+        sku: asString(rec.sku),
+        title: asString(rec.title),
+        priceMinor: asNumber(rec.price_minor) ?? asNumber(rec.priceMinor),
+        stock: asNumber(rec.stock),
+        default: rec.default === true || rec.is_default === true,
+      }
+    })
+    .filter((v): v is NonNullable<typeof v> => Boolean(v?.id))
   return {
     id: asString(row.id) || '',
     name: asString(row.name) || asString(row.title) || asString(row.id) || '',
     priceMinor: asNumber(row.price_minor) ?? asNumber(row.priceMinor),
     sku: asString(row.sku),
     status: asString(row.status),
+    stock: asNumber(row.stock),
+    variants: variants.length ? variants : undefined,
   }
 }
 
@@ -39,6 +69,9 @@ function mapOrder(row: Record<string, unknown>): BusinessOrder {
     fulfillmentStatus: asString(row.fulfillment_status) || asString(row.fulfillmentStatus),
     amountMinor: asNumber(row.amount_minor) ?? asNumber(row.amountMinor),
     email: asString(row.email) || asString(row.customer_email),
+    createdAt: parseCreatedAt(
+      asString(row.createdAt) || asString(row.created_at) || asString(row.created),
+    ),
   }
 }
 
