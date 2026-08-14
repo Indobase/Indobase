@@ -4,7 +4,7 @@ import { describe, it } from 'node:test'
 import { Hono } from 'hono'
 
 import { CHECKOUT_CONNECTION_FAILURE } from './customer-copy.ts'
-import { handleCommerceCheckout } from './http.ts'
+import { handleCommerceCheckout, handleCommerceProductsList } from './http.ts'
 import { majorToMinor, minorToMajor, currencyMinorDigits } from './money.ts'
 import { pocketBaseDateTime } from './pb-adapter.ts'
 import { buildCommerceRuntimeJs } from './runtime.ts'
@@ -72,6 +72,36 @@ describe('commerce checkout HTTP', () => {
     assert.equal(body.message, CHECKOUT_CONNECTION_FAILURE)
     assert.equal(typeof body.message, 'string')
     assert.doesNotMatch(String(body.message), /customerFacingCheckoutMessage is not defined|ReferenceError/)
+  })
+})
+
+describe('commerce catalog HTTP', () => {
+  it('lists products without persistCatalogProjection ReferenceError', async () => {
+    const app = new Hono()
+    app.get('/api/os/commerce/products', (c) =>
+      handleCommerceProductsList(c, async () => [
+        {
+          id: 'prod_1',
+          name: 'Garam Masala 200g',
+          slug: 'garam-masala',
+          description: '',
+          priceMinor: 19900,
+          currency: 'INR',
+          stock: 10,
+          imageUrl: '',
+          active: true,
+        },
+      ], () => true),
+    )
+    const res = await app.request('/api/os/commerce/products?projectRef=proj_masala', {
+      headers: { 'X-Indobase-Project-Ref': 'proj_masala' },
+    })
+    assert.equal(res.status, 200)
+    const body = (await res.json()) as { ok?: boolean; products?: Array<{ variants?: unknown[] }>; message?: string }
+    assert.equal(body.ok, true)
+    assert.ok(Array.isArray(body.products) && body.products.length === 1)
+    assert.ok(Array.isArray(body.products[0].variants) && body.products[0].variants.length >= 1)
+    assert.doesNotMatch(JSON.stringify(body), /persistCatalogProjection is not defined/)
   })
 })
 

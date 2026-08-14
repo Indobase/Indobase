@@ -26,6 +26,7 @@ import {
 import { buildCommerceRuntimeJs } from './runtime.js'
 import { minorToMajor } from './money.js'
 import { getWorkspaceRuntime } from '../ux/runtime-store.js'
+import { persistCatalogProjection } from '../ux/catalog-domain.js'
 
 export type ControlCenterSnapshotLoaders = {
   listProducts: (projectRef: string) => Promise<unknown>
