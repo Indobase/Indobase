@@ -22,7 +22,7 @@ import { autoWireLaunchArtifacts } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
 import { getBusinessSpec, inferBusinessSpec } from './ux/business-spec.js'
-import { ensureEcommerceStorefrontFiles } from './ux/preview-artifact.js'
+import { ensureEcommerceStorefrontFiles, ensureSaasAppFiles } from './ux/preview-artifact.js'
 import { rememberLivePublishJob } from './production-launch/job-store.js'
 import {
   applyLaunchGateToTaskGraph,
@@ -142,6 +142,21 @@ export async function executeLaunchBusinessTool(
       projectRef: workspaceRef,
       html: launchHtml,
       files: launchFiles,
+    })
+    launchHtml = built.html
+    launchFiles = built.files
+  } else if (
+    spec.businessType === 'saas' ||
+    effectiveAppType === 'saas' ||
+    input.app_type === 'saas' ||
+    input.app_type === 'app'
+  ) {
+    const built = ensureSaasAppFiles({
+      spec: { ...spec, businessType: 'saas' },
+      projectRef: workspaceRef,
+      html: launchHtml,
+      files: launchFiles,
+      backend: defaults?.backend,
     })
     launchHtml = built.html
     launchFiles = built.files

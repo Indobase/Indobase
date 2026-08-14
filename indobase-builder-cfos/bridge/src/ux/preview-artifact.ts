@@ -4,8 +4,9 @@
  */
 
 import { createHash } from 'node:crypto'
+import type { BackendConfig } from '../auth.js'
 import { buildManagedShopStorefrontHtml } from '../pocketbase/shop-storefront-html.js'
-import { buildProductionLandingHtml } from '../production-launch/shells.js'
+import { buildProductionLandingHtml, buildProductionSaasHtml } from '../production-launch/shells.js'
 import {
   draftPreviewUrl,
   previewArtifactExists,
@@ -13,7 +14,7 @@ import {
   readLiveFile,
   writeDraftPreview,
 } from '../static-launch.js'
-import { verticalForSpec, type BusinessSpec } from './business-spec.js'
+import { isPlaceholderBusinessName, verticalForSpec, type BusinessSpec } from './business-spec.js'
 import type { PreviewStatus } from './preview-gate.js'
 
 export type PreviewBuildResult = {
@@ -43,6 +44,74 @@ function metadataFor(spec: BusinessSpec): string {
 
 export function storefrontHasCommerceAbi(html: string | null | undefined): boolean {
   return /indobase\.commerce|indobase\s*=\s*\{[\s\S]{0,80}commerce|\/api\/os\/commerce/i.test(html || '')
+}
+
+export function saasAppHasRuntimeAbi(html: string | null | undefined): boolean {
+  const text = html || ''
+  return /auth-with-otp/i.test(text) && /__INDOBASE_ENV__|\/api\/collections\//i.test(text)
+}
+
+function stubSaasBackend(projectRef: string): BackendConfig {
+  return {
+    anon_key: 'public',
+    api_url: 'https://records.indobase.in',
+    auth_url: 'https://records.indobase.in/api',
+    project_name: projectRef,
+    project_ref: projectRef,
+    project_url: 'https://records.indobase.in',
+    rest_url: 'https://records.indobase.in/api/collections',
+    storage_url: 'https://records.indobase.in/api/files',
+  }
+}
+
+function extractLiveHeadline(html: string): string | null {
+  const match = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html)
+  if (!match) return null
+  const text = match[1]
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!text || isPlaceholderBusinessName(text)) return null
+  return text
+}
+
+export function ensureSaasAppFiles(input: {
+  spec: BusinessSpec
+  projectRef: string
+  html?: string | null
+  files?: Record<string, string> | null
+  backend?: BackendConfig | null
+}): { html: string; files: Record<string, string>; rebuilt: boolean } {
+  const current = input.files?.['index.html'] || input.html || ''
+  if (saasAppHasRuntimeAbi(current)) {
+    return {
+      html: current,
+      files: { ...(input.files || {}), 'index.html': current },
+      rebuilt: false,
+    }
+  }
+  const headline = extractLiveHeadline(current)
+  const brand =
+    headline ||
+    (input.spec.businessName && !isPlaceholderBusinessName(input.spec.businessName)
+      ? input.spec.businessName
+      : 'Workspace')
+  const html = buildProductionSaasHtml({
+    brand,
+    backend: input.backend || stubSaasBackend(input.projectRef),
+  })
+  return {
+    html,
+    files: {
+      ...(input.files || {}),
+      'index.html': html,
+      'metadata.json': metadataFor({ ...input.spec, businessType: 'saas' }),
+    },
+    rebuilt: true,
+  }
 }
 
 export function ensureEcommerceStorefrontFiles(input: {
@@ -87,6 +156,13 @@ export function buildPreviewFiles(spec: BusinessSpec, projectRef: string): Recor
       appId: projectRef,
       publicUrl: '',
       products,
+    })
+    return { 'index.html': html, 'metadata.json': meta }
+  }
+  if (spec.businessType === 'saas') {
+    const html = buildProductionSaasHtml({
+      brand: spec.businessName,
+      backend: stubSaasBackend(projectRef),
     })
     return { 'index.html': html, 'metadata.json': meta }
   }

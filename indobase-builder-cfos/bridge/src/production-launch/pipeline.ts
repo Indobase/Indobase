@@ -22,7 +22,12 @@ import {
   pickBusinessName,
   rememberBusinessSpec,
 } from '../ux/business-spec.js'
-import { ensureEcommerceStorefrontFiles, storefrontHasCommerceAbi } from '../ux/preview-artifact.js'
+import {
+  ensureEcommerceStorefrontFiles,
+  ensureSaasAppFiles,
+  saasAppHasRuntimeAbi,
+  storefrontHasCommerceAbi,
+} from '../ux/preview-artifact.js'
 import { planProductionApp } from './application-planner.js'
 import { resolveProductionContract } from './production-contract.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from './shells.js'
@@ -166,7 +171,9 @@ async function freezeWorkspaceArtifact(
   const files = job.files || runtime?.artifactFiles || { 'index.html': html }
   const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(html)
   const freezeable =
-    storefrontHasCommerceAbi(html) && /<h1[\s>]/i.test(html) && !placeholderHero
+    (storefrontHasCommerceAbi(html) || saasAppHasRuntimeAbi(html)) &&
+    /<h1[\s>]/i.test(html) &&
+    !placeholderHero
   if (!freezeable) {
     return rememberProductionLaunchJob({
       ...job,
@@ -374,6 +381,20 @@ export async function executeProductionLaunchJob(
       files: built.files,
       appType: 'ecommerce',
     })
+  } else if (job.appType === 'saas' || spec.businessType === 'saas') {
+    const built = ensureSaasAppFiles({
+      spec: { ...spec, businessType: 'saas' },
+      projectRef: session.projectRef,
+      html: job.html,
+      files: job.files,
+      backend: job.backend,
+    })
+    job = rememberProductionLaunchJob({
+      ...job,
+      html: built.html,
+      files: built.files,
+      appType: 'saas',
+    })
   } else if (!job.html?.trim() && !(job.files && Object.keys(job.files).length)) {
     if (job.appType === 'landing') {
       job = rememberProductionLaunchJob({
@@ -415,7 +436,8 @@ export async function executeProductionLaunchJob(
   job = patchStage(job, 'wire', { status: 'running', startedAt: nowIso() })
   if (job.backend) {
     const keepFrozen =
-      Boolean(job.frozenArtifactHash) && storefrontHasCommerceAbi(job.html)
+      Boolean(job.frozenArtifactHash) &&
+      (storefrontHasCommerceAbi(job.html) || saasAppHasRuntimeAbi(job.html))
     if (!keepFrozen) {
       const wired = autoWireLaunchArtifacts({
         html: job.html,

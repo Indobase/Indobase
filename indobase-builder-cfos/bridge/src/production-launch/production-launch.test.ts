@@ -208,6 +208,56 @@ describe('production launch job pipeline', () => {
     )
   })
 
+  it('saas preview HTML without runtime ABI is bound before LIVE and keeps the edited headline', async () => {
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch a tutoring SaaS called TutorDesk',
+        appType: 'saas',
+        brand: 'TutorDesk',
+        html: '<html><body><h1>TutorDesk</h1><p>Schedule sessions with students.</p></body></html>',
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'generic',
+          steps: [{ id: 'ensureLogin', status: 'ok', message: 'ok' }],
+          progress: 'backend ready',
+          message: 'backend ready',
+          claim_backend_ready: true,
+          claim_live: false,
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async (_ref, input) => {
+          assert.match(input.html || '', /auth-with-otp/)
+          assert.match(input.html || '', /__INDOBASE_ENV__|\/api\/collections\//)
+          assert.match(input.html || '', /<h1>TutorDesk<\/h1>/)
+          assert.equal(input.app_type, 'saas')
+          return {
+            ok: true,
+            status: 'published',
+            url: 'https://tutordesk.sites.indobase.in',
+            message: 'published',
+            lane: 'static',
+            claim_live: true,
+            tool: 'launchBusiness',
+          }
+        },
+        smoke: async () => ({ ok: true, message: 'saas smoke' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.equal(result.job.status, 'live')
+    assert.equal(result.job.appType, 'saas')
+    assert.match(result.job.html || '', /auth-with-otp/)
+  })
+
   it('ecommerce stub HTML is replaced with a shop storefront before LIVE', async () => {
     const result = await executeProductionLaunchJob(
       session,
@@ -389,5 +439,60 @@ describe('production launch job pipeline', () => {
     assert.equal(result.ok, true)
     assert.equal(result.job.frozenArtifactHash, result.job.publishedArtifactHash)
     assert.match(result.job.html || '', /Midnight Alpine drops/)
+  })
+
+  it('publishes the frozen SaaS preview HTML instead of replacing the edited headline', async () => {
+    const frozen = `<html><body>
+      <h1>Midnight tutoring</h1>
+      <script>window.__INDOBASE_ENV__={INDOBASE_URL:'https://records.example.indobase.in'}</script>
+      <script>fetch('/api/collections/users/auth-with-otp')</script>
+    </body></html>`
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch a tutoring SaaS called TutorDesk',
+        appType: 'saas',
+        brand: 'TutorDesk',
+        html: frozen,
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'generic',
+          steps: [{ id: 'ensureLogin', status: 'ok', message: 'ok' }],
+          progress: 'ok',
+          message: 'ok',
+          claim_backend_ready: true,
+          claim_live: false,
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async (_ref, input) => {
+          assert.match(input.html || '', /Midnight tutoring/)
+          assert.doesNotMatch(input.html || '', /<h1>TutorDesk<\/h1>/)
+          return {
+            ok: true,
+            status: 'published',
+            url: 'https://tutordesk.sites.indobase.in',
+            message: 'published',
+            lane: 'static',
+            claim_live: true,
+            tool: 'launchBusiness',
+          }
+        },
+        smoke: async () => ({ ok: true, message: 'ok' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.equal(result.job.status, 'live')
+    assert.equal(result.job.appType, 'saas')
+    assert.ok(result.job.frozenArtifactHash)
+    assert.equal(result.job.frozenArtifactHash, result.job.publishedArtifactHash)
+    assert.match(result.job.html || '', /Midnight tutoring/)
   })
 })
