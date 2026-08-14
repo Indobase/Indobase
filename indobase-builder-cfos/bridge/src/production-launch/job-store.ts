@@ -70,6 +70,7 @@ export type ProductionLaunchJob = {
   files?: Record<string, string>
   frozenArtifactHash?: string
   publishedArtifactHash?: string
+  liveArtifactHash?: string
   title?: string
   brand?: string
   vertical?: string

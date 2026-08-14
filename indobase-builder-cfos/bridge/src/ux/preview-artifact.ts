@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto'
 import type { BackendConfig } from '../auth.js'
 import { persistCatalogProjection } from './catalog-domain.js'
 import { displayPriceMinorFromVariants } from './catalog-domain.js'
-import { buildManagedShopStorefrontHtml } from '../pocketbase/shop-storefront-html.js'
+import { buildSpecBoundStorefrontHtml } from './spec-bound-storefront.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from '../production-launch/shells.js'
 import {
   draftPreviewUrl,
@@ -16,6 +16,7 @@ import {
   readLiveFile,
   writeDraftPreview,
 } from '../static-launch.js'
+import { injectPreviewBoot } from './preview-boot.js'
 import { isPlaceholderBusinessName, verticalForSpec, type BusinessSpec } from './business-spec.js'
 import type { PreviewStatus } from './preview-gate.js'
 
@@ -31,13 +32,14 @@ export type PreviewBuildResult = {
   message: string
 }
 
-function metadataFor(spec: BusinessSpec): string {
+function metadataFor(spec: BusinessSpec, extra?: Record<string, unknown>): string {
   return `${JSON.stringify(
     {
       name: spec.businessName,
       vertical: spec.catalog.verticalId,
       positioning: spec.visualStyle,
       businessType: spec.businessType,
+      ...extra,
     },
     null,
     2,
@@ -132,6 +134,43 @@ export function serializeStorefrontCatalogSnapshot(products: StorefrontCatalogPr
   )
 }
 
+function replaceAssignedJson(html: string, needle: string, snapshot: string): string {
+  const start = html.indexOf(needle)
+  if (start < 0) return html
+  const jsonStart = start + needle.length
+  if (html[jsonStart] !== '[') return html
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = jsonStart; i < html.length; i++) {
+    const ch = html[i]
+    if (inStr) {
+      if (esc) {
+        esc = false
+        continue
+      }
+      if (ch === '\\') {
+        esc = true
+        continue
+      }
+      if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') {
+      inStr = true
+      continue
+    }
+    if (ch === '[') depth += 1
+    else if (ch === ']') {
+      depth -= 1
+      if (depth === 0) {
+        return `${html.slice(0, jsonStart)}${snapshot}${html.slice(i + 1)}`
+      }
+    }
+  }
+  return html
+}
+
 function replaceLetArray(html: string, name: string, snapshot: string): string {
   const needle = `let ${name}=`
   const start = html.indexOf(needle)
@@ -192,7 +231,9 @@ export function injectStorefrontProductSnapshot(
     })),
   )
   let next = html
-  if (!next.includes('let products=')) {
+  if (next.includes('window.__IB_CATALOG_SNAPSHOT__=')) {
+    next = replaceAssignedJson(next, 'window.__IB_CATALOG_SNAPSHOT__=', snapshot)
+  } else if (!next.includes('let products=')) {
     if (!storefrontHasCommerceAbi(next)) return next
     next = next.replace(
       /(const commerce=window\.indobase\.commerce;\s*)/,
@@ -358,7 +399,8 @@ export function ensureEcommerceStorefrontFiles(input: {
 }
 
 export function buildPreviewFiles(spec: BusinessSpec, projectRef: string): Record<string, string> {
-  const meta = metadataFor(spec)
+  const meta = metadataFor(spec, { projectRef })
+  let html: string
   if (spec.businessType === 'ecommerce') {
     const vertical = verticalForSpec(spec)
     const products = (vertical?.products || []).map((p) => ({
@@ -372,25 +414,23 @@ export function buildPreviewFiles(spec: BusinessSpec, projectRef: string): Recor
       image_url: '',
       active: true,
     }))
-    const html = buildManagedShopStorefrontHtml({
-      brand: spec.businessName,
-      tagline: `${spec.visualStyle} ${spec.industry}`.trim(),
-      appId: projectRef,
-      publicUrl: '',
-      products,
-    })
-    return { 'index.html': html, 'metadata.json': meta }
-  }
-  if (spec.businessType === 'saas') {
-    const html = buildProductionSaasHtml({
+    html = buildSpecBoundStorefrontHtml({ spec, projectRef, products })
+  } else if (spec.businessType === 'saas') {
+    html = buildProductionSaasHtml({
       brand: spec.businessName,
       backend: stubSaasBackend(projectRef),
     })
-    return { 'index.html': html, 'metadata.json': meta }
+  } else {
+    html = buildProductionLandingHtml({
+      brand: spec.businessName,
+      intent: spec.sourceIntent,
+    })
   }
-  const html = buildProductionLandingHtml({
-    brand: spec.businessName,
-    intent: spec.sourceIntent,
+  const hashed = hashPreviewFiles({ 'index.html': html, 'metadata.json': meta })
+  html = injectPreviewBoot(html, {
+    projectRef,
+    artifactHash: hashed,
+    applicationType: spec.businessType,
   })
   return { 'index.html': html, 'metadata.json': meta }
 }

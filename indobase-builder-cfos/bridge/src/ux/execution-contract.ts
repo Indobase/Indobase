@@ -33,6 +33,7 @@ import {
 } from './business-spec.js'
 import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
 import { type probePreviewHttp, readLiveFile } from '../static-launch.js'
+import { createLiveProbeHttp } from './runtime-probes.js'
 import { classifyStoreCommand, looksLikeStoreCommand, type StoreCommandDeps, type StoreCommandResult } from './store-commands.js'
 import {
   emptyPersistedRuntime,
@@ -277,14 +278,15 @@ export async function rehydrateWorkspaceRuntime(
     Boolean(artifactHtml) ||
     Boolean(previewUrl)
   if (runtime.preview.status !== 'ready' && durablePreview) {
+    const probed = runtime.preview.httpOk
     runtime = {
       ...runtime,
       preview: {
-        status: 'ready',
+        status: probed === false ? 'failed' : 'ready',
         url: previewUrl,
         artifactRef: runtime.preview.artifactRef || job?.jobId || null,
         contentHash: runtime.preview.contentHash,
-        httpOk: Boolean(job?.url || launch?.url || launch?.previewReady || artifactHtml),
+        httpOk: probed ?? null,
       },
       artifactHtml: artifactHtml || runtime.artifactHtml,
       artifactFiles: artifactFiles || runtime.artifactFiles,
@@ -319,13 +321,20 @@ function toSessionRuntime(
     (launch?.job.status === 'live' && launch.url) ||
     (latestJob?.status === 'live' && latestJob.url) ||
     null
-  const previewReady = persisted.preview.status === 'ready' && Boolean(persisted.preview.url)
-  const projectState = liveUrl ? 'live' : previewReady ? 'preview_ready' : persisted.spec ? 'building' : 'empty'
+  const liveHttpOk = latestJob?.evidence?.smoke_ok === true || launch?.job.evidence?.smoke_ok === true
+  const previewReady =
+    persisted.preview.status === 'ready' &&
+    Boolean(persisted.preview.url) &&
+    persisted.preview.httpOk !== false
+  const projectState =
+    liveUrl && liveHttpOk ? 'live' : previewReady ? 'preview_ready' : persisted.spec ? 'building' : 'empty'
   return toBusinessRuntimeState({
     projectState,
     previewStatus: persisted.preview.status,
-    previewUrl: persisted.preview.url || liveUrl,
-    liveUrl,
+    previewUrl: persisted.preview.url || (previewReady ? liveUrl : null),
+    previewHttpOk: persisted.preview.httpOk ?? null,
+    liveUrl: liveUrl && liveHttpOk ? liveUrl : null,
+    liveHttpOk: liveUrl ? liveHttpOk : null,
     catalogReady:
       Boolean(snapshot?.products?.length) ||
       Boolean(launch?.job.evidence?.catalog_seeded) ||
@@ -618,7 +627,10 @@ function executorContext(
     message,
     specSource,
     probe: input.probe,
-    launchDeps: input.launchDeps,
+    launchDeps: {
+      probes: createLiveProbeHttp(),
+      ...(input.launchDeps || {}),
+    },
     catalogDeps: input.catalogDeps,
     snapshot: input.snapshot,
     runtime,

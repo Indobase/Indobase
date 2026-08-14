@@ -19,6 +19,7 @@ import {
   summarizeProductionLaunchJob,
   launchProductionAppToolCatalog,
 } from './index.ts'
+import { passingEcommerceProbes } from '../ux/runtime-probes.ts'
 
 const session: Session = {
   gotrueId: 'user-1',
@@ -343,6 +344,58 @@ describe('production launch job pipeline', () => {
     assert.equal(result.ok, true)
     assert.equal(result.job.status, 'live')
     assert.match(result.job.html || '', /Add to cart/)
+  })
+
+  it('ecommerce LIVE is blocked when the commerce proof chain fails', async () => {
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch a premium sneaker store called UrbanThread',
+        appType: 'ecommerce',
+        brand: 'UrbanThread',
+        html: '<html><body><h1>UrbanThread</h1><p>storefront body for html checks here</p></body></html>',
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'ecommerce',
+          steps: [{ id: 'setupShopCatalog', status: 'ok', message: 'ok' }],
+          progress: 'catalog',
+          message: 'backend ready',
+          claim_backend_ready: true,
+          claim_live: false,
+          catalog_json: [{ slug: 'apex', name: 'Apex', stock: 8 }],
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async () => ({
+          ok: true,
+          status: 'published',
+          url: 'https://urbanthread.sites.indobase.in',
+          message: 'published',
+          lane: 'static',
+          claim_live: true,
+          tool: 'launchBusiness',
+        }),
+        smoke: async () => ({ ok: true, message: 'ok' }),
+        ecommerceProbes: {
+          ...passingEcommerceProbes(),
+          cartOk: false,
+          checkoutOk: false,
+          orderOk: false,
+          orderVisible: false,
+          evidence: ['cart rejected missing variantId'],
+        },
+      },
+    )
+    assert.equal(result.ok, false)
+    assert.equal(result.claim_live, false)
+    assert.equal(result.job.stages.find((s) => s.id === 'verify')?.status, 'failed')
   })
 
   it('ecommerce job provisions internally and records certification evidence', async () => {

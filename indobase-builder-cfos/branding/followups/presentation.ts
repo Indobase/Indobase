@@ -23,7 +23,7 @@ import {
 /** Structural slice of BusinessRuntimeState the UI may read. */
 export type RuntimeView = {
   business: { name: string; kind: string; state?: string }
-  spec?: { businessName?: string; businessType?: string; currency?: string } | null
+  spec?: { businessName?: string; businessType?: string; currency?: string; verticalId?: string } | null
   preview: { status: string; url: string | null }
   live: { isLive: boolean; url: string | null }
   products?: Array<{

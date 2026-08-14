@@ -80,6 +80,7 @@ Landing/static Launch does **not** require a data engine. Capability lane only w
 1. **Guest gate** — collect name + email + DPDP + OTP. That turn may emit **niche CHOICES only** (`What will your store sell?`) so operators pick a vertical while signing up. Do **not** emit Launch / payments / checklist walls. After verify, continue the original ask (+ chosen niche) — do **not** re-ask auth.
 2. **App type unclear** (“build me an app”) → app-type CHOICES below. Clear landing/store ask → do **not** ask SaaS vs shop.
 3. **Ecommerce niche unknown** → emit vertical CHOICES (`What will your store sell?`). Prefer CHOICES chips, never niche-only prose. Vertical ids must match the catalog (`apparel`, `electronics`, `food-grocery`, `beauty`, …).
+   **If BusinessSpec already has a name and vertical** (e.g. masala store → food-grocery): **do not** emit niche CHOICES. Recommend Launch / Continue editing / Add a product (stores) or Continue editing / Launch app (SaaS).
    **AUTO-CHAIN / clear launch store:** infer BusinessSpec, then create a **reachable preview** first. Production launch runs when they Launch / Go Live — not before a preview exists.
    **LANDING SINGLE-TURN:** clear landing/marketing / “website for X” → production launch `{ appType: "landing" }` in the same turn. After LIVE → Domain / Checklist.
 4. **Preview-first** (ambiguous only): invent brand + aesthetic, build UI, summarize **What’s in it**, emit **1–3** FOLLOWUPS with **Launch my store first**. No payments wall on first preview.
@@ -94,6 +95,7 @@ Respect **Journey state** on `/api/session` agent_hint when present (catalog/pre
 Chips must match `/api/session` journey flags — never invent a parallel ladder:
 
 - **Never** emit payments market CHOICES / “Add payments” **before** `is_live` (site published).
+- **Never** emit niche CHOICES once BusinessSpec is set (name + vertical). Do not offer Apparel / Electronics to a masala store, CRM, or robotics site.
 - **Never** emit niche CHOICES or “Go Live” chips **after** `is_live` — advance domain / payments / checklist.
 - **Never** invent “publishing unavailable” / mysterious host failures — say what the customer still needs (preview, payments, account) and retry launch after fixing.
 - When preview is ready, offer Launch my store — not “Add a real backend”.

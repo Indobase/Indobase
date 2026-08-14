@@ -41,6 +41,10 @@ export type JourneyChipFlags = {
   /** Authoritative /api/session.project.state — live cards require `live`. */
   projectState?: string | null
   appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency' | 'saas' | 'ecommerce'
+  /** BusinessSpec already has a name/vertical — never re-ask niche. */
+  specReady?: boolean
+  verticalId?: string | null
+  previewReady?: boolean
 }
 
 export type ResolveFollowUpsOptions = {
@@ -482,17 +486,26 @@ function readWindowString(key: '__INDOBASE_OPERATOR_MESSAGE__' | '__INDOBASE_BUS
  * The conductor already built this turn. If the model still talks like a missing tool,
  * replace that speech with the conductor reply so chat never looks like a blocked API.
  */
+function looksLikeConductorLeak(text: string): boolean {
+  return (
+    BLOCKED_BUILD_SPEECH.test(text) ||
+    /I can['’]t truthfully|please call launchBusiness|Call for Go Live|placeTestShopOrder|do not restart guest/i.test(
+      text,
+    )
+  )
+}
+
+function isHollowOperatorProse(text: string): boolean {
+  const words = (text || '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  return words.length < 18
+}
+
 export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRewriteOpts): string {
   let t = (message || '').trim()
   if (!t) return t
   const reply = (opts?.conductorReply || readWindowString('__INDOBASE_OPERATOR_MESSAGE__') || '').trim()
   const name = (opts?.businessName || readWindowString('__INDOBASE_BUSINESS_NAME__') || '').trim()
-  const leaky =
-    BLOCKED_BUILD_SPEECH.test(t) ||
-    /I can['’]t truthfully|please call launchBusiness|Call for Go Live|placeTestShopOrder|do not restart guest/i.test(
-      t,
-    )
-  if (leaky) {
+  if (looksLikeConductorLeak(t) || (isHollowOperatorProse(t) && reply)) {
     t = reply || DEFAULT_CONDUCTOR_REPLY
   }
   if (name && !/^your business$/i.test(name)) {
@@ -502,10 +515,12 @@ export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRew
 }
 
 export function cleanOperatorMessage(message: string, opts?: BuilderChatRewriteOpts): string {
-  return rewriteBlockedBuildSpeech(
-    stripCustomerMachinery(stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message)))),
-    opts,
-  )
+  const original = message || ''
+  const stripped = stripCustomerMachinery(stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(original))))
+  if (looksLikeConductorLeak(original) || isHollowOperatorProse(stripped)) {
+    return rewriteBlockedBuildSpeech(original, opts)
+  }
+  return rewriteBlockedBuildSpeech(stripped, opts)
 }
 
 function journeyChipTitle(headline?: string | null): string {
@@ -626,11 +641,55 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
     liveUrl,
     projectState: f.projectState || null,
     appKind: f.appKind,
+    specReady: f.specReady,
+    verticalId: f.verticalId || null,
+    previewReady: f.previewReady,
   }
   if (liveAuthoritative) {
     tentative.isLive = operatorMayClaimLive(tentative)
   }
   return tentative
+}
+
+function specIsLocked(flags?: JourneyChipFlags | null): boolean {
+  if (!flags) return false
+  if (flags.specReady) return true
+  const vertical = (flags.verticalId || '').trim()
+  return Boolean(vertical && vertical !== 'unspecified')
+}
+
+/** Next chips from real lifecycle — not a generic Apparel/Electronics picker. */
+export function lifecycleRecommendFollowups(
+  flags: JourneyChipFlags,
+  brand?: string | null,
+): StageFollowUps {
+  const name = brandLabel(brand)
+  if (flags.isLive) {
+    return postGoLiveFollowups(name === 'this' ? brand : name, {
+      store:
+        flags.appKind !== 'app' &&
+        flags.appKind !== 'saas' &&
+        flags.appKind !== 'website' &&
+        flags.appKind !== 'booking' &&
+        flags.appKind !== 'agency',
+      paymentsReady: flags.isPaymentsReady,
+    })
+  }
+  const kind = flags.appKind
+  if (kind === 'app' || kind === 'saas' || kind === 'booking' || kind === 'website' || kind === 'agency') {
+    return postPreviewFollowups(brand, kind)
+  }
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      { label: 'Launch my store', message: 'Launch my store on Indobase now.' },
+      {
+        label: 'Continue editing',
+        message: name !== 'this' ? `Continue editing ${name}.` : 'Continue editing the preview.',
+      },
+      { label: 'Add a product', message: 'Add a product to my catalog.' },
+    ].slice(0, MAX_VISIBLE_CHIPS),
+  }
 }
 
 /**
@@ -672,6 +731,9 @@ export function filterChipsForJourneyState(
     items = items.filter((i) => !isGoLiveChip(i) && !isNicheCategoryChip(i))
   } else if (flags.isLive === false) {
     items = items.filter((i) => !isPaymentsChip(i))
+  }
+  if (specIsLocked(flags)) {
+    items = items.filter((i) => !isNicheCategoryChip(i))
   }
   if (flags.isBackendReady) {
     items = items.filter((i) => !isBackendEnsureChip(i))
@@ -735,11 +797,12 @@ export function injectJourneyNextActionFollowUps(
 
 export function injectNicheChoices(
   message: string,
-  opts?: { journeyIsLive?: boolean },
+  opts?: { journeyIsLive?: boolean; specReady?: boolean },
 ): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
   // Site already live — niche is early-ladder only; payments/ops chips instead.
   if (opts?.journeyIsLive) return null
+  if (opts?.specReady) return null
   // Never inject niche cards during guest/auth turns.
   if (inferChipStage(message) === 'guest_gate' || looksLikePreBuildClarification(message)) {
     return null
@@ -1411,6 +1474,8 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     // Agent-authored niche while live → replace with post-live ladder (not merge with journey).
     if (isLive && looksLikeNicheChipSet(gated)) {
       // fall through to isLive post-live injection
+    } else if (specIsLocked(flags) && looksLikeNicheChipSet(gated)) {
+      // fall through — replace Apparel/Electronics with lifecycle chips
     } else if (notLive && looksLikePaymentsChipSet(gated)) {
       // Strip payments CHOICES before publish; keep remaining non-payment chips if any.
       const finished = finish(
@@ -1425,12 +1490,27 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     }
   }
 
-  const niche = injectNicheChoices(cleaned, { journeyIsLive: isLive })
+  const niche = injectNicheChoices(cleaned, { journeyIsLive: isLive, specReady: specIsLocked(flags) })
   if (niche) {
     const gated = applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
     return finish(
       journeyNext ? applyStageGate(applyJourneyChip(gated, journeyNext, opts?.journeyHeadline)) : gated,
     )
+  }
+
+  // Spec already known (masala store, CRM, …): never re-ask Apparel/Electronics.
+  if (specIsLocked(flags) && !isLive) {
+    const brand = extractBrandFromMessage(cleaned)
+    const rec = lifecycleRecommendFollowups(flags, brand)
+    const injected: ParsedFollowUps = {
+      body: stripLeakedCot(cleaned),
+      title: opts?.journeyHeadline?.trim() || rec.title,
+      items: rec.items.slice(0, MAX_VISIBLE_CHIPS),
+    }
+    const withJourney = journeyNext
+      ? applyJourneyChip(injected, journeyNext, opts?.journeyHeadline)
+      : injected
+    return finish(applyStageGate(withJourney, 'deliverable'))
   }
 
   // Already live (journey authority) + agent asked niche (or omitted FOLLOWUPS): post-live ladder.

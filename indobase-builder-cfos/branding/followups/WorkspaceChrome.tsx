@@ -134,6 +134,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   )
   const [previewOpen, setPreviewOpen] = useState(false)
   const [frameKey, setFrameKey] = useState(0)
+  const [previewBoot, setPreviewBoot] = useState<'waiting' | 'ready' | 'failed'>('waiting')
   const [pane, setPane] = useState<'preview' | 'control'>('preview')
   const [selection, setSelection] = useState<{
     target: PreviewEditTarget
@@ -211,6 +212,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   useEffect(() => {
     setFrameKey((n) => n + 1)
     setSelection(null)
+    setPreviewBoot('waiting')
   }, [view.previewUrl, view.state])
 
   useEffect(() => {
@@ -235,13 +237,29 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   }
 
   useEffect(() => {
+    const allowed = new Set(
+      [window.location.origin, 'https://builder.indobase.in', 'https://builder.indobase.fun'].filter(Boolean),
+    )
     const onMsg = (ev: MessageEvent) => {
       const data = ev.data as {
         type?: string
+        projectRef?: string
+        artifactHash?: string
+        runtimeVersion?: string
         target?: PreviewEditTarget
         rect?: { top: number; left: number; width: number; height: number }
       }
+      if (!data || typeof data !== 'object') return
+      if (data.type === 'INDOBASE_PREVIEW_READY' || data.type === 'INDOBASE_PREVIEW_ERROR') {
+        if (!allowed.has(ev.origin)) return
+        const expectedRef = readProjectRef()
+        if (expectedRef && data.projectRef && data.projectRef !== expectedRef) return
+        if (data.runtimeVersion && data.runtimeVersion !== 'v1') return
+        setPreviewBoot(data.type === 'INDOBASE_PREVIEW_READY' ? 'ready' : 'failed')
+        return
+      }
       if (!data || data.type !== 'indobase:preview-select' || !data.target) return
+      if (!allowed.has(ev.origin) && ev.origin !== window.location.origin) return
       setPane('preview')
       setSelection({
         target: data.target,
@@ -271,6 +289,12 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   const previewSrc = withEditQuery(
     embedPreviewSrc(readProjectRef(), view.previewUrl, view.liveUrl),
   )
+
+  useEffect(() => {
+    if (previewBoot !== 'waiting' || !previewSrc) return
+    const t = window.setTimeout(() => setPreviewBoot((b) => (b === 'waiting' ? 'failed' : b)), 10_000)
+    return () => window.clearTimeout(t)
+  }, [previewBoot, previewSrc, frameKey])
 
   useEffect(() => {
     const html = document.documentElement
@@ -379,13 +403,37 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
               onScreen={persistScreen}
             />
           ) : showIframe ? (
-            <iframe
-              key={`${previewSrc}:${frameKey}`}
-              className={styles.frame}
-              title="Application preview"
-              src={previewSrc || undefined}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-            />
+            <>
+              <iframe
+                key={`${previewSrc}:${frameKey}`}
+                className={styles.frame}
+                title="Application preview"
+                src={previewSrc || undefined}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+              {previewBoot !== 'ready' ? (
+                <div className={styles.empty}>
+                  <h2>{previewBoot === 'failed' ? 'Preview unavailable' : 'Checking preview'}</h2>
+                  <p>
+                    {previewBoot === 'failed'
+                      ? 'The preview did not confirm it booted. I will not treat a blank frame as ready.'
+                      : 'Waiting for the application to report it is ready.'}
+                  </p>
+                  {previewBoot === 'failed' ? (
+                    <button
+                      type="button"
+                      className={styles.action}
+                      onClick={() => {
+                        setPreviewBoot('waiting')
+                        setFrameKey((n) => n + 1)
+                      }}
+                    >
+                      Retry
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
           ) : overlay ? null : (
             <div className={styles.empty}>
               <h2>{view.state === 'empty' ? 'Live preview' : view.headline}</h2>

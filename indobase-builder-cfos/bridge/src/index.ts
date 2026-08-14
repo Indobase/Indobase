@@ -126,6 +126,8 @@ import {
 } from './ux/execution-contract.js'
 import { rememberPendingIntent, takePendingAcrossAuth, getWorkspaceRuntime } from './ux/runtime-store.js'
 import { getBusinessSpec } from './ux/business-spec.js'
+import { evaluatePreviewHealth } from './ux/preview-health.js'
+import { createLiveProbeHttp } from './ux/runtime-probes.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -1704,7 +1706,7 @@ async function handleProductionLaunch(c: Context, session: Session) {
     brand: typeof body.brand === 'string' ? body.brand : null,
     vertical: typeof body.vertical === 'string' ? body.vertical : null,
     subdomain: typeof body.subdomain === 'string' ? body.subdomain : null,
-  })
+  }, { probes: createLiveProbeHttp() })
   if (result.job.backend) {
     await syncBackendAfterEnsure(c, getSession(c), {
       ok: true,
@@ -1799,7 +1801,7 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
       brand: typeof body.brand === 'string' ? body.brand : null,
       vertical: typeof body.vertical === 'string' ? body.vertical : null,
       subdomain: typeof body.subdomain === 'string' ? body.subdomain : null,
-    })
+    }, { probes: createLiveProbeHttp() })
     if (result.job.backend) {
       await syncBackendAfterEnsure(c, getSession(c), { ok: true, backend: result.job.backend })
     }
@@ -1858,6 +1860,16 @@ app.post('/api/os/tools/goLive', async (c) => {
 /** Indobase Commerce capability — public ABI for storefronts (CORS). */
 app.options('/api/os/commerce/*', handleCommerceOptions)
 app.get('/api/os/commerce/runtime.js', handleCommerceRuntimeJs)
+app.get('/api/os/preview/:ref/health', async (c) => {
+  const sessionOrErr = requireSignedInSession(c)
+  if (sessionOrErr instanceof Response) return sessionOrErr
+  const ref = (c.req.param('ref') || '').trim()
+  if (!ref || sessionOrErr.projectRef !== ref) {
+    return c.json({ ok: false, code: 'forbidden' }, 403)
+  }
+  const report = await evaluatePreviewHealth({ projectRef: ref, httpStatus: 200 })
+  return c.json({ ok: true, ...report })
+})
 app.get('/api/os/commerce/products', handleCommerceProductsList)
 app.get('/api/os/commerce/products/:id', handleCommerceProductGet)
 app.get('/api/os/commerce/collections', handleCommerceCollectionsList)

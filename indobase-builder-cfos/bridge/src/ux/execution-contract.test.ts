@@ -87,6 +87,21 @@ function mockLaunchDeps(reached: { launchProductionApp: boolean }) {
       }
     },
     smoke: async (url: string) => ({ ok: /^https:\/\//.test(url), message: 'smoke ok' }),
+    ecommerceProbes: {
+      catalogHttpOk: true,
+      productRendered: true,
+      cartOk: true,
+      checkoutOk: true,
+      orderOk: true,
+      orderVisible: true,
+      evidence: ['ftu injected'],
+    },
+    saasProbes: {
+      authOk: true,
+      workflowOk: true,
+      persistenceOk: true,
+      evidence: ['ftu injected'],
+    },
   }
 }
 

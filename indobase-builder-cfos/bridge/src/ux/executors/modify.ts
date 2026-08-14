@@ -1,4 +1,6 @@
 import { extractRequestedHeadline, mutateHeroHeadline } from '../preview-artifact.js'
+import { currentArtifact, rememberArtifact } from '../artifact-store.js'
+import { patchApplicationLifecycle } from '../lifecycle-store.js'
 import { getWorkspaceRuntime } from '../runtime-store.js'
 import type { ExecutionPlan } from '../execution-plan.js'
 import { PLAN_STEP } from '../execution-plan.js'
@@ -25,6 +27,7 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
     return { plan, runtime, recovered: false, mutatedHeadline: headline, mutated: false, commandId: plan.commandId }
   }
 
+  patchApplicationLifecycle(session.projectRef, 'modifying')
   const files = { ...(runtime.artifactFiles || {}), 'index.html': nextHtml }
   runtime = await persistPreviewHtml({
     session,
@@ -37,6 +40,18 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
     launchDeps: ctx.launchDeps,
   })
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
+  const predecessor = currentArtifact(session.projectRef)
+  const artifact = rememberArtifact({
+    projectRef: session.projectRef,
+    applicationType: runtime.spec?.businessType || 'ecommerce',
+    businessSpec: runtime.spec,
+    files,
+    predecessorId: predecessor?.artifactId,
+  })
+  patchApplicationLifecycle(session.projectRef, 'preview_ready', {
+    artifactId: artifact.artifactId,
+    artifactHash: artifact.artifactHash,
+  })
   markStepStatus(plan, PLAN_STEP.preview, 'succeeded', { resultRef: headline })
   return {
     plan,

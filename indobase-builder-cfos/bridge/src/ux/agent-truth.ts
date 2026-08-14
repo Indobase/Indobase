@@ -18,6 +18,7 @@ import {
 import { persistCatalogProjection } from './catalog-domain.js'
 
 import type { BusinessSpec } from './business-spec.js'
+import { getLiveClaim } from './live-claim-store.js'
 import type { PreviewStatus } from './preview-gate.js'
 
 export type { BusinessRuntimeState }
@@ -67,7 +68,9 @@ export type AuthoritativeTruth = {
   projectState: string
   previewStatus: PreviewStatus
   previewUrl: string | null
+  previewHttpOk?: boolean | null
   liveUrl: string | null
+  liveHttpOk?: boolean | null
   catalogReady: boolean
   spec?: BusinessSpec | null
   snapshot?: BusinessSnapshotSummary | null
@@ -147,9 +150,16 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
     preview: {
       status: truth.previewStatus === 'failed' ? 'error' : truth.previewStatus,
       url: truth.previewUrl,
+      httpOk: truth.previewHttpOk ?? null,
     },
     deployment: truth.deployment,
-    live: { isLive: live, url: live ? truth.liveUrl : null },
+    live: {
+      isLive: live && truth.liveHttpOk !== false,
+      url: live ? truth.liveUrl : null,
+      httpOk: truth.liveHttpOk ?? null,
+      artifactHash: truth.liveUrl ? getLiveClaim(truth.workspace?.ref || truth.business?.ref || '')?.artifactHash : null,
+      claim: live ? getLiveClaim(truth.workspace?.ref || truth.business?.ref || '') : null,
+    },
     products,
     customers,
     orders,
@@ -170,7 +180,7 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
     health: {
       catalogReady: truth.catalogReady,
       paymentsReady: Boolean(truth.paymentsReady),
-      previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl),
+      previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl) && truth.previewHttpOk !== false,
     },
   })
   const catalogStats = catalogFromProducts(products)

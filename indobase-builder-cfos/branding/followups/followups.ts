@@ -40,7 +40,11 @@ export type JourneyChipFlags = {
   liveUrl?: string | null
   /** Authoritative /api/session.project.state — live cards require `live`. */
   projectState?: string | null
-  appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency'
+  appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency' | 'saas' | 'ecommerce'
+  /** BusinessSpec already has a name/vertical — never re-ask niche. */
+  specReady?: boolean
+  verticalId?: string | null
+  previewReady?: boolean
 }
 
 export type ResolveFollowUpsOptions = {
@@ -79,30 +83,28 @@ export const DEFAULT_POST_BUILD_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Connect my domain',
     message:
-      'Connect a domain I already own — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; Indobase does not auto-verify yet)',
+      'Connect a domain I already own.',
   },
   {
     label: 'Add customer login',
-    message: 'Call ensureLogin and wire a Sign-in CTA for this app',
+    message: 'Add customer login for this app',
   },
   {
     label: 'Add a real backend',
-    message:
-      'Call guidedBackend (or ensureDatabase then applySchema / setupShopCatalog) BEFORE more UI — then wire screens to session.backend / project REST',
+    message: 'Add customer accounts and business data for this app',
   },
   {
     label: 'Add payments',
     message:
-      'I want to connect payments — ask me India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout',
+      'I want to connect payments — ask me India (Razorpay) vs International (Stripe).',
   },
   {
     label: 'Production checklist',
-    message:
-      'Run productionChecklist for this app_type with the live_url and honest checks — only claim production ready if claim_production_ready is true',
+    message: 'Review the production checklist for this app.',
   },
   {
     label: 'Refine then Go Live',
-    message: 'Refine the design briefly, then Go Live with launchBusiness — full launch is the goal',
+    message: 'Refine the design briefly, then launch my store on Indobase.',
   },
 ] as const
 
@@ -112,18 +114,15 @@ export const APP_TYPE_TITLE = 'What kind of web app is this?'
 export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
-    message:
-      'This is a landing/marketing site — POST /api/os/apps/launch { appType: "landing", production: true }. The job deploys; do not call launchBusiness yourself.',
+    message: 'This is a landing website. Launch my website on Indobase when the preview is ready.',
   },
   {
     label: 'SaaS / web app',
-    message:
-      'This is a SaaS web app — POST /api/os/apps/launch { appType: "saas", production: true }. The job provisions auth+database, generates a wired UI, verifies, and deploys. Do not call ensure* yourself.',
+    message: 'This is a SaaS app. Launch my app on Indobase when the preview is ready.',
   },
   {
     label: 'Ecommerce / store',
-    message:
-      'This is an ecommerce store — POST /api/os/apps/launch { appType: "ecommerce", production: true, vertical if known }. The job provisions catalog + commerce ABI and deploys. Do not call guidedBackend yourself.',
+    message: 'This is an online store. Launch my store on Indobase when the preview is ready.',
   },
   {
     label: 'Booking / appointments',
@@ -219,7 +218,7 @@ export function autoChainStoreFollowups(brand?: string | null): StageFollowUps {
     title: name !== 'this' ? `Launch ${name} — full backend path` : AUTO_CHAIN_STORE_TITLE,
     items: ECOMMERCE_AUTO_CHAIN_VERTICALS.map((v) => ({
       label: v.label,
-      message: `Launch ${v.label} store — INDOBASE_GUIDED_BACKEND mode=ecommerce vertical=${v.id}${brandArg} place_test_order=true — seed catalog, prove with placeTestShopOrder, publish storefront_html (Commerce ABI), then emit Go Live chips`,
+      message: `Launch my ${v.label} store on Indobase now. App type ecommerce, vertical=${v.id}${brandArg}.`,
     })),
   }
 }
@@ -232,15 +231,15 @@ export function landingSingleTurnFollowups(brand?: string | null): StageFollowUp
     items: [
       {
         label: 'Go Live on Indobase',
-        message: `Go Live now — POST /api/os/apps/launch { appType: "landing", production: true } for ${name} (skip guidedBackend / PocketBase ecommerce). Quote the job live URL when status=live, then emit Domain / Checklist chips — no continue/take-live micro-prompts`,
+        message: `Launch my website on Indobase now.`,
       },
       {
         label: 'Connect my domain',
-        message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www → sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet`,
+        message: `Connect a domain I already own.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist app_type=landing for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+        message: `Review the launch checklist for ${name}.`,
       },
     ],
   }
@@ -254,19 +253,19 @@ export function autoChainBackendFollowups(brand?: string | null): StageFollowUps
     items: [
       {
         label: 'Launch with real backend',
-        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true — seed catalog, prove order, publish storefront_html (Commerce ABI), then emit Go Live chips`,
+        message: `Launch my store on Indobase now — production launch for ${name}`,
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — call launchProductionApp for ${name} (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then Domain / Add payments / Checklist chips`,
+        message: `Launch my store on Indobase now.`,
       },
       {
         label: 'Create admin dashboard',
-        message: `Call guidedBackend mode=ecommerce for ${name} with place_test_order=true, publish admin_html via launchBusiness as admin.html once, then Go Live if storefront not live`,
+        message: `Launch ${name} and open the admin dashboard after it is live`,
       },
       {
         label: 'Wire then Go Live',
-        message: `Publish ${name} storefront_html (window.indobase.commerce) then Go Live with launchBusiness in one pass`,
+        message: `Launch my store on Indobase now.`,
       },
     ],
   }
@@ -278,12 +277,12 @@ export const ECOMMERCE_NICHE_FOLLOWUPS: readonly FollowUpItem[] = [
     label: v.label,
     message:
       `Niche ${v.label} — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=${v.id}). ` +
-      `Do NOT call guidedBackend yet. After preview, emit Go Live–first FOLLOWUPS and keep advancing the launch ladder until live url + payments path.`,
+      `Build a preview first. After preview, keep going until the store is live.`,
   })),
   {
     label: "I'll type my specific niche",
     message:
-      "I'll type my specific niche — invent brand + build preview storefront with localStorage cart; do NOT call guidedBackend until I pick Add a real backend; after preview keep emitting Go Live–first launch-ladder chips",
+      "I'll type my specific niche — invent brand + build a preview storefront; after preview keep going until live.",
   },
 ]
 
@@ -381,6 +380,7 @@ const CHIP_TOOL_NAMES =
 const CUSTOMER_MACHINERY =
   /do not restart guest\/?auth|emit Wire\s*\/\s*Go Live|I can['’]t truthfully|I won['’]t claim|Call for Go Live|prove with `?placeTestShopOrder|Commerce ABI|window\.indobase\.commerce|POST \/api\/os\/[^\s]+|executionId|jobId\b/gi
 
+/** Strip tool names and conductor instructions from operator-visible prose. */
 export function stripCustomerMachinery(message: string): string {
   if (!message) return message
   let t = message
@@ -394,12 +394,17 @@ export function stripCustomerMachinery(message: string): string {
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
+/** Chip send-back text: business language only. */
 export function sanitizeChipMessage(message: string, label?: string): string {
   const raw = (message || '').trim()
   const lab = (label || '').toLowerCase()
   const blob = `${lab} ${raw}`.toLowerCase()
-  if (/connect (my )?domain|customdomain|cname/.test(blob)) return 'Connect a domain I already own.'
-  if (/add (a )?product|new product/.test(blob)) return 'Add a product to my catalog.'
+  if (/connect (my )?domain|customdomain|cname/.test(blob)) {
+    return 'Connect a domain I already own.'
+  }
+  if (/add (a )?product|new product/.test(blob)) {
+    return 'Add a product to my catalog.'
+  }
   if (/change the hero|polish hero|hero/.test(blob) && /change|polish|refine|edit/.test(blob)) {
     return 'Change the hero.'
   }
@@ -411,7 +416,9 @@ export function sanitizeChipMessage(message: string, label?: string): string {
   const cleaned = stripCustomerMachinery(raw)
   if (!cleaned || CHIP_TOOL_NAMES.test(cleaned) || /\/api\/os\//.test(cleaned)) {
     CHIP_TOOL_NAMES.lastIndex = 0
-    return lab.includes('launch') || lab.includes('go live') ? 'Launch my store on Indobase now.' : cleaned || 'Continue'
+    return lab.includes('launch') || lab.includes('go live')
+      ? 'Launch my store on Indobase now.'
+      : cleaned || 'Continue'
   }
   return cleaned
 }
@@ -447,6 +454,10 @@ export function stripToolCapsuleNoise(message: string): string {
   t = t.replace(/^.*\bUsing (?:the )?(?:tool|authStart|authVerify|launchProductionApp|launchBusiness|guidedBackend)\b.*$/gim, '')
   t = t.replace(/`guidedBackend[^`]*`/gi, '')
   t = t.replace(/\bguidedBackend(?:\s+mode=\w+)?\b/gi, '')
+  t = t.replace(/\bfetch failed\b/gi, "I couldn't complete the order yet. I'll fix the checkout connection.")
+  t = t.replace(/\bpaymentStatus\b/gi, '')
+  t = t.replace(/\bWorking\b/g, 'Creating')
+  t = stripCustomerMachinery(t)
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -475,12 +486,26 @@ function readWindowString(key: '__INDOBASE_OPERATOR_MESSAGE__' | '__INDOBASE_BUS
  * The conductor already built this turn. If the model still talks like a missing tool,
  * replace that speech with the conductor reply so chat never looks like a blocked API.
  */
+function looksLikeConductorLeak(text: string): boolean {
+  return (
+    BLOCKED_BUILD_SPEECH.test(text) ||
+    /I can['’]t truthfully|please call launchBusiness|Call for Go Live|placeTestShopOrder|do not restart guest/i.test(
+      text,
+    )
+  )
+}
+
+function isHollowOperatorProse(text: string): boolean {
+  const words = (text || '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  return words.length < 18
+}
+
 export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRewriteOpts): string {
   let t = (message || '').trim()
   if (!t) return t
   const reply = (opts?.conductorReply || readWindowString('__INDOBASE_OPERATOR_MESSAGE__') || '').trim()
   const name = (opts?.businessName || readWindowString('__INDOBASE_BUSINESS_NAME__') || '').trim()
-  if (BLOCKED_BUILD_SPEECH.test(t) || /I can['’]t truthfully|please call launchBusiness|placeTestShopOrder|do not restart guest/i.test(t)) {
+  if (looksLikeConductorLeak(t) || (isHollowOperatorProse(t) && reply)) {
     t = reply || DEFAULT_CONDUCTOR_REPLY
   }
   if (name && !/^your business$/i.test(name)) {
@@ -490,10 +515,12 @@ export function rewriteBlockedBuildSpeech(message: string, opts?: BuilderChatRew
 }
 
 export function cleanOperatorMessage(message: string, opts?: BuilderChatRewriteOpts): string {
-  return rewriteBlockedBuildSpeech(
-    stripCustomerMachinery(stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(message)))),
-    opts,
-  )
+  const original = message || ''
+  const stripped = stripCustomerMachinery(stripOperatorInfraLeak(stripToolCapsuleNoise(stripLeakedCot(original))))
+  if (looksLikeConductorLeak(original) || isHollowOperatorProse(stripped)) {
+    return rewriteBlockedBuildSpeech(original, opts)
+  }
+  return rewriteBlockedBuildSpeech(stripped, opts)
 }
 
 function journeyChipTitle(headline?: string | null): string {
@@ -614,11 +641,55 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
     liveUrl,
     projectState: f.projectState || null,
     appKind: f.appKind,
+    specReady: f.specReady,
+    verticalId: f.verticalId || null,
+    previewReady: f.previewReady,
   }
   if (liveAuthoritative) {
     tentative.isLive = operatorMayClaimLive(tentative)
   }
   return tentative
+}
+
+function specIsLocked(flags?: JourneyChipFlags | null): boolean {
+  if (!flags) return false
+  if (flags.specReady) return true
+  const vertical = (flags.verticalId || '').trim()
+  return Boolean(vertical && vertical !== 'unspecified')
+}
+
+/** Next chips from real lifecycle — not a generic Apparel/Electronics picker. */
+export function lifecycleRecommendFollowups(
+  flags: JourneyChipFlags,
+  brand?: string | null,
+): StageFollowUps {
+  const name = brandLabel(brand)
+  if (flags.isLive) {
+    return postGoLiveFollowups(name === 'this' ? brand : name, {
+      store:
+        flags.appKind !== 'app' &&
+        flags.appKind !== 'saas' &&
+        flags.appKind !== 'website' &&
+        flags.appKind !== 'booking' &&
+        flags.appKind !== 'agency',
+      paymentsReady: flags.isPaymentsReady,
+    })
+  }
+  const kind = flags.appKind
+  if (kind === 'app' || kind === 'saas' || kind === 'booking' || kind === 'website' || kind === 'agency') {
+    return postPreviewFollowups(brand, kind)
+  }
+  return {
+    title: whereNextTitle(brand),
+    items: [
+      { label: 'Launch my store', message: 'Launch my store on Indobase now.' },
+      {
+        label: 'Continue editing',
+        message: name !== 'this' ? `Continue editing ${name}.` : 'Continue editing the preview.',
+      },
+      { label: 'Add a product', message: 'Add a product to my catalog.' },
+    ].slice(0, MAX_VISIBLE_CHIPS),
+  }
 }
 
 /**
@@ -661,13 +732,16 @@ export function filterChipsForJourneyState(
   } else if (flags.isLive === false) {
     items = items.filter((i) => !isPaymentsChip(i))
   }
+  if (specIsLocked(flags)) {
+    items = items.filter((i) => !isNicheCategoryChip(i))
+  }
   if (flags.isBackendReady) {
     items = items.filter((i) => !isBackendEnsureChip(i))
   }
   if (flags.isPaymentsReady) {
     items = items.filter((i) => !isPaymentsChip(i))
   }
-  if (flags.appKind === 'app' || flags.appKind === 'website' || flags.appKind === 'booking' || flags.appKind === 'agency') {
+  if (flags.appKind === 'app' || flags.appKind === 'saas' || flags.appKind === 'website' || flags.appKind === 'booking' || flags.appKind === 'agency') {
     items = items.filter((i) => !isBackendEnsureChip(i))
     items = items.map((i) => ({ ...i, label: operatorChipLabel(i.label, flags.appKind) }))
   }
@@ -723,11 +797,12 @@ export function injectJourneyNextActionFollowUps(
 
 export function injectNicheChoices(
   message: string,
-  opts?: { journeyIsLive?: boolean },
+  opts?: { journeyIsLive?: boolean; specReady?: boolean },
 ): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
   // Site already live — niche is early-ladder only; payments/ops chips instead.
   if (opts?.journeyIsLive) return null
+  if (opts?.specReady) return null
   // Never inject niche cards during guest/auth turns.
   if (inferChipStage(message) === 'guest_gate' || looksLikePreBuildClarification(message)) {
     return null
@@ -761,17 +836,17 @@ export const PAYMENTS_MARKET_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'India (Razorpay)',
     message:
-      'Connect payments for India with Razorpay — POST /api/os/runtime/ensure { capability: "payments", settlement_market: "india" }, send me to https://dashboard.razorpay.com to finish KYC and copy API keys, then call connectGateway with key_id + key_secret',
+      'Connect payments for India with Razorpay — send me to the Razorpay dashboard for KYC and API keys, then connect my keys.',
   },
   {
     label: 'International (Stripe)',
     message:
-      'Connect payments internationally with Stripe — POST /api/os/runtime/ensure { capability: "payments", settlement_market: "international" }, send me to https://dashboard.stripe.com to finish verification and copy API keys, then call connectGateway with secret_key + publishable_key',
+      'Connect payments internationally with Stripe — send me to the Stripe dashboard for verification and API keys, then connect my keys.',
   },
   {
     label: "I'll describe my market",
     message:
-      "I'll describe where my customers pay so you can choose Razorpay (India) or Stripe (international), send me to their dashboard for KYC/keys, then call connectGateway with my API keys",
+      "I'll describe where my customers pay so you can choose Razorpay (India) or Stripe (international).",
   },
 ] as const
 
@@ -781,22 +856,19 @@ export const PAYMENTS_SETUP_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Complete KYC on Razorpay/Stripe',
     message:
-      'Send me to the Razorpay or Stripe dashboard (whichever rail we picked) to create the merchant account and finish KYC, then come back with API keys',
+      'Send me to the Razorpay or Stripe dashboard to finish merchant verification, then I will paste API keys.',
   },
   {
     label: 'Paste API keys',
-    message:
-      'I will paste my Razorpay or Stripe API keys — call connectGateway (POST /api/os/tools/connectGateway) with settlement_market and the keys so Indobase validates and stores them for direct checkout',
+    message: 'I will paste my Razorpay or Stripe API keys so you can connect payments.',
   },
   {
     label: 'Wire checkout into the site',
-    message:
-      'Call wireCheckout (POST /api/os/tools/wireCheckout) with plan_name, price, currency, and customer_email — then set the site Subscribe/Buy CTA href to the returned checkout_url',
+    message: 'Wire checkout so the Buy button takes customers to pay.',
   },
   {
     label: 'Wire checkout + checklist',
-    message:
-      'Call wireCheckout then run productionChecklist with checkout_wired true — finish the full launch path',
+    message: 'Finish checkout on the site and review the launch checklist.',
   },
 ] as const
 
@@ -805,23 +877,19 @@ export const PAYMENTS_LIVE_TITLE = 'Payments are live — what next?'
 export const PAYMENTS_LIVE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Wire checkout into the site',
-    message:
-      'Call wireCheckout (POST /api/os/tools/wireCheckout) with mode one_time or subscription, plan_name, price, currency, and customer_email — then set the site Subscribe/Buy CTA href to the returned checkout_url',
+    message: 'Wire checkout so the Buy button takes customers to pay.',
   },
   {
     label: 'Add shop catalog + admin',
-    message:
-      'Call resolveProductImages then setupShopCatalog with products + image_url, placeTestShopOrder, then publish admin_html once via launchBusiness as admin.html (live REST refresh)',
+    message: 'Add products to my catalog and keep the admin dashboard in sync.',
   },
   {
     label: 'Production checklist',
-    message:
-      'Finish the production site checklist — login if needed, SEO title/description, privacy/terms links, custom domain CNAME, and confirm checkout CTA uses wireCheckout checkout_url',
+    message: 'Review the production checklist for this store.',
   },
   {
     label: 'Connect my domain',
-    message:
-      'Connect a domain I already own — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; no auto-verify yet)',
+    message: 'Connect a domain I already own.',
   },
 ] as const
 
@@ -830,22 +898,19 @@ export const SHOP_BACKEND_TITLE = 'Shop backend is live — what next?'
 export const SHOP_BACKEND_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Publish commerce storefront',
-    message:
-      'Publish storefront_html with window.indobase.commerce — keep Buy CTA via commerce.checkout; then emit Go Live chips',
+    message: 'Keep the storefront product grid, cart, and checkout ready for customers.',
   },
   {
     label: 'Go Live on Indobase',
-    message:
-      'Go Live — call launchProductionApp (POST /api/os/apps/launch production:true); quote LIVE url only when status=live, then emit Domain / Add payments / Checklist chips',
+    message: 'Launch my store on Indobase now.',
   },
   {
     label: 'Publish admin dashboard',
-    message:
-      'Publish admin_html from listShopOrders via launchBusiness as admin.html once — it live-refreshes from project REST; do not republish just to refresh orders',
+    message: 'Open the admin dashboard for orders and catalog.',
   },
   {
     label: 'Wire then Go Live',
-    message: 'Publish storefront_html (window.indobase.commerce) then Go Live with launchBusiness — full launch is the goal',
+    message: 'Launch my store on Indobase now.',
   },
 ] as const
 
@@ -868,26 +933,26 @@ export type StageFollowUps = {
  * Example chips after a first preview (Naive-style) — agent must rewrite for the brand.
  * Not injected by the UI.
  */
-export function postPreviewFollowups(brand?: string | null): StageFollowUps {
+export function postPreviewFollowups(
+  brand?: string | null,
+  appKind?: JourneyChipFlags['appKind'],
+): StageFollowUps {
   const name = brandLabel(brand)
+  const noun = appKind === 'app' || appKind === 'saas' || appKind === 'booking' ? 'app' : appKind === 'website' || appKind === 'agency' ? 'website' : 'store'
   return {
     title: whereNextTitle(brand),
     items: [
       {
-        label: 'Go Live on Indobase',
-        message: `Launch my store on Indobase now.`,
+        label: `Launch my ${noun}`,
+        message: `Launch my ${noun} on Indobase now.`,
       },
       {
-        label: 'Add a product',
-        message: `Add a product to my catalog.`,
+        label: 'Continue editing',
+        message: `Continue editing ${name}.`,
       },
       {
-        label: 'Refine then Go Live',
-        message: `Refine the design and branding for ${name}, then launch my store on Indobase.`,
-      },
-      {
-        label: 'Change the hero',
-        message: `Change the hero.`,
+        label: 'Refine then launch',
+        message: `Refine the design for ${name}, then launch my ${noun} on Indobase.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -901,7 +966,7 @@ export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollow
     items: [
       {
         label: 'Enable login + database',
-        message: `Call guidedBackend mode=generic for ${name} (ensureLogin + ensureDatabase + applySchema) FIRST — then build UI against session.backend`,
+        message: `Add customer accounts and business data for ${name}`,
       },
       {
         label: 'Wire auth + data UI',
@@ -909,11 +974,11 @@ export function postSaasEnsureFirstFollowups(brand?: string | null): StageFollow
       },
       {
         label: 'Go Live when wired',
-        message: `When auth and data are wired, Go Live with launchBusiness app_type=saas and quote the exact url`,
+        message: `Launch my app on Indobase now.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist app_type=saas with the live_url and honest checks — only claim production ready if claim_production_ready is true`,
+        message: `Review the production checklist for ${name}.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -930,19 +995,19 @@ export function postBackendFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Publish commerce storefront',
-        message: `Publish ${name} storefront_html with window.indobase.commerce (product grid + cart + checkout); then emit Go Live chips`,
+        message: `Keep the ${name} storefront ready with products, cart, and checkout.`,
       },
       {
         label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips`,
+        message: `Launch my store on Indobase now.`,
       },
       {
         label: 'Publish admin dashboard',
-        message: `Publish admin_html for ${name} via launchBusiness as admin.html once (live REST refresh), then continue to Go Live if the storefront is not live yet`,
+        message: `Open the admin dashboard for ${name}.`,
       },
       {
         label: 'Wire then Go Live',
-        message: `Publish ${name} storefront_html then Go Live with launchBusiness in one pass — full launch is the goal`,
+        message: `Launch my store on Indobase now.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -964,13 +1029,12 @@ export function postGoLiveFollowups(
   if (store && paymentsReady) {
     return postPaymentsFollowups(brand)
   }
-  const domainMsg = `Connect a domain I already own for ${name} — launchBusiness with customDomain; return CNAME name=@ or www value=sites.indobase.in. DNS must propagate at my registrar; Indobase does not auto-verify DNS yet — quote tool dns instructions`
+  const domainMsg = `Connect a domain I already own.`
   const items: FollowUpItem[] = []
-  // Store: payments first (matches journey Payments stage); domain is secondary.
   if (store) {
     items.push({
       label: 'Add payments',
-      message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe), then connectGateway + wireCheckout (prefer INR for India) and patch Buy CTA`,
+      message: `Connect payments for ${name} — ask India (Razorpay) vs International (Stripe).`,
     })
   }
   items.push({
@@ -980,17 +1044,17 @@ export function postGoLiveFollowups(
   if (store) {
     items.push({
       label: 'Production checklist',
-      message: `Run productionChecklist for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+      message: `Review the production checklist for ${name}.`,
     })
   } else {
     items.push(
       {
         label: 'Add a real backend',
-        message: `Call guidedBackend for ${name} if not done — then publish storefront_html (Commerce ABI) and Go Live`,
+        message: `Add customer accounts and data for ${name}, then launch.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist app_type=landing for ${name} with the live_url and honest checks — claim ready only if claim_production_ready is true`,
+        message: `Review the production checklist for ${name}.`,
       },
     )
   }
@@ -1007,11 +1071,11 @@ export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
     items: [
       {
         label: 'Wire checkout into the site',
-        message: `Call wireCheckout for ${name} (mode one_time, prefer INR if India) and set Buy CTA href to checkout_url`,
+        message: `Wire checkout so customers can pay on ${name}.`,
       },
       {
         label: 'Production checklist',
-        message: `Run productionChecklist for ${name} with checkout_wired true when CTA uses wireCheckout url — finish full launch`,
+        message: `Review the production checklist for ${name}.`,
       },
       {
         label: 'Publish admin dashboard',
@@ -1019,7 +1083,7 @@ export function postPaymentsFollowups(brand?: string | null): StageFollowUps {
       },
       {
         label: 'Connect my domain',
-        message: `Connect a domain I already own for ${name} — launchBusiness with customDomain; CNAME @ or www → sites.indobase.in (DNS at my registrar; no auto-verify yet)`,
+        message: `Connect a domain I already own.`,
       },
     ],
   }
@@ -1261,7 +1325,7 @@ export function extractBrandFromMessage(message: string): string | null {
  */
 export function injectDeliverableFollowUps(
   message: string,
-  opts?: { backendReady?: boolean; isLive?: boolean },
+  opts?: { backendReady?: boolean; isLive?: boolean; appKind?: JourneyChipFlags['appKind'] },
 ): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
   // Guest-gate turns may inject niche instead; don't also inject post-preview walls.
@@ -1287,7 +1351,7 @@ export function injectDeliverableFollowUps(
     )
   ) {
     // Backend already ready → Go Live ladder (not another ensure-backend wall).
-    stage = backendReady ? postPreviewFollowups(brand) : postBackendFollowups(brand)
+    stage = backendReady ? postPreviewFollowups(brand, opts?.appKind) : postBackendFollowups(brand)
     if (backendReady) {
       stage = {
         ...stage,
@@ -1298,17 +1362,11 @@ export function injectDeliverableFollowUps(
     looksLikeSaaSOrBackendAppAsk(message) &&
     !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
   ) {
-    stage = backendReady ? postPreviewFollowups(brand) : postSaasEnsureFirstFollowups(brand)
-    if (backendReady) {
-      stage = {
-        ...stage,
-        items: stage.items.filter((i) => !isBackendEnsureChip(i)).slice(0, MAX_VISIBLE_CHIPS),
-      }
-    }
+    stage = postPreviewFollowups(brand, opts?.appKind || 'app')
   } else if (looksLikeLandingSingleTurnIntent(message)) {
     stage = landingSingleTurnFollowups(brand)
   } else if (looksLikeAutoChainIntent(message) && !/claim_backend_ready|catalog seeded|place.?test.?shop.?order/.test(lower)) {
-    stage = backendReady ? postPreviewFollowups(brand) : autoChainBackendFollowups(brand)
+    stage = backendReady ? postPreviewFollowups(brand, opts?.appKind) : autoChainBackendFollowups(brand)
     if (backendReady) {
       stage = {
         ...stage,
@@ -1316,7 +1374,7 @@ export function injectDeliverableFollowUps(
       }
     }
   } else {
-    stage = postPreviewFollowups(brand)
+    stage = postPreviewFollowups(brand, opts?.appKind)
     if (backendReady) {
       stage = {
         ...stage,
@@ -1356,8 +1414,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
     items: [
       {
         label: 'Go Live on Indobase',
-        message:
-          'Go Live — publish this business with launchBusiness using the real html/files, quote the exact live url, then emit Domain / Add payments / Production checklist chips.',
+        message: 'Launch my store on Indobase now.',
       },
       {
         label: 'Keep building',
@@ -1370,7 +1427,7 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
       {
         label: 'Add a real backend',
         message:
-          'Call guidedBackend (or ensureDatabase + applySchema) and wire screens to session.backend',
+          'Add customer accounts and business data for this app',
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -1417,6 +1474,8 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     // Agent-authored niche while live → replace with post-live ladder (not merge with journey).
     if (isLive && looksLikeNicheChipSet(gated)) {
       // fall through to isLive post-live injection
+    } else if (specIsLocked(flags) && looksLikeNicheChipSet(gated)) {
+      // fall through — replace Apparel/Electronics with lifecycle chips
     } else if (notLive && looksLikePaymentsChipSet(gated)) {
       // Strip payments CHOICES before publish; keep remaining non-payment chips if any.
       const finished = finish(
@@ -1431,7 +1490,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     }
   }
 
-  const niche = injectNicheChoices(cleaned, { journeyIsLive: isLive })
+  const niche = injectNicheChoices(cleaned, { journeyIsLive: isLive, specReady: specIsLocked(flags) })
   if (niche) {
     const gated = applyStageGate(niche, inferChipStage(niche.body) === 'guest_gate' ? 'guest_gate' : 'building')
     return finish(
@@ -1439,11 +1498,26 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     )
   }
 
+  // Spec already known (masala store, CRM, …): never re-ask Apparel/Electronics.
+  if (specIsLocked(flags) && !isLive) {
+    const brand = extractBrandFromMessage(cleaned)
+    const rec = lifecycleRecommendFollowups(flags, brand)
+    const injected: ParsedFollowUps = {
+      body: stripLeakedCot(cleaned),
+      title: opts?.journeyHeadline?.trim() || rec.title,
+      items: rec.items.slice(0, MAX_VISIBLE_CHIPS),
+    }
+    const withJourney = journeyNext
+      ? applyJourneyChip(injected, journeyNext, opts?.journeyHeadline)
+      : injected
+    return finish(applyStageGate(withJourney, 'deliverable'))
+  }
+
   // Already live (journey authority) + agent asked niche (or omitted FOLLOWUPS): post-live ladder.
   if (isLive) {
     const brand = extractBrandFromMessage(cleaned)
     const postLive = postGoLiveFollowups(brand, {
-      store: true,
+      store: flags.appKind !== 'app' && flags.appKind !== 'saas' && flags.appKind !== 'website' && flags.appKind !== 'booking' && flags.appKind !== 'agency',
       paymentsReady: flags.isPaymentsReady,
     })
     const injected: ParsedFollowUps = {
@@ -1462,6 +1536,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
   const injected = injectDeliverableFollowUps(cleaned, {
     backendReady: flags.isBackendReady,
     isLive: notLive ? false : undefined,
+    appKind: flags.appKind,
   })
   if (injected) {
     const withJourney = journeyNext

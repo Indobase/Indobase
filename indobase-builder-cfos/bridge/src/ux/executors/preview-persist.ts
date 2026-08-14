@@ -1,5 +1,4 @@
 import type { Session } from '../../auth.js'
-import { executeLaunchBusinessTool } from '../../launch-business-tool.js'
 import {
   getLatestProductionLaunchJob,
   rememberProductionLaunchJob,
@@ -59,31 +58,12 @@ export async function persistPreviewHtml(input: {
     commandId: command.id,
   })
   const job = getLatestProductionLaunchJob(session.projectRef)
-  if (job) {
+  if (job && job.status !== 'live') {
     rememberProductionLaunchJob({
       ...job,
       html: input.html,
       files: { ...(job.files || {}), 'index.html': input.html },
     })
-    if ((job.status === 'live' || job.url) && !input.launchDeps?.launch) {
-      try {
-        await executeLaunchBusinessTool(
-          session.projectRef,
-          {
-            title: input.runtime.spec?.businessName || job.title || job.brand,
-            subdomain: subdomainFromLiveUrl(job.url) || job.brand || undefined,
-            html: input.html,
-            files: input.files,
-            app_type: job.appType,
-            gotrueId: session.gotrueId,
-            email: session.email,
-          },
-          { title: input.runtime.spec?.businessName || job.title, backend: session.backend },
-        )
-      } catch {
-        /* draft + job html already persisted; live republish retries on next launch */
-      }
-    }
   }
   return getWorkspaceRuntime(session.projectRef) || input.runtime
 }

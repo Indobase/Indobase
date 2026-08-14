@@ -9,6 +9,7 @@ import {
   resolveEcommerceVerticalId,
   type AppVertical,
 } from '../vertical-catalog.js'
+import { loadGen3Record, persistGen3Record } from './gen3-durable.js'
 
 export type BusinessSpec = {
   businessName: string
@@ -20,6 +21,10 @@ export type BusinessSpec = {
   currency: 'INR' | 'USD'
   visualStyle: string
   sourceIntent: string
+  businessId?: string
+  revision?: number
+  sealed?: boolean
+  createdFromTurnId?: string
 }
 
 const PLACEHOLDER_NAMES = new Set([
@@ -95,6 +100,7 @@ const NAME_PATTERNS = [
   /\bbrand(?:ed)?\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,2})/i,
   /["“]([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})["”]/,
   /['‘]([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})['’]/,
+  /\bfor\s+(?:a|an|my|our)\s+([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+(?:store|shop|brand|studio|company|co))?)/i,
 ]
 
 function takeBrandTokens(raw: string): string {
@@ -111,14 +117,37 @@ function takeBrandTokens(raw: string): string {
   return out.length ? preserveOrTitleCase(out.join(' ')) : ''
 }
 
+function descriptivePhraseName(raw: string): string {
+  const n = stripNameDecorators(raw)
+  const words = n.split(/\s+/).filter(Boolean)
+  if (!words.length) return ''
+  const phrase = words.join(' ')
+  if (isPlaceholderBusinessName(phrase)) return ''
+  return preserveOrTitleCase(phrase)
+}
+
 export function inferName(intent: string): string {
   const source = intent || ''
   for (const pattern of NAME_PATTERNS) {
     const match = pattern.exec(source)
-    const name = match?.[1] ? takeBrandTokens(match[1]) : ''
-    if (name) return name
+    const captured = match?.[1] || ''
+    const name = captured ? takeBrandTokens(captured) || descriptivePhraseName(captured) : ''
+    if (name && !isPlaceholderBusinessName(name)) return name
   }
   return ''
+}
+
+export function specIdentityFingerprint(
+  spec: Pick<BusinessSpec, 'businessType' | 'businessName' | 'catalog'>,
+): string {
+  return [spec.businessType, spec.catalog.verticalId, spec.businessName.trim().toLowerCase()].join('|')
+}
+
+export function isAuthoritativeCreateIntent(intent: string): boolean {
+  const q = (intent || '').toLowerCase()
+  if (!q) return false
+  if (/\bgo live\b/.test(q) && !/\b(create|build|make)\b/.test(q)) return false
+  return /\b(create|build|make)\b/.test(q) || /\blaunch a\b/.test(q)
 }
 
 export function pickBusinessName(...candidates: Array<string | null | undefined>): string {
@@ -167,7 +196,9 @@ function inferCurrency(intent: string): BusinessSpec['currency'] {
 }
 
 function inferVerticalId(intent: string): string {
-  return resolveEcommerceVerticalId(intent) || findEcommerceVertical(intent)?.id || 'apparel'
+  const resolved = resolveEcommerceVerticalId(intent) || findEcommerceVertical(intent)?.id
+  if (resolved) return resolved
+  return 'unspecified'
 }
 
 export function verticalForSpec(spec: Pick<BusinessSpec, 'catalog'>): AppVertical | null {
@@ -195,6 +226,8 @@ export function inferBusinessSpec(intent: string): BusinessSpec {
     currency: inferCurrency(sourceIntent),
     visualStyle: inferStyle(sourceIntent),
     sourceIntent,
+    revision: 0,
+    sealed: false,
   }
 }
 
@@ -203,20 +236,40 @@ const specs = new Map<string, BusinessSpec>()
 export function rememberBusinessSpec(projectRef: string, spec: BusinessSpec): BusinessSpec {
   const key = projectRef.trim()
   if (!key) return spec
-  const existing = specs.get(key)
+  const existing = specs.get(key) || loadGen3Record<BusinessSpec>('business-specs', key)
   const next = mergeBusinessSpec(existing || null, spec)
   const provided = inferName(next.sourceIntent || spec.sourceIntent || '')
   if (provided && isPlaceholderBusinessName(next.businessName)) {
     throw new Error('business_spec_name_unresolved')
   }
   specs.set(key, next)
+  persistGen3Record('business-specs', key, next)
   return next
 }
 
 export function getBusinessSpec(projectRef: string | null | undefined): BusinessSpec | null {
   const key = (projectRef || '').trim()
   if (!key) return null
-  return specs.get(key) || null
+  const cached = specs.get(key)
+  if (cached) return cached
+  const disk = loadGen3Record<BusinessSpec>('business-specs', key)
+  if (disk) specs.set(key, disk)
+  return disk || null
+}
+
+export function sealBusinessSpec(projectRef: string, turnId?: string): BusinessSpec | null {
+  const existing = getBusinessSpec(projectRef)
+  if (!existing) return null
+  const sealed: BusinessSpec = {
+    ...existing,
+    sealed: true,
+    revision: (existing.revision || 0) + 1,
+    businessId: existing.businessId || `biz_${projectRef}`,
+    createdFromTurnId: existing.createdFromTurnId || turnId,
+  }
+  specs.set(projectRef, sealed)
+  persistGen3Record('business-specs', projectRef, sealed)
+  return sealed
 }
 
 export function clearBusinessSpecsForTests(): void {
@@ -228,10 +281,20 @@ export function mergeBusinessSpec(
   next: Partial<BusinessSpec> & { sourceIntent?: string },
 ): BusinessSpec {
   const inferredFromNext = inferBusinessSpec(next.sourceIntent || existing?.sourceIntent || '')
-  const base = existing || inferredFromNext
+  const replacing =
+    Boolean(existing) &&
+    isAuthoritativeCreateIntent(next.sourceIntent || '') &&
+    specIdentityFingerprint(inferredFromNext) !== specIdentityFingerprint(existing!)
+  if (existing?.sealed && !replacing) {
+    return {
+      ...existing,
+      sourceIntent: existing.sourceIntent || next.sourceIntent || inferredFromNext.sourceIntent,
+    }
+  }
+  const base = replacing ? inferredFromNext : existing || inferredFromNext
   const nextNameHint = pickBusinessName(next.businessName, next.brand, inferName(next.sourceIntent || ''))
-  const nextIsWeak = !nextNameHint
-  if (existing && nextIsWeak) {
+  const nextIsWeak = !nextNameHint && !replacing
+  if (existing && nextIsWeak && !replacing) {
     return {
       ...existing,
       sourceIntent: existing.sourceIntent || next.sourceIntent || inferredFromNext.sourceIntent,
@@ -240,26 +303,32 @@ export function mergeBusinessSpec(
   const name = pickBusinessName(
     next.businessName,
     next.brand,
-    existing?.businessName,
+    replacing ? inferredFromNext.businessName : existing?.businessName,
     inferredFromNext.businessName,
     inferName(next.sourceIntent || ''),
     inferName(existing?.sourceIntent || ''),
   )
   const businessName =
     name || (isPlaceholderBusinessName(base.businessName) ? inferredFromNext.businessName : base.businessName)
-  const nextVertical = next.catalog?.verticalId
+  const nextVertical = next.catalog?.verticalId || inferredFromNext.catalog.verticalId
   const catalog =
-    nextVertical && nextVertical !== 'apparel'
-      ? { ...base.catalog, ...next.catalog }
+    replacing || (nextVertical && nextVertical !== 'apparel' && nextVertical !== 'electronics')
+      ? { ...base.catalog, ...(next.catalog || inferredFromNext.catalog) }
       : { ...base.catalog, ...(existing ? {} : next.catalog || {}) }
   return {
     ...base,
     ...next,
+    businessType: replacing ? inferredFromNext.businessType : next.businessType || base.businessType,
     businessName: businessName || base.businessName || 'your business',
     brand: pickBusinessName(next.brand, businessName, base.brand) || businessName || base.brand,
     catalog,
     visualStyle:
       next.visualStyle && next.visualStyle !== 'clean contemporary' ? next.visualStyle : base.visualStyle,
-    sourceIntent: existing?.sourceIntent || next.sourceIntent || base.sourceIntent,
+    sourceIntent: replacing
+      ? next.sourceIntent || inferredFromNext.sourceIntent
+      : existing?.sourceIntent || next.sourceIntent || base.sourceIntent,
+    sealed: replacing ? false : Boolean(existing?.sealed),
+    revision: replacing ? 0 : existing?.revision || base.revision || 0,
+    businessId: replacing ? undefined : existing?.businessId || base.businessId,
   }
 }

@@ -63,8 +63,16 @@ describe('BusinessRuntimeState', () => {
     const state = emptyBusinessRuntimeState({
       business: { ref: 'biz_ut', name: 'UrbanThread', kind: 'store', state: 'live' },
       spec: { businessName: 'UrbanThread', businessType: 'ecommerce' },
-      preview: { status: 'ready', url: 'https://urbanthread.sites.indobase.in' },
-      live: { isLive: true, url: 'https://urbanthread.sites.indobase.in' },
+      preview: { status: 'ready', url: 'https://urbanthread.sites.indobase.in', httpOk: true },
+      live: { isLive: true, url: 'https://urbanthread.sites.indobase.in', httpOk: true, artifactHash: 'hash_a', claim: {
+        projectRef: 'biz_ut',
+        artifactId: 'art_ut_hash_a',
+        artifactHash: 'hash_a',
+        deploymentId: 'job_live',
+        smokeTestId: 'smoke_live',
+        liveUrl: 'https://urbanthread.sites.indobase.in',
+        issuedAt: '2026-08-14T00:00:00.000Z',
+      } },
       deployment: { status: 'live', jobId: 'job_live' },
       jobs: [{ id: 'job_live', status: 'live' }],
       products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900, variants: [{ id: 'v0', priceMinor: 1299900 }] }],
@@ -75,6 +83,21 @@ describe('BusinessRuntimeState', () => {
     expect(isForbiddenAgentClaim(state, 'preview')).toBe(false)
     expect(isForbiddenAgentClaim(state, 'live')).toBe(false)
     expect(isForbiddenAgentClaim(state, 'orders-unavailable')).toBe(false)
+  })
+
+  it('does not allow LIVE when production HTTP probe failed', () => {
+    const state = emptyBusinessRuntimeState({
+      business: { ref: 'biz_ut', name: 'UrbanThread', kind: 'store', state: 'live' },
+      spec: { businessName: 'UrbanThread', businessType: 'ecommerce' },
+      preview: { status: 'ready', url: 'https://urbanthread.sites.indobase.in', httpOk: true },
+      live: { isLive: true, url: 'https://urbanthread.sites.indobase.in', httpOk: false },
+      deployment: { status: 'live', jobId: 'job_live' },
+      jobs: [{ id: 'job_live', status: 'live' }],
+      products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900, variants: [{ id: 'v0', priceMinor: 1299900 }] }],
+      health: { catalogReady: true, paymentsReady: false, previewReady: true },
+    })
+    expect(agentMayClaimLive(state)).toBe(false)
+    expect(state.application?.releaseGate.claimLive).toBe(false)
   })
 
   it('displays product price derived from variants, not a stale product field', () => {

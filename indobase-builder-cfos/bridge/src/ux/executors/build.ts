@@ -6,9 +6,14 @@ import {
   mergeBusinessSpec,
   pickBusinessName,
   rememberBusinessSpec,
+  sealBusinessSpec,
+  specIdentityFingerprint,
   type BusinessSpec,
 } from '../business-spec.js'
 import { materializePreview } from '../preview-artifact.js'
+import { rememberArtifact, currentArtifact } from '../artifact-store.js'
+import { getApplicationLifecycle, patchApplicationLifecycle } from '../lifecycle-store.js'
+import { sealBusinessSpec } from '../business-spec.js'
 import {
   appendRuntimeEvent,
   getWorkspaceRuntime,
@@ -46,10 +51,14 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
     }),
   )
   const existing = getWorkspaceRuntime(session.projectRef)
+  const identityChanged =
+    Boolean(existing?.spec) && specIdentityFingerprint(spec) !== specIdentityFingerprint(existing.spec)
   if (
     existing?.spec &&
+    !identityChanged &&
     !isPlaceholderBusinessName(existing.spec.businessName) &&
     existing.preview.status === 'ready' &&
+    existing.preview.httpOk !== false &&
     existing.artifactHtml
   ) {
     const runtime = patchWorkspaceRuntime(session.projectRef, {
@@ -110,6 +119,12 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
     }
   }
 
+  const life = getApplicationLifecycle(session.projectRef)
+  if (life.currentState === 'preview_ready' || life.currentState === 'verified' || life.currentState === 'live') {
+    patchApplicationLifecycle(session.projectRef, 'modifying')
+  } else {
+    patchApplicationLifecycle(session.projectRef, 'building')
+  }
   const previewCmd = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
     businessName: spec.businessName,
   })
@@ -145,6 +160,27 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
     artifactFiles: built.files,
     lastCommandId: previewCmd.id,
   })
+  if (built.ok && built.files) {
+    const predecessor = currentArtifact(session.projectRef)
+    const artifact = rememberArtifact({
+      projectRef: session.projectRef,
+      applicationType: spec.businessType,
+      businessSpec: spec,
+      files: built.files,
+      predecessorId: predecessor?.artifactId,
+    })
+    patchApplicationLifecycle(session.projectRef, 'preview_ready', {
+      artifactId: artifact.artifactId,
+      artifactHash: artifact.artifactHash,
+      previewId: built.artifactRef || artifact.artifactId,
+      previewUrl: built.url || undefined,
+    })
+    sealBusinessSpec(session.projectRef, plan.operationId)
+  } else {
+    patchApplicationLifecycle(session.projectRef, 'failed', {
+      lastError: { code: 'preview_failed', message: built.message, stage: 'build' },
+    })
+  }
   appendRuntimeEvent(session.projectRef, {
     kind: built.ok ? 'runtime.preview.ready' : 'runtime.preview.failed',
     message: built.message,

@@ -14,6 +14,9 @@ import { autoWireLaunchArtifacts } from '../wire-proof.js'
 import { assertEcommerceReleaseGateAsync } from '../delivery/index.js'
 import { humanizeLaunchFailure } from '../ux-conductor.js'
 import { getWorkspaceRuntime } from '../ux/runtime-store.js'
+import { evaluatePreviewHealth } from '../ux/preview-health.js'
+import { getArtifact } from '../ux/artifact-store.js'
+import { bindHostToProject, hostBindingForHost } from '../ux/host-binding-store.js'
 import {
   getBusinessSpec,
   inferBusinessSpec,
@@ -64,12 +67,21 @@ export type ProductionLaunchInput = {
   brand?: string | null
   vertical?: string | null
   subdomain?: string | null
+  verifiedArtifactId?: string | null
+  verifiedArtifactHash?: string | null
 }
 
 export type ProductionLaunchDeps = {
   launch?: typeof executeLaunchBusinessTool
   guided?: typeof executeGuidedBackend
-  smoke?: (url: string, appType: ProductionLaunchJob['appType']) => Promise<{ ok: boolean; message: string }>
+  smoke?: (
+    url: string,
+    appType: ProductionLaunchJob['appType'],
+    meta?: { expectedHash?: string | null; html?: string | null },
+  ) => Promise<{ ok: boolean; message: string }>
+  ecommerceProbes?: import('../ux/runtime-probes.js').EcommerceProbeResult
+  saasProbes?: import('../ux/runtime-probes.js').SaasProbeResult
+  probes?: import('../ux/runtime-probes.js').ProbeHttp
 }
 
 export type ProductionLaunchExecuteResult = {
@@ -129,7 +141,11 @@ function failStage(
   })
 }
 
-async function smokeLiveUrl(url: string, appType: ProductionLaunchJob['appType']): Promise<{
+async function smokeLiveUrl(
+  url: string,
+  appType: ProductionLaunchJob['appType'],
+  meta?: { expectedHash?: string | null; html?: string | null },
+): Promise<{
   ok: boolean
   message: string
 }> {
@@ -139,6 +155,10 @@ async function smokeLiveUrl(url: string, appType: ProductionLaunchJob['appType']
       return { ok: false, message: `Smoke failed: live URL returned HTTP ${res.status}` }
     }
     const html = await res.text()
+    const expected = (meta?.expectedHash || '').trim()
+    if (expected && !html.includes(expected) && hashArtifactHtml(html) !== expected) {
+      return { ok: false, message: 'Smoke failed: deployed artifact hash does not match verified artifact' }
+    }
     if (appType === 'landing') {
       return { ok: true, message: 'Landing smoke passed (HTTP 200)' }
     }
@@ -194,33 +214,38 @@ async function freezeWorkspaceArtifact(
 }
 
 function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunchJob {
-  let inferred
-  try {
-    inferred = inferBusinessSpec(input.intent || '')
-  } catch {
-    inferred = inferBusinessSpec((input.intent || '').replace(/\bcall(?:ed)?\s+it\b/gi, 'called'))
-  }
   const prior = getBusinessSpec(session.projectRef)
-  const named = pickBusinessName(
-    inferred.businessName,
-    input.brand,
-    input.title,
-    inferName(input.intent || ''),
-  )
-  const spec = rememberBusinessSpec(session.projectRef, {
-    ...inferred,
-    businessType: prior?.businessType || inferred.businessType,
-    businessName: named || inferred.businessName,
-    brand: named || inferred.brand,
-  })
+  let spec = prior
+  if (!spec || !spec.sealed) {
+    let inferred
+    try {
+      inferred = inferBusinessSpec(input.intent || prior?.sourceIntent || '')
+    } catch {
+      inferred = inferBusinessSpec((input.intent || '').replace(/\bcall(?:ed)?\s+it\b/gi, 'called'))
+    }
+    const named = pickBusinessName(
+      inferred.businessName,
+      input.brand,
+      input.title,
+      inferName(input.intent || ''),
+    )
+    spec = rememberBusinessSpec(session.projectRef, {
+      ...(prior || inferred),
+      ...inferred,
+      businessType: prior?.businessType || inferred.businessType,
+      businessName: named || inferred.businessName,
+      brand: named || inferred.brand,
+      catalog: prior?.sealed ? prior.catalog : inferred.catalog,
+    })
+  }
   const plan = planProductionApp({
     appType: input.appType || spec.businessType,
-    intent: input.intent,
+    intent: spec.sourceIntent || input.intent,
   })
   const contract = resolveProductionContract(plan.appType)
   const vertical = input.vertical?.trim() || (plan.appType === 'ecommerce' ? spec.catalog.verticalId : undefined)
   const brand =
-    pickBusinessName(input.brand, spec.businessName, inferred.businessName) ||
+    pickBusinessName(input.brand, spec.businessName) ||
     (spec.businessName && !isPlaceholderBusinessName(spec.businessName) ? spec.businessName : undefined)
   return rememberProductionLaunchJob({
     version: 'production-launch-job/v1',
@@ -287,6 +312,54 @@ export async function executeProductionLaunchJob(
       claim_live: false,
       code: 'preview_required',
     }
+  }
+
+  if (input.verifiedArtifactId) {
+    const art = getArtifact(input.verifiedArtifactId)
+    if (!art || art.projectRef !== sessionRef) {
+      job = failStage(job, 'classify', {
+        code: 'artifact_not_owned',
+        severity: 'critical',
+        stage: 'classify',
+        message: 'Production launch requires an artifact owned by this project.',
+        repairable: true,
+        repair_hint: 'Rebuild preview, then Go Live.',
+      })
+      return {
+        ok: false,
+        job,
+        message: 'Verified artifact does not belong to this project.',
+        claim_live: false,
+        code: 'artifact_not_owned',
+      }
+    }
+  }
+
+  const claimedHost = (input.subdomain || '').trim().toLowerCase()
+  if (claimedHost) {
+    const existing = hostBindingForHost(`${claimedHost}.sites.indobase.in`) || hostBindingForHost(claimedHost)
+    if (existing && existing.projectRef !== sessionRef) {
+      job = failStage(job, 'classify', {
+        code: 'host_owned_by_other_project',
+        severity: 'critical',
+        stage: 'classify',
+        message: 'This host already belongs to another application.',
+        repairable: false,
+        repair_hint: 'Use the host derived from this projectRef.',
+      })
+      return {
+        ok: false,
+        job,
+        message: 'Host reuse across projects is not allowed.',
+        claim_live: false,
+        code: 'host_owned_by_other_project',
+      }
+    }
+    bindHostToProject({
+      host: `${claimedHost}.sites.indobase.in`,
+      projectRef: sessionRef,
+      artifactId: input.verifiedArtifactId || undefined,
+    })
   }
 
   if (input.html) job = rememberProductionLaunchJob({ ...job, html: input.html })
@@ -568,6 +641,29 @@ export async function executeProductionLaunchJob(
       })
     }
   }
+  const shouldRunProofChain = Boolean(deps.probes || deps.ecommerceProbes || deps.saasProbes)
+  if (shouldRunProofChain) {
+    const health = await evaluatePreviewHealth({
+      projectRef: job.projectRef,
+      httpStatus: 200,
+      html: job.html,
+      purpose: 'production',
+      probes: deps.probes,
+      ecommerceProbes: deps.ecommerceProbes,
+      saasProbes: deps.saasProbes,
+    })
+    if (!health.productionPassed) {
+      job = failStage(job, 'verify', {
+        code: 'preview_verification_failed',
+        severity: 'critical',
+        stage: 'verify',
+        message: health.errors.join('; ') || 'Production proof chain failed',
+        repairable: true,
+        repair_hint: 'Catalog, cart variant, checkout, and order GET must succeed on this artifact.',
+      })
+      return blocked(job)
+    }
+  }
   job = patchStage(job, 'verify', {
     status: 'ok',
     message: 'Application contract satisfied',
@@ -627,7 +723,10 @@ export async function executeProductionLaunchJob(
 
   // 8. Smoke
   job = patchStage(job, 'smoke', { status: 'running', startedAt: nowIso() })
-  const smoke = await smokeFn(job.url!, job.appType)
+  const smoke = await smokeFn(job.url!, job.appType, {
+    expectedHash: job.frozenArtifactHash || job.publishedArtifactHash,
+    html: job.html,
+  })
   if (!smoke.ok) {
     job = failStage(job, 'smoke', {
       code: 'smoke_failed',
@@ -655,6 +754,7 @@ export async function executeProductionLaunchJob(
     }),
     status: 'live',
     claim_live: true,
+    liveArtifactHash: job.frozenArtifactHash || job.publishedArtifactHash,
     evidence: mergeEvidence(job.evidence, { smoke_ok: true }),
   }
   liveJob.evidence = finalizeEvidence(liveJob)

@@ -80,4 +80,36 @@ describe('BusinessSpec', () => {
     assert.equal(getBusinessSpec('proj_ut')?.businessName, 'UrbanThread')
     clearBusinessSpecsForTests()
   })
+
+  it('locks a masala store to food-grocery, never electronics or apparel', () => {
+    const spec = inferBusinessSpec('create me a ecommerce site for a masala store')
+    assert.equal(spec.businessType, 'ecommerce')
+    assert.equal(spec.catalog.verticalId, 'food-grocery')
+    assert.notEqual(spec.catalog.verticalId, 'electronics')
+    assert.match(spec.businessName, /masala/i)
+    assert.equal(findEcommerceVertical(spec.sourceIntent)?.id, 'food-grocery')
+  })
+
+  it('does not keep Circuit Nest electronics when the next create is a masala store', () => {
+    clearBusinessSpecsForTests()
+    rememberBusinessSpec('ws_stale', inferBusinessSpec('Launch an electronics store called Circuit Nest'))
+    rememberBusinessSpec('ws_stale', inferBusinessSpec('create me a ecommerce site for a masala store'))
+    const spec = getBusinessSpec('ws_stale')
+    assert.equal(spec?.catalog.verticalId, 'food-grocery')
+    assert.match(spec?.businessName || '', /masala/i)
+    assert.notEqual(spec?.businessName, 'Circuit Nest')
+    clearBusinessSpecsForTests()
+  })
+
+  it('infers SaaS CRM without commerce vertical', () => {
+    const spec = inferBusinessSpec('Build a SaaS CRM for small businesses')
+    assert.equal(spec.businessType, 'saas')
+    assert.notEqual(spec.catalog.verticalId, 'electronics')
+  })
+
+  it('infers a robotics website as landing without a store', () => {
+    const spec = inferBusinessSpec('Build a website for my robotics company')
+    assert.equal(spec.businessType, 'landing')
+    assert.match(spec.businessName, /robotics/i)
+  })
 })

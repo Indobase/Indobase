@@ -56,8 +56,8 @@ export function capabilityPlanFromBusinessType(
       businessType: type,
       requiredCapabilities: [],
       optionalCapabilities: [],
-      pages: ['home'],
-      workflows: [],
+      pages: ['home', 'about', 'contact'],
+      workflows: ['navigate_cta_form'],
     }
   }
   if (type === 'saas') {
@@ -66,8 +66,8 @@ export function capabilityPlanFromBusinessType(
       businessType: type,
       requiredCapabilities: ['auth', 'businessData'],
       optionalCapabilities: [],
-      pages: ['home', 'account'],
-      workflows: [],
+      pages: ['home', 'auth', 'onboarding', 'dashboard', 'settings', 'account'],
+      workflows: ['signup_login_dashboard_crud'],
     }
   }
   return {
@@ -127,6 +127,8 @@ export function evaluateApplicationReleaseGate(input: {
   previewUrl?: string | null
   liveIsLive?: boolean
   liveUrl?: string | null
+  liveHttpOk?: boolean | null
+  previewHttpOk?: boolean | null
   jobLive?: boolean
   html?: string | null
   securityPassed?: boolean
@@ -143,11 +145,13 @@ export function evaluateApplicationReleaseGate(input: {
     : true
   const requiredCapabilitiesSatisfied = store ? catalogOk : true
   const securityPassed = input.securityPassed !== false
-  const previewReachable = Boolean(input.previewReady && input.previewUrl)
+  const previewReachable =
+    Boolean(input.previewReady && input.previewUrl) && input.previewHttpOk !== false
   const claimPreviewReady =
     previewReachable && requiredCapabilitiesSatisfied && workflowsPassed && runtimeBound && securityPassed
   const productionSmokePassed = input.jobLive == null && !input.liveIsLive ? null : Boolean(input.jobLive)
-  const liveOk = Boolean(input.liveIsLive && input.liveUrl && input.jobLive)
+  const liveOk =
+    Boolean(input.liveIsLive && input.liveUrl && input.jobLive) && input.liveHttpOk === true
   const claimLive = liveOk && (store ? claimPreviewReady && productionSmokePassed === true : true)
 
   return {

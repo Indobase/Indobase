@@ -24,11 +24,47 @@ var BASE=${base};
 var PROJECT_REF=${ref};
 function storageKey(k){return "indobase.commerce."+PROJECT_REF+"."+k}
 function loadCart(){
-  try{return JSON.parse(localStorage.getItem(storageKey("cart"))||"[]")}catch(e){return []}
+  try{
+    var raw=localStorage.getItem(storageKey("cart"));
+    var parsed=raw?JSON.parse(raw):[];
+    if(!Array.isArray(parsed)) return [];
+    return parsed.filter(function(i){
+      return i && typeof i==="object" && i.variantId && Math.floor(Number(i.quantity)||0)>0;
+    }).map(function(i){
+      return {productId:String(i.productId||""), variantId:String(i.variantId), quantity:Math.max(1, Math.floor(Number(i.quantity)||1))};
+    });
+  }catch(e){return []}
 }
 function saveCart(items){
-  localStorage.setItem(storageKey("cart"), JSON.stringify(items||[]));
+  try{localStorage.setItem(storageKey("cart"), JSON.stringify(items||[]))}catch(e){}
 }
+var CartStore={
+  load:loadCart,
+  save:saveCart,
+  clear:function(){saveCart([]); return []},
+  addItem:function(productId, quantity, variantId){
+    if(!variantId) return loadCart();
+    var qty=Math.max(1, Math.floor(Number(quantity)||1));
+    var vid=String(variantId);
+    var items=loadCart();
+    var hit=items.find(function(i){return i.productId===productId && String(i.variantId||"")===vid});
+    if(hit) hit.quantity+=qty; else items.push({productId:String(productId), variantId:vid, quantity:qty});
+    saveCart(items); return items;
+  },
+  removeItem:function(productId, variantId){
+    var vid=String(variantId||"");
+    var items=loadCart().filter(function(i){return !(i.productId===productId && String(i.variantId||"")===vid)});
+    saveCart(items); return items;
+  },
+  updateQuantity:function(productId, quantity, variantId){
+    var qty=Math.floor(Number(quantity)||0);
+    var vid=String(variantId||"");
+    var items=loadCart().filter(function(i){return !(i.productId===productId && String(i.variantId||"")===vid)});
+    if(qty>0 && vid) items.push({productId:String(productId), variantId:vid, quantity:qty});
+    saveCart(items); return items;
+  },
+  validate:function(){return loadCart()}
+};
 function uuid(){
   if(crypto&&crypto.randomUUID)return crypto.randomUUID();
   return "idem_"+Date.now()+"_"+Math.random().toString(16).slice(2);
@@ -70,27 +106,16 @@ async function api(path, init){
   return json;
 }
 var cartApi={
-  get:function(){return loadCart()},
-  clear:function(){saveCart([]); return []},
+  get:function(){return CartStore.load()},
+  clear:function(){return CartStore.clear()},
   add:function(productId, quantity, variantId){
-    var qty=Math.max(1, Math.floor(Number(quantity)||1));
-    var vid=variantId?String(variantId):"";
-    var items=loadCart();
-    var hit=items.find(function(i){return i.productId===productId && String(i.variantId||"")===vid});
-    if(hit) hit.quantity+=qty; else items.push({productId:String(productId), variantId:vid||undefined, quantity:qty});
-    saveCart(items); return items;
+    return CartStore.addItem(productId, quantity, variantId);
   },
   set:function(productId, quantity, variantId){
-    var qty=Math.floor(Number(quantity)||0);
-    var vid=variantId?String(variantId):"";
-    var items=loadCart().filter(function(i){return !(i.productId===productId && String(i.variantId||"")===vid)});
-    if(qty>0) items.push({productId:String(productId), variantId:vid||undefined, quantity:qty});
-    saveCart(items); return items;
+    return CartStore.updateQuantity(productId, quantity, variantId);
   },
   remove:function(productId, variantId){
-    var vid=variantId?String(variantId):"";
-    var items=loadCart().filter(function(i){return !(i.productId===productId && String(i.variantId||"")===vid)});
-    saveCart(items); return items;
+    return CartStore.removeItem(productId, variantId);
   }
 };
 var productsApi={
@@ -155,6 +180,7 @@ window.indobase=window.indobase||{};
 window.indobase.commerce={
   projectRef: PROJECT_REF,
   baseUrl: BASE,
+  CartStore: CartStore,
   products: productsApi,
   collections: collectionsApi,
   cart: cartApi,

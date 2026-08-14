@@ -60,6 +60,26 @@ function readPresentation(): PresentationSurface | null {
   return null
 }
 
+function readRuntimeSpec(): {
+  specReady: boolean
+  verticalId: string | null
+  previewReady: boolean
+} {
+  try {
+    const r = (window as unknown as { __INDOBASE_RUNTIME__?: RuntimeView }).__INDOBASE_RUNTIME__
+    const name = String(r?.spec?.businessName || r?.business?.name || '').trim()
+    const placeholder = !name || /^your business$/i.test(name)
+    const verticalId = r?.spec?.verticalId || null
+    return {
+      specReady: Boolean(!placeholder && name),
+      verticalId,
+      previewReady: r?.preview?.status === 'ready',
+    }
+  } catch {
+    return { specReady: false, verticalId: null, previewReady: false }
+  }
+}
+
 function readProjectState(): string | null {
   try {
     const state = (window as unknown as { __INDOBASE_PROJECT__?: { state?: string } | null })
@@ -209,6 +229,7 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
       !guest &&
       (projectState === 'live' ||
         (!projectState && Boolean(journey?.flags?.is_live && liveUrl)))
+    const spec = readRuntimeSpec()
     const journeyFlags = {
       isGuest: guest,
       isLive,
@@ -217,8 +238,11 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
       liveUrl,
       projectState,
       appKind: journey?.flags?.app_kind,
+      specReady: spec.specReady,
+      verticalId: spec.verticalId,
+      previewReady: spec.previewReady || Boolean(journey?.flags?.is_backend_ready && !isLive),
     }
-    if (!journey && !guest && !projectState) return undefined
+    if (!journey && !guest && !projectState && !spec.specReady) return undefined
     return {
       journeyNextAction:
         !guest && journey?.next_action?.label

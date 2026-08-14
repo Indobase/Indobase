@@ -730,6 +730,32 @@ INDOBASE_FOLLOWUPS>>>`
     )
   })
 
+  it('does not re-ask Apparel/Electronics when BusinessSpec is already locked', () => {
+    const input = `Your masala store preview is ready.
+
+What will your store sell?
+
+<<<INDOBASE_CHOICES
+title: What will your store sell?
+Apparel / fashion | Niche apparel
+Electronics | Niche electronics
+Food & grocery | Niche food
+INDOBASE_CHOICES>>>`
+    const resolved = resolveFollowUps(input, {
+      journeyFlags: {
+        isLive: false,
+        specReady: true,
+        verticalId: 'food-grocery',
+        previewReady: true,
+        appKind: 'store',
+      },
+      journeyHeadline: 'Preview ready — launch when you are',
+    })
+    assert.ok(resolved)
+    assert.ok(!resolved.items.some((i) => /Apparel|Electronics/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /launch|edit|product/i.test(i.label)))
+  })
+
   it('when journey is live, niche CHOICES are replaced with post-live chips (no Apparel)', () => {
     const input = `What will your online shop sell?
 

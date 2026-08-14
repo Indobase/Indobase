@@ -5,6 +5,8 @@
  * Competing truths (CC has an order, agent says DB unavailable) are a product bug.
  */
 
+import type { LiveClaim } from './live-claim'
+import { liveClaimAllowsSpeech } from './live-claim'
 import type {
   BusinessCustomer,
   BusinessInventoryItem,
@@ -157,6 +159,8 @@ export type BusinessRuntimeSpec = {
 export type BusinessRuntimePreview = {
   status: 'absent' | 'building' | 'ready' | 'error' | (string & {})
   url: string | null
+  /** Explicit probe. null = not probed — must not invent ready/live from URL shape. */
+  httpOk?: boolean | null
 }
 
 export type BusinessRuntimeDeployment = {
@@ -167,6 +171,11 @@ export type BusinessRuntimeDeployment = {
 export type BusinessRuntimeLive = {
   isLive: boolean
   url: string | null
+  /** Production HTTP probe. LIVE speech requires true. */
+  httpOk?: boolean | null
+  artifactHash?: string | null
+  /** Issued only by assertCanClaimLive. Chat must not invent this. */
+  claim?: LiveClaim | null
 }
 
 export type BusinessRuntimeCapability = {
@@ -294,6 +303,8 @@ export function emptyBusinessRuntimeState(
       previewUrl: state.preview.url,
       liveIsLive: state.live.isLive,
       liveUrl: state.live.url,
+      liveHttpOk: state.live.httpOk,
+      previewHttpOk: state.preview.httpOk,
       jobLive,
     }),
   }
@@ -302,6 +313,7 @@ export function emptyBusinessRuntimeState(
 
 export function agentMayClaimPreview(state: BusinessRuntimeState): boolean {
   const reachable = state.health.previewReady !== false
+  if (state.preview.httpOk === false) return false
   return state.preview.status === 'ready' && Boolean(state.preview.url) && reachable
 }
 
@@ -312,11 +324,17 @@ export function agentMayClaimStoreReady(state: BusinessRuntimeState): boolean {
 }
 
 export function agentMayClaimLive(state: BusinessRuntimeState): boolean {
+  if (!liveClaimAllowsSpeech(state.live.claim)) return false
+  if (state.live.httpOk === false) return false
+  if (state.preview.httpOk === false) return false
+  const claim = state.live.claim!
+  if (state.live.url && claim.liveUrl !== state.live.url) return false
+  if (state.live.artifactHash && state.live.artifactHash !== claim.artifactHash) return false
   const jobLive =
     state.deployment.status === 'live' ||
     state.jobs.some((job) => job.status === 'live') ||
     (state.live.isLive && Boolean(state.live.url) && state.business.state === 'live')
-  const base = state.live.isLive && Boolean(state.live.url) && jobLive
+  const base = state.live.isLive && Boolean(state.live.url) && jobLive && state.live.httpOk === true
   if (!base) return false
   const plan = state.application?.capabilityPlan || capabilityPlanFromBusinessType(state.spec?.businessType || state.business.kind)
   if (plan.businessType !== 'ecommerce') return true

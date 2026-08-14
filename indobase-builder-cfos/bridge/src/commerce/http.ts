@@ -25,7 +25,7 @@ import {
 } from './pb-adapter.js'
 import { buildCommerceRuntimeJs } from './runtime.js'
 import { minorToMajor } from './money.js'
-import { persistCatalogProjection } from '../ux/catalog-domain.js'
+import { getWorkspaceRuntime } from '../ux/runtime-store.js'
 
 export type ControlCenterSnapshotLoaders = {
   listProducts: (projectRef: string) => Promise<unknown>
@@ -95,7 +95,9 @@ function bindCommerceProjectRef(
 }
 
 function defaultIsPublishedStorefront(projectRef: string): boolean {
-  return getLatestProductionLaunchJob(projectRef)?.status === 'live'
+  if (getLatestProductionLaunchJob(projectRef)?.status === 'live') return true
+  const runtime = getWorkspaceRuntime(projectRef)
+  return Boolean(runtime?.artifactHtml && runtime.preview.status !== 'failed')
 }
 
 function bindPublicCatalogProjectRef(

@@ -1,10 +1,6 @@
 import {
   getBusinessSpec,
-  inferBusinessSpec,
-  inferName,
   isPlaceholderBusinessName,
-  mergeBusinessSpec,
-  pickBusinessName,
   rememberBusinessSpec,
 } from '../business-spec.js'
 import {
@@ -15,6 +11,12 @@ import {
 import { appendRuntimeEvent, getWorkspaceRuntime, issueRuntimeCommand } from '../runtime-store.js'
 import { PLAN_COMMAND, PLAN_STEP, stepSucceeded, type ExecutionPlan } from '../execution-plan.js'
 import { dependenciesSatisfied, getExecutionPlan, markStepStatus } from '../execution-store.js'
+import { evaluatePreviewHealth } from '../preview-health.js'
+import { currentArtifact, markArtifactLive } from '../artifact-store.js'
+import { patchApplicationLifecycle } from '../lifecycle-store.js'
+import { bindHostToProject, deterministicHostForProject } from '../host-binding-store.js'
+import { rememberLiveClaim } from '../live-claim-store.js'
+import { assertCanClaimLive } from '../../../../../packages/platform/src/business/live-claim.ts'
 import { runBuild } from './build.js'
 import type { ExecutorContext, ExecutorResult } from './types.js'
 
@@ -30,7 +32,7 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
   let livePlan = currentPlan(plan)
 
   const alreadyLive = getLatestProductionLaunchJob(session.projectRef)
-  if (alreadyLive?.status === 'live' && alreadyLive.url) {
+  if (alreadyLive?.status === 'live' && alreadyLive.url && alreadyLive.claim_live) {
     if (!stepSucceeded(livePlan, PLAN_STEP.productionLaunch)) {
       markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'succeeded', { resultRef: alreadyLive.jobId })
     }
@@ -100,6 +102,38 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
     }
   }
 
+  patchApplicationLifecycle(session.projectRef, 'verifying')
+  const health = await evaluatePreviewHealth({
+    projectRef: session.projectRef,
+    httpStatus: runtime.preview.httpOk === false ? 503 : 200,
+    html: runtime.artifactHtml,
+    purpose: 'production',
+    probes: ctx.launchDeps?.probes,
+    ecommerceProbes: ctx.launchDeps?.ecommerceProbes,
+    saasProbes: ctx.launchDeps?.saasProbes,
+  })
+  if (health.status !== 'ready' || !health.productionPassed) {
+    patchApplicationLifecycle(session.projectRef, 'failed', {
+      lastError: { code: 'preview_verification_failed', message: health.errors.join('; ') || 'preview verification failed', stage: 'verify' },
+    })
+    markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'failed', {
+      error: health.errors.join('; ') || 'preview verification failed',
+    })
+    return {
+      plan: currentPlan(livePlan),
+      spec: runtime.spec,
+      launch: null,
+      runtime: getWorkspaceRuntime(session.projectRef) || runtime,
+      recovered,
+      commandId,
+    }
+  }
+
+  patchApplicationLifecycle(session.projectRef, 'verified', {
+    artifactHash: health.artifactHash || runtime.preview.contentHash || undefined,
+    artifactId: currentArtifact(session.projectRef)?.artifactId,
+  })
+
   if (stepSucceeded(livePlan, PLAN_STEP.productionLaunch)) {
     return {
       plan: livePlan,
@@ -111,25 +145,28 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
   }
 
   const message = ctx.specSource || ctx.message
-  const inferred = inferBusinessSpec(message)
-  const spec = rememberBusinessSpec(
-    session.projectRef,
-    mergeBusinessSpec(runtime.spec || getBusinessSpec(session.projectRef), {
-      businessName:
-        pickBusinessName(
-          runtime.spec?.businessName,
-          getBusinessSpec(session.projectRef)?.businessName,
-          inferred.businessName,
-          inferName(message),
-        ) || inferred.businessName,
-      sourceIntent: runtime.spec?.sourceIntent || inferred.sourceIntent || message,
-    }),
-  )
+  const spec = runtime.spec || getBusinessSpec(session.projectRef)
+  if (!spec) {
+    markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'failed', { error: 'BusinessSpec is required before launch' })
+    return {
+      plan: currentPlan(livePlan),
+      spec: null,
+      launch: null,
+      runtime: getWorkspaceRuntime(session.projectRef) || runtime,
+      recovered,
+      commandId,
+    }
+  }
+  rememberBusinessSpec(session.projectRef, spec)
   const command = issueRuntimeCommand(session.projectRef, 'runtime.launch', {
     appType: spec.businessType,
     vertical: spec.catalog.verticalId,
   })
   markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'running')
+  patchApplicationLifecycle(session.projectRef, 'launching')
+  const verified = currentArtifact(session.projectRef)
+  const host = deterministicHostForProject(session.projectRef)
+  bindHostToProject({ host, projectRef: session.projectRef, artifactId: verified?.artifactId })
   let launch: ProductionLaunchExecuteResult = await executeProductionLaunchJob(
     session,
     {
@@ -141,6 +178,9 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
       title: isPlaceholderBusinessName(spec.businessName) ? undefined : spec.businessName,
       brand: isPlaceholderBusinessName(spec.businessName) ? undefined : spec.businessName,
       vertical: spec.catalog.verticalId,
+      verifiedArtifactId: verified?.artifactId,
+      verifiedArtifactHash: verified?.artifactHash || runtime.preview.contentHash,
+      subdomain: host.split('.')[0],
     },
     ctx.launchDeps,
   )
@@ -162,6 +202,8 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
         title: spec.businessName,
         brand: spec.businessName,
         vertical: spec.catalog.verticalId,
+        verifiedArtifactId: verified?.artifactId,
+        verifiedArtifactHash: verified?.artifactHash || runtime.preview.contentHash,
       },
       ctx.launchDeps,
     )
@@ -173,8 +215,31 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
   }
   if (launch.ok) {
     markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'succeeded', { resultRef: launch.job.jobId })
+    if (verified) markArtifactLive(session.projectRef, verified.artifactId)
+    const hash = verified?.artifactHash || launch.job.publishedArtifactHash || launch.job.frozenArtifactHash
+    patchApplicationLifecycle(session.projectRef, 'live', {
+      liveUrl: launch.url,
+      liveArtifactHash: hash,
+    })
+    const issued = assertCanClaimLive({
+      projectRef: session.projectRef,
+      lifecycleState: 'live',
+      verifiedArtifactId: verified?.artifactId,
+      verifiedArtifactHash: hash,
+      deployedArtifactId: verified?.artifactId,
+      deployedArtifactHash: hash,
+      liveUrl: launch.url || null,
+      liveHttpOk: launch.claim_live === true,
+      smokeOk: launch.claim_live === true,
+      deploymentId: launch.job.jobId,
+      smokeTestId: `smoke_${launch.job.jobId}`,
+    })
+    if (issued.ok) rememberLiveClaim(issued.claim)
   } else {
     markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'failed', { error: launch.message })
+    patchApplicationLifecycle(session.projectRef, 'failed', {
+      lastError: { code: launch.code || 'launch_failed', message: launch.message, stage: 'launch' },
+    })
   }
   return {
     plan: currentPlan(livePlan),
