@@ -28,6 +28,34 @@ export function sameProjectRef(sessionRef: string, requestedRef: string): boolea
   return sanitizeAppId(a) === sanitizeAppId(b)
 }
 
+/**
+ * OS member session is AUTHORITY. Client projectRef is DERIVED/REJECTED:
+ * conflict → 403, never a tenant override. Anonymous storefronts may use
+ * the client identifier (customer catalog/checkout).
+ */
+export function resolveTenantProjectRef(input: {
+  session: ControlCenterSession | null
+  guest?: boolean
+  clientProjectRef?: string | null
+  /** Public storefront ABI — no OS cookie. */
+  allowAnonymousClient?: boolean
+}): ControlCenterAuth | { ok: false; status: 400; code: 'invalid_request' } {
+  const client = (input.clientProjectRef || '').trim()
+  if (input.session?.projectRef?.trim() && !input.guest) {
+    return authorizeControlCenterAccess({
+      session: input.session,
+      guest: input.guest,
+      requestedProjectRef: client,
+    })
+  }
+  if (input.allowAnonymousClient) {
+    const ref = sanitizeAppId(client)
+    if (!ref) return { ok: false, status: 400, code: 'invalid_request' }
+    return { ok: true, projectRef: ref }
+  }
+  return { ok: false, status: 401, code: 'unauthorized' }
+}
+
 export function authorizeControlCenterAccess(input: {
   session: ControlCenterSession | null
   guest?: boolean

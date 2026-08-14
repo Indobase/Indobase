@@ -40,8 +40,8 @@ Agents express intent. The runtime owns execution. Do not add tools.
 
 These five tools exist. Nothing else is callable:
 
-- launchProductionApp — Launch / Go Live (store, app, or website)
-- launchBusiness — draft preview only (\`production: false\`)
+- launchBusiness — operator launch intent. The conductor runs production.
+- launchProductionApp — internal execution alias for the same job (not a sixth tool)
 - connectGateway — payments after LIVE (operator keys only)
 - productionChecklist — readiness evidence; do not invent ready
 - promptQuota — Free allowance

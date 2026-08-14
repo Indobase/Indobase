@@ -42,7 +42,7 @@ function metadataFor(spec: BusinessSpec): string {
 }
 
 export function storefrontHasCommerceAbi(html: string | null | undefined): boolean {
-  return /indobase\.commerce|\/api\/os\/commerce/i.test(html || '')
+  return /indobase\.commerce|indobase\s*=\s*\{[\s\S]{0,80}commerce|\/api\/os\/commerce/i.test(html || '')
 }
 
 export function ensureEcommerceStorefrontFiles(input: {

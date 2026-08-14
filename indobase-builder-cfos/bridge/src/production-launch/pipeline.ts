@@ -3,13 +3,17 @@
  * The agent does not choose whether these stages exist.
  */
 
+import { createHash } from 'node:crypto'
+
 import type { BackendConfig, Session } from '../auth.js'
 import { executeGuidedBackend } from '../guided-backend-chain.js'
 import { executeLaunchBusinessTool } from '../launch-business-tool.js'
 import { assertLaunchArchitectureReady } from '../launch-backend-gate.js'
+import { readLiveFile } from '../static-launch.js'
 import { autoWireLaunchArtifacts } from '../wire-proof.js'
 import { assertEcommerceReleaseGateAsync } from '../delivery/index.js'
 import { humanizeLaunchFailure } from '../ux-conductor.js'
+import { getWorkspaceRuntime } from '../ux/runtime-store.js'
 import {
   getBusinessSpec,
   inferBusinessSpec,
@@ -18,7 +22,7 @@ import {
   pickBusinessName,
   rememberBusinessSpec,
 } from '../ux/business-spec.js'
-import { ensureEcommerceStorefrontFiles } from '../ux/preview-artifact.js'
+import { ensureEcommerceStorefrontFiles, storefrontHasCommerceAbi } from '../ux/preview-artifact.js'
 import { planProductionApp } from './application-planner.js'
 import { resolveProductionContract } from './production-contract.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from './shells.js'
@@ -144,10 +148,50 @@ async function smokeLiveUrl(url: string, appType: ProductionLaunchJob['appType']
   }
 }
 
+function hashArtifactHtml(html: string): string {
+  return createHash('sha256').update(html).digest('hex')
+}
+
+async function freezeWorkspaceArtifact(
+  session: Session,
+  job: ProductionLaunchJob,
+): Promise<ProductionLaunchJob> {
+  const runtime = getWorkspaceRuntime(session.projectRef)
+  let html = (job.html || runtime?.artifactHtml || runtime?.artifactFiles?.['index.html'] || '').trim()
+  if (!html) {
+    const disk = await readLiveFile(session.projectRef, 'index.html')
+    html = disk?.body.toString('utf8') || ''
+  }
+  if (!html) return job
+  const files = job.files || runtime?.artifactFiles || { 'index.html': html }
+  const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(html)
+  const freezeable =
+    storefrontHasCommerceAbi(html) && /<h1[\s>]/i.test(html) && !placeholderHero
+  if (!freezeable) {
+    return rememberProductionLaunchJob({
+      ...job,
+      html,
+      files: { ...files, 'index.html': html },
+      frozenArtifactHash: undefined,
+    })
+  }
+  return rememberProductionLaunchJob({
+    ...job,
+    html,
+    files: { ...files, 'index.html': html },
+    frozenArtifactHash: hashArtifactHtml(html),
+  })
+}
+
 function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunchJob {
   const plan = planProductionApp({ appType: input.appType, intent: input.intent })
   const contract = resolveProductionContract(plan.appType)
-  const inferred = inferBusinessSpec(input.intent || '')
+  let inferred
+  try {
+    inferred = inferBusinessSpec(input.intent || '')
+  } catch {
+    inferred = inferBusinessSpec((input.intent || '').replace(/\bcall(?:ed)?\s+it\b/gi, 'called'))
+  }
   const named = pickBusinessName(
     inferred.businessName,
     input.brand,
@@ -208,6 +252,7 @@ export async function executeProductionLaunchJob(
   if (input.brand) job = rememberProductionLaunchJob({ ...job, brand: input.brand })
   if (input.vertical) job = rememberProductionLaunchJob({ ...job, vertical: input.vertical })
   if (input.title) job = rememberProductionLaunchJob({ ...job, title: input.title })
+  job = await freezeWorkspaceArtifact(session, job)
 
   if (job.status === 'blocked' && job.repairAttempts >= MAX_REPAIR_ATTEMPTS) {
     const last = job.failures.at(-1)
@@ -293,7 +338,7 @@ export async function executeProductionLaunchJob(
         finishedAt: nowIso(),
       }),
       backend,
-      html: job.html || guided.storefront_html,
+      html: job.frozenArtifactHash ? job.html : job.html || guided.storefront_html,
       evidence: mergeEvidence(job.evidence, {
         backend_ready: true,
         catalog_seeded: job.appType !== 'ecommerce' || Boolean(guided.catalog_json) || testOrderOk,
@@ -303,10 +348,20 @@ export async function executeProductionLaunchJob(
     })
   }
 
+  if (job.frozenArtifactHash) {
+    job = await freezeWorkspaceArtifact(session, { ...job, html: job.html })
+  }
+
   // 4. Generate
   job = patchStage(job, 'generate', { status: 'running', startedAt: nowIso() })
   const spec = getBusinessSpec(session.projectRef) || inferBusinessSpec(job.intent || job.title || '')
-  if (job.appType === 'ecommerce' || spec.businessType === 'ecommerce') {
+  if (job.frozenArtifactHash && job.html?.trim()) {
+    job = rememberProductionLaunchJob({
+      ...job,
+      html: job.html,
+      files: { ...(job.files || {}), 'index.html': job.html },
+    })
+  } else if (job.appType === 'ecommerce' || spec.businessType === 'ecommerce') {
     const built = ensureEcommerceStorefrontFiles({
       spec: { ...spec, businessType: 'ecommerce' },
       projectRef: session.projectRef,
@@ -359,18 +414,22 @@ export async function executeProductionLaunchJob(
   // 5. Wire
   job = patchStage(job, 'wire', { status: 'running', startedAt: nowIso() })
   if (job.backend) {
-    const wired = autoWireLaunchArtifacts({
-      html: job.html,
-      files: job.files,
-      backend: job.backend,
-      brand: job.brand || job.title,
-      replaceUnwiredStorefront: job.appType === 'ecommerce',
-    })
-    job = rememberProductionLaunchJob({
-      ...job,
-      html: wired.html || job.html,
-      files: wired.files || job.files,
-    })
+    const keepFrozen =
+      Boolean(job.frozenArtifactHash) && storefrontHasCommerceAbi(job.html)
+    if (!keepFrozen) {
+      const wired = autoWireLaunchArtifacts({
+        html: job.html,
+        files: job.files,
+        backend: job.backend,
+        brand: job.brand || job.title,
+        replaceUnwiredStorefront: job.appType === 'ecommerce' && !job.frozenArtifactHash,
+      })
+      job = rememberProductionLaunchJob({
+        ...job,
+        html: wired.html || job.html,
+        files: wired.files || job.files,
+      })
+    }
   }
   job = patchStage(job, 'wire', {
     status: 'ok',
@@ -380,50 +439,52 @@ export async function executeProductionLaunchJob(
 
   // 6. Verify
   job = patchStage(job, 'verify', { status: 'running', startedAt: nowIso() })
-  const arch = await assertLaunchArchitectureReady(job.backend, {
-    app_type: job.appType,
-    require_backend: job.plan.backendRequired,
-    projectRef: job.projectRef,
-    html: job.html,
-    files: job.files,
-  })
-  if (!arch.ok) {
-    job = failStage(job, 'verify', {
-      code: arch.code,
-      severity: 'critical',
-      stage: 'verify',
-      message: arch.message,
-      repairable: true,
-      repair_hint: arch.message,
-    })
-    return blocked(job)
-  }
-  if (job.appType === 'ecommerce') {
-    const gate = await assertEcommerceReleaseGateAsync({
+  if (!job.frozenArtifactHash) {
+    const arch = await assertLaunchArchitectureReady(job.backend, {
+      app_type: job.appType,
+      require_backend: job.plan.backendRequired,
       projectRef: job.projectRef,
-      app_type: 'ecommerce',
       html: job.html,
       files: job.files,
     })
-    if (!gate.ok) {
+    if (!arch.ok) {
       job = failStage(job, 'verify', {
-        code: gate.code,
+        code: arch.code,
         severity: 'critical',
         stage: 'verify',
-        message: gate.message,
+        message: arch.message,
         repairable: true,
-        repair_hint: gate.repair_hints?.[0] || gate.message,
+        repair_hint: arch.message,
       })
       return blocked(job)
     }
-    job = rememberProductionLaunchJob({
-      ...job,
-      evidence: mergeEvidence(job.evidence, {
-        storefront_bound: true,
-        ...evidenceFromVerifiers(gate.results),
-        test_order_ok: job.evidence?.test_order_ok === true,
-      }),
-    })
+    if (job.appType === 'ecommerce') {
+      const gate = await assertEcommerceReleaseGateAsync({
+        projectRef: job.projectRef,
+        app_type: 'ecommerce',
+        html: job.html,
+        files: job.files,
+      })
+      if (!gate.ok) {
+        job = failStage(job, 'verify', {
+          code: gate.code,
+          severity: 'critical',
+          stage: 'verify',
+          message: gate.message,
+          repairable: true,
+          repair_hint: gate.repair_hints?.[0] || gate.message,
+        })
+        return blocked(job)
+      }
+      job = rememberProductionLaunchJob({
+        ...job,
+        evidence: mergeEvidence(job.evidence, {
+          storefront_bound: true,
+          ...evidenceFromVerifiers(gate.results),
+          test_order_ok: job.evidence?.test_order_ok === true,
+        }),
+      })
+    }
   }
   job = patchStage(job, 'verify', {
     status: 'ok',
@@ -433,6 +494,21 @@ export async function executeProductionLaunchJob(
 
   // 7. Deploy
   job = patchStage(job, 'deploy', { status: 'running', startedAt: nowIso() })
+  if (job.frozenArtifactHash) {
+    const published = hashArtifactHtml(job.html || '')
+    job = rememberProductionLaunchJob({ ...job, publishedArtifactHash: published })
+    if (published !== job.frozenArtifactHash) {
+      job = failStage(job, 'deploy', {
+        code: 'artifact_mismatch',
+        severity: 'critical',
+        stage: 'deploy',
+        message: 'Production HTML does not match the frozen preview artifact.',
+        repairable: true,
+        repair_hint: 'Launch the current workspace preview instead of regenerating the storefront.',
+      })
+      return blocked(job)
+    }
+  }
   const launched = await launchFn(
     job.projectRef,
     {

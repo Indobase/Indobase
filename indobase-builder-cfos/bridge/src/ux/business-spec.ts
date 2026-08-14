@@ -89,9 +89,10 @@ function preserveOrTitleCase(raw: string): string {
 }
 
 const NAME_PATTERNS = [
-  /\bcalled\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/,
-  /\bnamed\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/,
-  /\bbrand(?:ed)?\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,2})/,
+  /\bcall(?:ed)?\s+it\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/i,
+  /\bcalled\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/i,
+  /\bnamed\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})/i,
+  /\bbrand(?:ed)?\s*[:\-–—]?\s*[`"*'“”‘’]*\s*([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,2})/i,
   /["“]([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})["”]/,
   /['‘]([A-Za-z][A-Za-z0-9&'-]*(?:[ \t]+[A-Za-z][A-Za-z0-9&'-]*){0,3})['’]/,
 ]
@@ -176,7 +177,8 @@ export function inferBusinessSpec(intent: string): BusinessSpec {
   const businessType = inferBusinessType(sourceIntent)
   const verticalId = businessType === 'ecommerce' ? inferVerticalId(sourceIntent) : businessType
   const vertical = ECOMMERCE_VERTICALS.find((v) => v.id === verticalId)
-  const businessName = inferName(sourceIntent) || 'your business'
+  const providedName = inferName(sourceIntent)
+  const businessName = providedName || 'your business'
   return {
     businessName,
     businessType,
@@ -200,6 +202,10 @@ export function rememberBusinessSpec(projectRef: string, spec: BusinessSpec): Bu
   if (!key) return spec
   const existing = specs.get(key)
   const next = mergeBusinessSpec(existing || null, spec)
+  const provided = inferName(next.sourceIntent || spec.sourceIntent || '')
+  if (provided && isPlaceholderBusinessName(next.businessName)) {
+    throw new Error('business_spec_name_unresolved')
+  }
   specs.set(key, next)
   return next
 }

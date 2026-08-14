@@ -66,6 +66,25 @@ describe('buildLaunchJourneyState', () => {
     clearBusinessSpecsForTests()
   })
 
+  it('Call it TutorDesk SaaS preview does not offer Launch store', () => {
+    rememberBusinessSpec(
+      'tutordesk',
+      inferBusinessSpec('Build a SaaS invoicing app for tutors. Call it TutorDesk'),
+    )
+    const journey = buildLaunchJourneyState(
+      { ...memberSession(), projectRef: 'tutordesk' },
+      {
+        previewReady: true,
+        previewUrl: 'https://builder.indobase.in/live/tutordesk/',
+      },
+    )
+    assert.match(journey.next_action?.label || '', /Launch app/i)
+    assert.doesNotMatch(journey.next_action?.label || '', /store/i)
+    assert.equal(journey.flags.app_kind, 'app')
+    assert.equal(journey.stages.find((s) => s.id === 'backend')?.label, 'App')
+    clearBusinessSpecsForTests()
+  })
+
   it('confirmed preview without publish offers Launch store', () => {
     const journey = buildLaunchJourneyState(memberSession(), {
       previewReady: true,

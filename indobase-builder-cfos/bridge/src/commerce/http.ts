@@ -13,7 +13,7 @@ import {
 } from '../auth.js'
 import { sanitizeAppId } from '../pocketbase/managed.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
-import { authorizeControlCenterAccess } from './control-center-auth.js'
+import { authorizeControlCenterAccess, resolveTenantProjectRef } from './control-center-auth.js'
 import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
@@ -71,11 +71,24 @@ function commerceOperatorAuthorized(c: Context): boolean {
   return timingSafeEqualString(provided, expected)
 }
 
-function projectRefFrom(c: Context, body?: Record<string, unknown>): string {
+function clientProjectRefFrom(c: Context, body?: Record<string, unknown>): string {
   const header = c.req.header('X-Indobase-Project-Ref') || ''
   const q = c.req.query('projectRef') || ''
   const b = typeof body?.projectRef === 'string' ? body.projectRef : ''
   return sanitizeAppId(header || q || b)
+}
+
+function bindCommerceProjectRef(
+  c: Context,
+  body?: Record<string, unknown>,
+): { ok: true; projectRef: string } | { ok: false; status: number; code: string } {
+  const { session, guest } = osSessionFromRequest(c)
+  return resolveTenantProjectRef({
+    session,
+    guest,
+    clientProjectRef: clientProjectRefFrom(c, body),
+    allowAnonymousClient: true,
+  })
 }
 
 export function commerceCorsHeaders(): Record<string, string> {
@@ -93,7 +106,7 @@ export async function handleCommerceOptions(c: Context) {
 }
 
 export async function handleCommerceRuntimeJs(c: Context) {
-  const projectRef = projectRefFrom(c)
+  const projectRef = clientProjectRefFrom(c)
   const bridgePublic =
     process.env.INDOBASE_BRIDGE_PUBLIC_URL?.trim() ||
     process.env.BRIDGE_PUBLIC_URL?.trim() ||
@@ -110,13 +123,16 @@ export async function handleCommerceRuntimeJs(c: Context) {
   })
 }
 
-export async function handleCommerceProductsList(c: Context) {
-  const projectRef = projectRefFrom(c)
-  if (!projectRef) {
-    return c.json({ ok: false, code: 'invalid_request', message: 'projectRef required' }, 400, commerceCorsHeaders())
+export async function handleCommerceProductsList(
+  c: Context,
+  listFn: typeof listCommerceProducts = listCommerceProducts,
+) {
+  const bound = bindCommerceProjectRef(c)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
   }
   try {
-    const products = await listCommerceProducts(projectRef)
+    const products = await listFn(bound.projectRef)
     return c.json({ ok: true, products }, 200, commerceCorsHeaders())
   } catch (err) {
     return c.json(
@@ -128,13 +144,16 @@ export async function handleCommerceProductsList(c: Context) {
 }
 
 export async function handleCommerceProductGet(c: Context) {
-  const projectRef = projectRefFrom(c)
+  const bound = bindCommerceProjectRef(c)
   const id = c.req.param('id') || ''
-  if (!projectRef || !id) {
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  if (!id) {
     return c.json({ ok: false, code: 'invalid_request', message: 'projectRef and id required' }, 400, commerceCorsHeaders())
   }
   try {
-    const product = await getCommerceProduct(projectRef, id)
+    const product = await getCommerceProduct(bound.projectRef, id)
     if (!product) {
       return c.json({ ok: false, code: 'invalid_product', message: 'Not found' }, 404, commerceCorsHeaders())
     }
@@ -150,7 +169,11 @@ export async function handleCommerceProductGet(c: Context) {
 
 export async function handleCommerceCheckout(c: Context) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-  const projectRef = projectRefFrom(c, body)
+  const bound = bindCommerceProjectRef(c, body)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  const projectRef = bound.projectRef
   const idempotencyKey =
     c.req.header('Idempotency-Key') ||
     (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : '')
@@ -266,7 +289,7 @@ export async function handleCommerceMarkPaid(c: Context) {
     )
   }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-  const projectRef = projectRefFrom(c, body)
+  const projectRef = clientProjectRefFrom(c, body)
   const orderId = typeof body.orderId === 'string' ? body.orderId : c.req.param('id') || ''
   const providerEventId =
     typeof body.providerEventId === 'string' ? body.providerEventId : undefined
@@ -286,7 +309,7 @@ export async function handleCommerceMarkFailed(c: Context) {
     )
   }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-  const projectRef = projectRefFrom(c, body)
+  const projectRef = clientProjectRefFrom(c, body)
   const orderId = typeof body.orderId === 'string' ? body.orderId : c.req.param('id') || ''
   const result = await markOrderFailed({ projectRef, orderId })
   if (!result.ok) {

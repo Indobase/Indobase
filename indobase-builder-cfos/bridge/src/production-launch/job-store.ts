@@ -68,6 +68,8 @@ export type ProductionLaunchJob = {
   stages: ProductionLaunchStage[]
   html?: string
   files?: Record<string, string>
+  frozenArtifactHash?: string
+  publishedArtifactHash?: string
   title?: string
   brand?: string
   vertical?: string

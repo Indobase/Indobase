@@ -123,7 +123,7 @@ import {
   applyOperatorIntent,
   applyPendingIntentAfterAuth,
 } from './ux/execution-contract.js'
-import { rememberPendingIntent, takePendingAcrossAuth } from './ux/runtime-store.js'
+import { rememberPendingIntent, takePendingAcrossAuth, getWorkspaceRuntime } from './ux/runtime-store.js'
 import { isManagedBackendConfigured, resolvePlatformApiUrl } from './platform-api-client.js'
 import { rememberPendingSession, takePendingSessionForClaim } from './pending-session-store.js'
 import { bridgeSentryOnError, initBridgeSentry, injectBrowserSentry } from './sentry.js'
@@ -1301,6 +1301,7 @@ app.post('/api/os/tools/followups', async (c) => {
     isBackendReady: Boolean(body.journey_flags?.isBackendReady || body.journey_is_backend_ready),
     isPaymentsReady: Boolean(body.journey_flags?.isPaymentsReady || body.journey_is_payments_ready),
     liveUrl,
+    appKind: body.journey_flags?.appKind,
   }
   const resolved = resolveFollowUps(message, {
     journeyNextAction: journeyNext,
@@ -1676,6 +1677,7 @@ function parseLaunchFiles(body: Record<string, unknown>): Record<string, string>
 /** Production Launch Job — platform owns stages. */
 async function handleProductionLaunch(c: Context, session: Session) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const runtime = getWorkspaceRuntime(session.projectRef)
   const result = await executeProductionLaunchJob(session, {
     jobId: typeof body.jobId === 'string' ? body.jobId : typeof body.job_id === 'string' ? body.job_id : null,
     intent:
@@ -1683,7 +1685,7 @@ async function handleProductionLaunch(c: Context, session: Session) {
         ? body.intent
         : typeof body.message === 'string'
           ? body.message
-          : null,
+          : 'Launch my business',
     appType:
       typeof body.appType === 'string'
         ? body.appType
@@ -1691,8 +1693,11 @@ async function handleProductionLaunch(c: Context, session: Session) {
           ? body.app_type
           : null,
     production: body.production !== false,
-    html: typeof body.html === 'string' ? body.html : null,
-    files: parseLaunchFiles(body),
+    html:
+      typeof body.html === 'string'
+        ? body.html
+        : runtime?.artifactHtml || runtime?.artifactFiles?.['index.html'] || null,
+    files: parseLaunchFiles(body) || runtime?.artifactFiles || null,
     title: typeof body.title === 'string' ? body.title : null,
     brand: typeof body.brand === 'string' ? body.brand : null,
     vertical: typeof body.vertical === 'string' ? body.vertical : null,
@@ -1768,14 +1773,25 @@ async function handleLaunchBusinessTool(c: Context, session: Session) {
         : null
   const ecommerceProduction =
     !draft && /^(ecommerce|store|shop)$/i.test(String(appTypeHint || ''))
-  if (!draft && (isGoLive || body.production === true || ecommerceProduction)) {
+  if (!draft) {
+    const runtime = getWorkspaceRuntime(session.projectRef)
     const result = await executeProductionLaunchJob(session, {
       jobId: typeof body.jobId === 'string' ? body.jobId : null,
-      intent: typeof body.intent === 'string' ? body.intent : typeof body.message === 'string' ? body.message : null,
+      intent:
+        typeof body.intent === 'string'
+          ? body.intent
+          : typeof body.message === 'string'
+            ? body.message
+            : isGoLive || ecommerceProduction
+              ? 'Launch my business'
+              : 'Launch my business',
       appType: typeof body.appType === 'string' ? body.appType : typeof body.app_type === 'string' ? body.app_type : null,
       production: true,
-      html: typeof body.html === 'string' ? body.html : null,
-      files: parseLaunchFiles(body),
+      html:
+        typeof body.html === 'string'
+          ? body.html
+          : runtime?.artifactHtml || runtime?.artifactFiles?.['index.html'] || null,
+      files: parseLaunchFiles(body) || runtime?.artifactFiles || null,
       title: typeof body.title === 'string' ? body.title : null,
       brand: typeof body.brand === 'string' ? body.brand : null,
       vertical: typeof body.vertical === 'string' ? body.vertical : null,

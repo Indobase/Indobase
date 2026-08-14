@@ -11,8 +11,8 @@ import {
   createSessionToken,
   type Session,
 } from '../auth.ts'
-import { authorizeControlCenterAccess, sameProjectRef } from './control-center-auth.ts'
-import { handleCommerceAdminSnapshot } from './http.ts'
+import { authorizeControlCenterAccess, resolveTenantProjectRef, sameProjectRef } from './control-center-auth.ts'
+import { handleCommerceAdminSnapshot, handleCommerceProductsList } from './http.ts'
 
 const SECRET = 'control-center-test-secret-32chars!!'
 
@@ -219,5 +219,62 @@ describe('Control Center snapshot HTTP', () => {
     const body = (await res.json()) as { code?: string }
     assert.equal(body.code, 'account_required')
     assert.deepEqual(queried, [])
+  })
+})
+
+describe('Commerce products list session authority', () => {
+  const prev = {
+    cfos: process.env.BUILDER_CFOS_HANDOFF_SECRET,
+    builder: process.env.BUILDER_HANDOFF_SECRET,
+  }
+
+  beforeEach(() => {
+    process.env.BUILDER_CFOS_HANDOFF_SECRET = SECRET
+    delete process.env.BUILDER_HANDOFF_SECRET
+  })
+
+  afterEach(() => {
+    if (prev.cfos === undefined) delete process.env.BUILDER_CFOS_HANDOFF_SECRET
+    else process.env.BUILDER_CFOS_HANDOFF_SECRET = prev.cfos
+    if (prev.builder === undefined) delete process.env.BUILDER_HANDOFF_SECRET
+    else process.env.BUILDER_HANDOFF_SECRET = prev.builder
+  })
+
+  it('signed-in NorthPeak + UrbanThread projectRef → 403 and no lookup', async () => {
+    const queried: string[] = []
+    const hono = new Hono()
+    hono.get('/api/os/commerce/products', (c) =>
+      handleCommerceProductsList(c, async (ref) => {
+        queried.push(ref)
+        return [{ id: 'UT-01' }]
+      }),
+    )
+    const token = createSessionToken(member('northpeak'), SECRET)
+    const res = await hono.request('/api/os/commerce/products?projectRef=urbanthread', {
+      headers: { cookie: `${SESSION_COOKIE}=${token}` },
+    })
+    assert.equal(res.status, 403)
+    assert.deepEqual(queried, [])
+    const conflict = resolveTenantProjectRef({
+      session: member('northpeak'),
+      clientProjectRef: 'urbanthread',
+      allowAnonymousClient: true,
+    })
+    assert.equal(conflict.ok, false)
+    if (!conflict.ok) assert.equal(conflict.status, 403)
+  })
+
+  it('anonymous storefront may use client projectRef', async () => {
+    const queried: string[] = []
+    const hono = new Hono()
+    hono.get('/api/os/commerce/products', (c) =>
+      handleCommerceProductsList(c, async (ref) => {
+        queried.push(ref)
+        return [{ id: 'p1' }]
+      }),
+    )
+    const res = await hono.request('/api/os/commerce/products?projectRef=urbanthread')
+    assert.equal(res.status, 200)
+    assert.deepEqual(queried, ['urbanthread'])
   })
 })

@@ -55,6 +55,7 @@ export type LaunchJourneyFlags = {
   is_live: boolean
   is_payments_ready: boolean
   is_production_ready: boolean
+  app_kind?: BusinessAppKind
 }
 
 export type LaunchStatusSnapshot = {
@@ -111,16 +112,17 @@ export function buildLaunchJourneyState(
   else if (productionDone) currentStage = 'production'
   else currentStage = 'preview'
 
+  const specKind = appTypeToKind(getBusinessSpec(session.projectRef)?.businessType)
+  const kind = appKind || specKind
   const stages: LaunchJourneyStage[] = [
-    stage('account', businessJourneyStageLabel('account'), accountDone, currentStage === 'account'),
-    stage('preview', businessJourneyStageLabel('preview'), previewDone, currentStage === 'preview'),
-    stage('backend', businessJourneyStageLabel('backend'), backendDone, currentStage === 'backend'),
-    stage('live', businessJourneyStageLabel('live'), liveDone, currentStage === 'live'),
-    stage('payments', businessJourneyStageLabel('payments'), paymentsDone, currentStage === 'payments'),
-    stage('production', businessJourneyStageLabel('production'), productionDone, currentStage === 'production'),
+    stage('account', businessJourneyStageLabel('account', kind), accountDone, currentStage === 'account'),
+    stage('preview', businessJourneyStageLabel('preview', kind), previewDone, currentStage === 'preview'),
+    stage('backend', businessJourneyStageLabel('backend', kind), backendDone, currentStage === 'backend'),
+    stage('live', businessJourneyStageLabel('live', kind), liveDone, currentStage === 'live'),
+    stage('payments', businessJourneyStageLabel('payments', kind), paymentsDone, currentStage === 'payments'),
+    stage('production', businessJourneyStageLabel('production', kind), productionDone, currentStage === 'production'),
   ]
 
-  const specKind = appTypeToKind(getBusinessSpec(session.projectRef)?.businessType)
   const flagsForUx: UxJourneyFlags = {
     guest,
     live: liveDone,
@@ -128,7 +130,7 @@ export function buildLaunchJourneyState(
     paymentsReady: paymentsDone,
     previewReady: previewDone,
     liveUrl,
-    appKind: appKind || specKind || 'store',
+    appKind: kind,
   }
   const actions = uxContextualActions(flagsForUx)
   const next_action = actions[0] || null
@@ -140,6 +142,7 @@ export function buildLaunchJourneyState(
     is_live: liveDone,
     is_payments_ready: paymentsDone,
     is_production_ready: productionDone,
+    app_kind: kind,
   }
 
   const completed_stages = stages.filter((s) => s.status === 'done').map((s) => s.id)

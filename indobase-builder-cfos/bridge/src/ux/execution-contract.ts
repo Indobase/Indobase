@@ -328,12 +328,14 @@ function toSessionRuntime(
 }
 
 function operateReply(state: BusinessRuntimeState, named: string): string {
+  const count = state.orders.length
+  if (!count) return named ? `${named} has no orders yet.` : 'No orders yet.'
   const latest = state.orders[0]
-  if (!latest) return named ? `${named} has no orders yet.` : 'No orders yet.'
   const id = latest.orderNumber || latest.id
   const who = latest.customerName || latest.email
   const items = latest.itemsSummary
-  let out = `Latest order ${id}`
+  const head = count === 1 ? '1 order' : `${count} orders`
+  let out = `${head}. Latest: ${id}`
   if (who) out += ` from ${who}`
   if (items) out += ` — ${items}`
   return `${out}.`

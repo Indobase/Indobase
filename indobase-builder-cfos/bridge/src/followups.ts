@@ -40,6 +40,7 @@ export type JourneyChipFlags = {
   liveUrl?: string | null
   /** Authoritative /api/session.project.state — live cards require `live`. */
   projectState?: string | null
+  appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency'
 }
 
 export type ResolveFollowUpsOptions = {
@@ -110,18 +111,15 @@ export const APP_TYPE_TITLE = 'What kind of web app is this?'
 export const APP_TYPE_FOLLOWUPS: readonly FollowUpItem[] = [
   {
     label: 'Landing / marketing site',
-    message:
-      'This is a landing/marketing site — POST /api/os/apps/launch { appType: "landing", production: true }. The job deploys; do not call launchBusiness yourself.',
+    message: 'This is a landing website. Launch my website on Indobase when the preview is ready.',
   },
   {
     label: 'SaaS / web app',
-    message:
-      'This is a SaaS web app — POST /api/os/apps/launch { appType: "saas", production: true }. The job provisions auth+database, generates a wired UI, verifies, and deploys. Do not call ensure* yourself.',
+    message: 'This is a SaaS app. Launch my app on Indobase when the preview is ready.',
   },
   {
     label: 'Ecommerce / store',
-    message:
-      'This is an ecommerce store — POST /api/os/apps/launch { appType: "ecommerce", production: true, vertical if known }. The job provisions catalog and deploys.',
+    message: 'This is an online store. Launch my store on Indobase when the preview is ready.',
   },
   {
     label: 'Booking / appointments',
@@ -377,7 +375,7 @@ const CHIP_TOOL_NAMES =
   /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase)\b/gi
 
 /** Operator-visible chip labels must never name internal tools. */
-export function operatorChipLabel(label: string): string {
+export function operatorChipLabel(label: string, appKind?: JourneyChipFlags['appKind']): string {
   let out = (label || '')
     .replace(/\s+with\s+launchBusiness\b/gi, '')
     .replace(CHIP_TOOL_NAMES, '')
@@ -385,6 +383,11 @@ export function operatorChipLabel(label: string): string {
     .replace(/\s+[—–-]\s*$/g, '')
     .trim()
   if (!out || /^with$/i.test(out)) out = 'Continue'
+  if (appKind === 'app' || appKind === 'booking') {
+    out = out.replace(/\bLaunch store\b/gi, 'Launch app').replace(/\bOpen store\b/gi, 'Open app')
+  } else if (appKind === 'website' || appKind === 'agency') {
+    out = out.replace(/\bLaunch store\b/gi, 'Launch website').replace(/\bOpen store\b/gi, 'Open website')
+  }
   return out
 }
 
@@ -571,6 +574,7 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
     isPaymentsReady: f.isPaymentsReady,
     liveUrl,
     projectState: f.projectState || null,
+    appKind: f.appKind,
   }
   if (liveAuthoritative) {
     tentative.isLive = operatorMayClaimLive(tentative)
@@ -623,6 +627,10 @@ export function filterChipsForJourneyState(
   }
   if (flags.isPaymentsReady) {
     items = items.filter((i) => !isPaymentsChip(i))
+  }
+  if (flags.appKind === 'app' || flags.appKind === 'website' || flags.appKind === 'booking' || flags.appKind === 'agency') {
+    items = items.filter((i) => !isBackendEnsureChip(i))
+    items = items.map((i) => ({ ...i, label: operatorChipLabel(i.label, flags.appKind) }))
   }
   return { ...parsed, items: dedupeFollowUpItems(items).slice(0, MAX_VISIBLE_CHIPS) }
 }
@@ -821,26 +829,26 @@ export type StageFollowUps = {
  * Example chips after a first preview (Naive-style) — agent must rewrite for the brand.
  * Not injected by the UI.
  */
-export function postPreviewFollowups(brand?: string | null): StageFollowUps {
+export function postPreviewFollowups(
+  brand?: string | null,
+  appKind?: JourneyChipFlags['appKind'],
+): StageFollowUps {
   const name = brandLabel(brand)
+  const noun = appKind === 'app' || appKind === 'booking' ? 'app' : appKind === 'website' || appKind === 'agency' ? 'website' : 'store'
   return {
     title: whereNextTitle(brand),
     items: [
       {
-        label: 'Go Live on Indobase',
-        message: `Go Live — publish ${name} to my Indobase subdomain with launchBusiness, quote the exact url, then emit Domain / Add payments / Checklist chips`,
+        label: `Launch my ${noun}`,
+        message: `Launch my ${noun} on Indobase now.`,
       },
       {
-        label: 'Add a real backend',
-        message: `Add customer accounts and a product catalog for ${name}, then launch`,
+        label: 'Continue editing',
+        message: `Continue editing ${name}.`,
       },
       {
-        label: 'Refine then Go Live',
-        message: `Refine the design and branding for ${name}, then Go Live with launchBusiness (full launch is the goal)`,
-      },
-      {
-        label: 'Wire + Go Live',
-        message: `If catalog exists, publish ${name} storefront_html (Commerce ABI) then Go Live with launchBusiness`,
+        label: 'Refine then launch',
+        message: `Refine the design for ${name}, then launch my ${noun} on Indobase.`,
       },
     ].slice(0, MAX_VISIBLE_CHIPS),
   }
@@ -1214,7 +1222,7 @@ export function extractBrandFromMessage(message: string): string | null {
  */
 export function injectDeliverableFollowUps(
   message: string,
-  opts?: { backendReady?: boolean; isLive?: boolean },
+  opts?: { backendReady?: boolean; isLive?: boolean; appKind?: JourneyChipFlags['appKind'] },
 ): ParsedFollowUps | null {
   if (!message || parseFollowUps(message)) return null
   // Guest-gate turns may inject niche instead; don't also inject post-preview walls.
@@ -1240,7 +1248,7 @@ export function injectDeliverableFollowUps(
     )
   ) {
     // Backend already ready → Go Live ladder (not another ensure-backend wall).
-    stage = backendReady ? postPreviewFollowups(brand) : postBackendFollowups(brand)
+    stage = backendReady ? postPreviewFollowups(brand, opts?.appKind) : postBackendFollowups(brand)
     if (backendReady) {
       stage = {
         ...stage,
@@ -1251,17 +1259,11 @@ export function injectDeliverableFollowUps(
     looksLikeSaaSOrBackendAppAsk(message) &&
     !/claim_backend_ready|session\.backend|guidedbackend|ensurelogin/.test(lower)
   ) {
-    stage = backendReady ? postPreviewFollowups(brand) : postSaasEnsureFirstFollowups(brand)
-    if (backendReady) {
-      stage = {
-        ...stage,
-        items: stage.items.filter((i) => !isBackendEnsureChip(i)).slice(0, MAX_VISIBLE_CHIPS),
-      }
-    }
+    stage = postPreviewFollowups(brand, opts?.appKind || 'app')
   } else if (looksLikeLandingSingleTurnIntent(message)) {
     stage = landingSingleTurnFollowups(brand)
   } else if (looksLikeAutoChainIntent(message) && !/claim_backend_ready|catalog seeded|place.?test.?shop.?order/.test(lower)) {
-    stage = backendReady ? postPreviewFollowups(brand) : autoChainBackendFollowups(brand)
+    stage = backendReady ? postPreviewFollowups(brand, opts?.appKind) : autoChainBackendFollowups(brand)
     if (backendReady) {
       stage = {
         ...stage,
@@ -1269,7 +1271,7 @@ export function injectDeliverableFollowUps(
       }
     }
   } else {
-    stage = postPreviewFollowups(brand)
+    stage = postPreviewFollowups(brand, opts?.appKind)
     if (backendReady) {
       stage = {
         ...stage,
@@ -1395,7 +1397,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
   if (isLive) {
     const brand = extractBrandFromMessage(cleaned)
     const postLive = postGoLiveFollowups(brand, {
-      store: true,
+      store: flags.appKind !== 'app' && flags.appKind !== 'website' && flags.appKind !== 'booking' && flags.appKind !== 'agency',
       paymentsReady: flags.isPaymentsReady,
     })
     const injected: ParsedFollowUps = {
@@ -1414,6 +1416,7 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
   const injected = injectDeliverableFollowUps(cleaned, {
     backendReady: flags.isBackendReady,
     isLive: notLive ? false : undefined,
+    appKind: flags.appKind,
   })
   if (injected) {
     const withJourney = journeyNext

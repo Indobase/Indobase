@@ -203,6 +203,7 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
       isPaymentsReady: Boolean(journey?.flags?.is_payments_ready || journey?.payments_ready),
       liveUrl,
       projectState,
+      appKind: journey?.flags?.app_kind,
     }
     if (!journey && !guest && !projectState) return undefined
     return {

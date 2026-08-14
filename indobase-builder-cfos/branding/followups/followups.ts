@@ -40,6 +40,7 @@ export type JourneyChipFlags = {
   liveUrl?: string | null
   /** Authoritative /api/session.project.state — live cards require `live`. */
   projectState?: string | null
+  appKind?: 'store' | 'app' | 'website' | 'booking' | 'ordering' | 'agency'
 }
 
 export type ResolveFollowUpsOptions = {
@@ -378,7 +379,7 @@ const CHIP_TOOL_NAMES =
   /\b(launchBusiness|launchProductionApp|guidedBackend|ensureDatabase|ensureLogin|applySchema|setupShopCatalog|placeTestShopOrder|listShopOrders|connectGateway|wireCheckout|architectureBoilerplate|PocketBase)\b/gi
 
 /** Operator-visible chip labels must never name internal tools. */
-export function operatorChipLabel(label: string): string {
+export function operatorChipLabel(label: string, appKind?: JourneyChipFlags['appKind']): string {
   let out = (label || '')
     .replace(/\s+with\s+launchBusiness\b/gi, '')
     .replace(CHIP_TOOL_NAMES, '')
@@ -386,6 +387,11 @@ export function operatorChipLabel(label: string): string {
     .replace(/\s+[—–-]\s*$/g, '')
     .trim()
   if (!out || /^with$/i.test(out)) out = 'Continue'
+  if (appKind === 'app' || appKind === 'booking') {
+    out = out.replace(/\bLaunch store\b/gi, 'Launch app').replace(/\bOpen store\b/gi, 'Open app')
+  } else if (appKind === 'website' || appKind === 'agency') {
+    out = out.replace(/\bLaunch store\b/gi, 'Launch website').replace(/\bOpen store\b/gi, 'Open website')
+  }
   return out
 }
 
@@ -569,6 +575,7 @@ function resolveJourneyFlags(opts?: ResolveFollowUpsOptions | null): JourneyChip
     isPaymentsReady: f.isPaymentsReady,
     liveUrl,
     projectState: f.projectState || null,
+    appKind: f.appKind,
   }
   if (liveAuthoritative) {
     tentative.isLive = operatorMayClaimLive(tentative)
@@ -621,6 +628,10 @@ export function filterChipsForJourneyState(
   }
   if (flags.isPaymentsReady) {
     items = items.filter((i) => !isPaymentsChip(i))
+  }
+  if (flags.appKind === 'app' || flags.appKind === 'website' || flags.appKind === 'booking' || flags.appKind === 'agency') {
+    items = items.filter((i) => !isBackendEnsureChip(i))
+    items = items.map((i) => ({ ...i, label: operatorChipLabel(i.label, flags.appKind) }))
   }
   return { ...parsed, items: dedupeFollowUpItems(items).slice(0, MAX_VISIBLE_CHIPS) }
 }

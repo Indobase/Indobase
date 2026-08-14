@@ -294,7 +294,7 @@ INDOBASE_FOLLOWUPS>>>
     const input = "I've polished the hero and refined the branding — ready when you are."
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.ok(resolved.items.some((i) => /Go Live/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /Go Live|Launch my (store|app|website)/i.test(i.label)))
     assert.ok(resolved.items.every((i) => !/leave it as-is/i.test(i.label)))
   })
 
@@ -386,11 +386,11 @@ INDOBASE_FOLLOWUPS>>>
     const stage = postPreviewFollowups('MERIDIAN')
     assert.equal(stage.title, 'Where should I take MERIDIAN next?')
     assert.equal(stage.items.length, MAX_VISIBLE_CHIPS)
-    assert.ok(stage.items.some((i) => /Add a real backend|Go Live|Launch store/i.test(i.label)))
+    assert.ok(stage.items.some((i) => /Launch my store|Continue editing|Refine then launch/i.test(i.label)))
     assert.ok(stage.items.every((i) => !/leave it as-is/i.test(i.label)))
     const block = formatFollowUpsBlock(stage.title, stage.items)
     assert.match(block, /<<<INDOBASE_FOLLOWUPS/)
-    assert.match(block, /guidedBackend|launchBusiness|Launch/i)
+    assert.match(block, /Launch my store|Continue editing/i)
     const parsed = parseFollowUps(`Preview ready.\n\n${block}`)
     assert.ok(parsed)
     assert.equal(parsed.items.length, MAX_VISIBLE_CHIPS)
@@ -507,9 +507,8 @@ INDOBASE_CHOICES>>>
       "Here's your client portal UI with sign-in screens — preview ready.\n\nWhat's in it: dashboard shell."
     const resolved = resolveFollowUps(input)
     assert.ok(resolved)
-    assert.ok(resolved.items.some((i) => /Enable login \+ database/i.test(i.label)))
-    assert.ok(resolved.items.some((i) => /customer accounts|business data/i.test(i.message)))
-    assert.ok(resolved.items.every((i) => !/guidedBackend/i.test(i.message)))
+    assert.ok(resolved.items.some((i) => /Launch my app/i.test(i.label)))
+    assert.ok(resolved.items.every((i) => !/Enable login \+ database|guidedBackend/i.test(`${i.label} ${i.message}`)))
   })
 
   it('looksLikeAutoChainIntent detects launch store and backend asks', () => {
@@ -933,5 +932,22 @@ INDOBASE_FOLLOWUPS>>>`
     assert.ok(resolved)
     const pay = resolved.items.filter((i) => /payments/i.test(i.label))
     assert.equal(pay.length, 1)
+  })
+
+  it('SaaS appKind rewrites Launch store chips and drops backend-ensure', () => {
+    const input = `Preview is ready.
+
+<<<INDOBASE_FOLLOWUPS
+title: Next
+Launch store | POST /api/os/apps/launch
+Add a real backend | guidedBackend
+Continue editing | keep editing
+INDOBASE_FOLLOWUPS>>>`
+    const resolved = resolveFollowUps(input, {
+      journeyFlags: { isLive: false, appKind: 'app' },
+    })
+    assert.ok(resolved)
+    assert.ok(!resolved.items.some((i) => /launch store|real backend/i.test(i.label)))
+    assert.ok(resolved.items.some((i) => /Launch app/i.test(i.label)))
   })
 })

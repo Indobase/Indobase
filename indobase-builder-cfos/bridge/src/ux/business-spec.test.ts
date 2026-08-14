@@ -29,6 +29,12 @@ describe('BusinessSpec', () => {
     assert.equal(inferBusinessSpec('Launch a premium sneaker store called UrbanThread').businessType, 'ecommerce')
   })
 
+  it('extracts Call it TutorDesk and refuses a leftover placeholder name', () => {
+    const spec = inferBusinessSpec('Build a SaaS invoicing app. Call it TutorDesk')
+    assert.equal(spec.businessName, 'TutorDesk')
+    assert.equal(spec.businessType, 'saas')
+  })
+
   it('does not let apparel win on a sneaker prompt', () => {
     assert.equal(findEcommerceVertical('UrbanThread premium sneakers')?.id, 'sneakers')
     assert.equal(findEcommerceVertical('apparel')?.id, 'apparel')

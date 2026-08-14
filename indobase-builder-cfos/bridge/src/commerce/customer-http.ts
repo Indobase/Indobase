@@ -4,7 +4,15 @@
  */
 import type { Context } from 'hono'
 
+import {
+  SESSION_COOKIE,
+  isGuestSession,
+  readCookie,
+  readSessionToken,
+  resolveHandoffSecret,
+} from '../auth.js'
 import { sanitizeAppId } from '../pocketbase/managed.js'
+import { resolveTenantProjectRef } from './control-center-auth.js'
 import { canViewOrder, verifyCustomerSession } from './customer-identity.js'
 import { getOrderOwnership, listOrdersForCustomer } from './customer-pb.js'
 import { startCustomerOtp, verifyCustomerOtp } from './customer-service.js'
@@ -20,11 +28,31 @@ function commerceCorsHeaders(): Record<string, string> {
   }
 }
 
-function projectRefFrom(c: Context, body?: Record<string, unknown>): string {
+function clientProjectRefFrom(c: Context, body?: Record<string, unknown>): string {
   const header = c.req.header('X-Indobase-Project-Ref') || ''
   const q = c.req.query('projectRef') || ''
   const b = typeof body?.projectRef === 'string' ? body.projectRef : ''
   return sanitizeAppId(header || q || b)
+}
+
+function bindCustomerProjectRef(c: Context, body?: Record<string, unknown>) {
+  try {
+    const secret = resolveHandoffSecret()
+    const raw = readCookie(c.req.header('cookie'), SESSION_COOKIE)
+    const session = raw ? readSessionToken(raw, secret) : null
+    return resolveTenantProjectRef({
+      session,
+      guest: session ? isGuestSession(session) : false,
+      clientProjectRef: clientProjectRefFrom(c, body),
+      allowAnonymousClient: true,
+    })
+  } catch {
+    return resolveTenantProjectRef({
+      session: null,
+      clientProjectRef: clientProjectRefFrom(c, body),
+      allowAnonymousClient: true,
+    })
+  }
 }
 
 export function customerTokenFrom(c: Context): string {
@@ -39,7 +67,11 @@ export function sessionFromRequest(c: Context, projectRef: string) {
 
 export async function handleCustomerOtpStart(c: Context) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-  const projectRef = projectRefFrom(c, body)
+  const bound = bindCustomerProjectRef(c, body)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  const projectRef = bound.projectRef
   const email = typeof body.email === 'string' ? body.email : ''
   const name = typeof body.name === 'string' ? body.name : undefined
   if (!projectRef || !email) {
@@ -51,7 +83,11 @@ export async function handleCustomerOtpStart(c: Context) {
 
 export async function handleCustomerOtpVerify(c: Context) {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-  const projectRef = projectRefFrom(c, body)
+  const bound = bindCustomerProjectRef(c, body)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  const projectRef = bound.projectRef
   const email = typeof body.email === 'string' ? body.email : ''
   const code = typeof body.code === 'string' ? body.code : typeof body.token === 'string' ? body.token : ''
   const name = typeof body.name === 'string' ? body.name : undefined
@@ -71,7 +107,11 @@ export async function handleCustomerOtpVerify(c: Context) {
 }
 
 export async function handleCustomerMe(c: Context) {
-  const projectRef = projectRefFrom(c)
+  const bound = bindCustomerProjectRef(c)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  const projectRef = bound.projectRef
   const session = sessionFromRequest(c, projectRef)
   if (!session) {
     return c.json({ ok: true, authenticated: false }, 200, commerceCorsHeaders())
@@ -97,7 +137,11 @@ export async function handleCustomerLogout(c: Context) {
 }
 
 export async function handleCustomerOrdersList(c: Context) {
-  const projectRef = projectRefFrom(c)
+  const bound = bindCustomerProjectRef(c)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  const projectRef = bound.projectRef
   const session = sessionFromRequest(c, projectRef)
   if (!session) {
     return c.json({ ok: false, code: 'unauthorized', message: 'Sign in to view your orders' }, 401, commerceCorsHeaders())
@@ -131,10 +175,14 @@ export async function handleCustomerOrdersList(c: Context) {
 }
 
 export async function handleCustomerOrderGet(c: Context) {
-  const projectRef = projectRefFrom(c)
+  const bound = bindCustomerProjectRef(c)
+  if (!bound.ok) {
+    return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
+  }
+  const projectRef = bound.projectRef
   const orderId = c.req.param('id') || c.req.query('orderId') || ''
   const guestToken = c.req.query('guestToken') || c.req.header('X-Indobase-Guest-Token') || ''
-  if (!projectRef || !orderId) {
+  if (!orderId) {
     return c.json({ ok: false, code: 'invalid_request', message: 'projectRef and order id required' }, 400, commerceCorsHeaders())
   }
   try {

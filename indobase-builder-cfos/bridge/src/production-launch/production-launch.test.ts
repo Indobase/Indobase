@@ -335,4 +335,54 @@ describe('production launch job pipeline', () => {
     assert.equal(result.job.failures[0]?.code, 'smoke_failed')
     assert.equal(result.code, 'smoke_failed')
   })
+
+  it('publishes the frozen preview HTML instead of regenerating a generic storefront', async () => {
+    const frozen =
+      '<html><body><h1>Midnight Alpine drops</h1><script>window.indobase={commerce:{checkout:{create:function(){}}}}</script></body></html>'
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Launch my store',
+        appType: 'ecommerce',
+        brand: 'NorthPeak',
+        html: frozen,
+      },
+      {
+        guided: async () => ({
+          ok: true,
+          tool: 'guidedBackend',
+          mode: 'ecommerce',
+          steps: [{ id: 'placeTestShopOrder', status: 'ok', message: 'ok' }],
+          progress: 'ok',
+          message: 'ok',
+          claim_backend_ready: true,
+          claim_live: false,
+          storefront_html: '<html><body><h1>NorthPeak / Order online.</h1></body></html>',
+          backend: {
+            api_url: backend.api_url,
+            anon_key: backend.anon_key,
+            project_ref: backend.project_ref,
+            project_name: backend.project_name,
+          },
+        }),
+        launch: async (_ref, input) => {
+          assert.match(input.html || '', /Midnight Alpine drops/)
+          assert.doesNotMatch(input.html || '', /Order online/)
+          return {
+            ok: true,
+            status: 'published',
+            url: 'https://northpeak.sites.indobase.in',
+            message: 'published',
+            lane: 'static',
+            claim_live: true,
+            tool: 'launchBusiness',
+          }
+        },
+        smoke: async () => ({ ok: true, message: 'ok' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.equal(result.job.frozenArtifactHash, result.job.publishedArtifactHash)
+    assert.match(result.job.html || '', /Midnight Alpine drops/)
+  })
 })

@@ -170,7 +170,12 @@ export function businessJobStageTitle(id: string, appType?: string | null): stri
   return titles[id] || id
 }
 
-export function businessJourneyStageLabel(id: string): string {
+export function businessJourneyStageLabel(id: string, kind?: BusinessAppKind): string {
+  if (id === 'backend') {
+    if (kind === 'app' || kind === 'booking') return 'App'
+    if (kind === 'website' || kind === 'agency') return 'Site'
+    return 'Store'
+  }
   return JOURNEY_STAGE_LABELS[id as keyof typeof JOURNEY_STAGE_LABELS] || id
 }
 
