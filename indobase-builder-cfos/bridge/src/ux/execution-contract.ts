@@ -352,8 +352,21 @@ function operatorMessageForTurn(input: {
   mutated: boolean
   businessRuntime: BusinessRuntimeState
 }): string {
-  if (input.turnClass === 'launch' && input.launch?.ok && input.launch.url) {
-    return `Your store is live — ${input.launch.url}`
+  if (input.turnClass === 'launch') {
+    const live =
+      Boolean(input.launch?.ok && input.launch.claim_live && input.launch.url) &&
+      input.businessRuntime.live.isLive
+    const noun =
+      input.businessRuntime.business.kind === 'saas' || input.businessRuntime.business.kind === 'app'
+        ? 'app'
+        : input.businessRuntime.business.kind === 'landing' ||
+            input.businessRuntime.business.kind === 'website'
+          ? 'website'
+          : 'store'
+    if (live && input.launch?.url) {
+      return `Your ${noun} is live — ${input.launch.url}`
+    }
+    return input.named ? `Publishing ${input.named}…` : `Publishing your ${noun}…`
   }
   if (input.turnClass === 'modify') {
     if (input.mutated && input.mutatedHeadline) {
@@ -366,19 +379,15 @@ function operatorMessageForTurn(input: {
   }
   if (input.turnClass === 'build' || input.intent === 'create_business') {
     if (input.previewStatus === 'ready') {
+      const kind = input.businessRuntime.business.kind
       const noun =
-        input.businessRuntime.business.kind === 'saas' || input.businessRuntime.business.kind === 'app'
-          ? 'app'
-          : 'store'
+        kind === 'saas' || kind === 'app' ? 'app' : kind === 'landing' || kind === 'website' ? 'website' : 'store'
       return `Preview is ready for ${input.named || `your ${noun}`}.`
     }
     if (input.previewStatus === 'failed') {
       return 'Preview did not come up. I am retrying automatically.'
     }
-    return `Preparing ${input.named || input.specName || 'your store'}…`
-  }
-  if (input.turnClass === 'launch') {
-    return input.named ? `Publishing ${input.named}…` : 'Publishing your store…'
+    return `Preparing ${input.named || input.specName || 'your preview'}…`
   }
   return 'How can I help?'
 }

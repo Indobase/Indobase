@@ -93,17 +93,24 @@ export function buildJourneyStateAppendix(
   const paymentsReady = sessionLooksPaymentsReady(session)
   const journey = buildLaunchJourneyState(session, launch)
   const catalogReady = Boolean(launch?.catalogReady || journey.flags.is_backend_ready)
+  const spec = getBusinessSpec(session.projectRef)
+  const website = spec?.businessType === 'landing'
+  const store = !spec || spec.businessType === 'ecommerce'
   const lines = [
     '## Journey state (session)',
     '## North star (HARD)',
-    '- Loop: infer BusinessSpec → create a real preview → iterate → launchProductionApp → operate from BusinessRuntimeState.',
+    '- Loop: infer BusinessSpec → create a real preview → iterate → launchBusiness/launchProductionApp (same job) → operate from BusinessRuntimeState.',
     '- Preview is a hard gate. Never claim preview or LIVE unless BusinessRuntimeState says so.',
     '- After every completed stage: emit 1–3 next FOLLOWUPS in business language. Never name internals. Never restart guest/auth once signed in. Never ask them to refresh.',
-    `- Catalog: ${catalogReady ? 'ready' : 'not ready'}`,
+  ]
+  if (store) {
+    lines.push(`- Catalog: ${catalogReady ? 'ready' : 'not ready'}`)
+  }
+  lines.push(
     `- Preview: ${previewStatus || (launch?.previewReady ? 'ready' : 'absent')}`,
     `- Journey stage: ${journey.current_stage}`,
-    `- Preview policy: production LIVE is **launchProductionApp**. launchBusiness is preview/draft only (production:false).`,
-  ]
+    `- Preview policy: launchBusiness and launchProductionApp run the same production job. production:false is draft preview only. Claim LIVE only from BusinessRuntimeState.`,
+  )
   if (journey.next_action) {
     lines.push(
       `- Journey next_action chip: **${journey.next_action.label}** — ${journey.next_action.message}`,
@@ -112,24 +119,36 @@ export function buildJourneyStateAppendix(
   if (journey.live_url) {
     lines.push(`- Live url: ${journey.live_url}`)
   }
-  lines.push('## Default store ladder (when building a shop)')
-  lines.push(
-    'After account: infer BusinessSpec from their words (sneakers stay sneakers). Create a reachable preview first. On Launch / Go Live → launchProductionApp { appType:"ecommerce", vertical from spec }. The job owns catalog + commerce. After LIVE: Domain / Add payments / checklist. ≤4 chips.',
-  )
-  if (catalogReady) {
+  if (store) {
+    lines.push('## Default store ladder (when building a shop)')
     lines.push(
-      '- Catalog is ready. Prefer chips: Launch via launchProductionApp (if not live) → Domain / Add payments / Checklist.',
+      'After account: infer BusinessSpec from their words (sneakers stay sneakers). Create a reachable preview first. On Launch / Go Live → launchBusiness or launchProductionApp (same job, appType from BusinessSpec). The job owns catalog + commerce. After LIVE: Domain / Add payments / checklist. ≤4 chips.',
+    )
+    if (catalogReady) {
+      lines.push(
+        '- Catalog is ready. Prefer chips: Launch (if not live) → Domain / Add payments / Checklist.',
+      )
+    } else {
+      lines.push(
+        '- Catalog is not ready. Do not claim the store is ready. Build preview or launch — the job provisions catalog.',
+      )
+    }
+    if (paymentsReady) {
+      lines.push('- Payments: keys appear configured — connectGateway already done; productionChecklist reads job evidence.')
+    } else {
+      lines.push(
+        '- Payments: after LIVE, offer Add payments CHOICES (India/Razorpay vs Stripe) then connectGateway. Full launch includes a checkout path.',
+      )
+    }
+  } else if (website) {
+    lines.push('## Website ladder')
+    lines.push(
+      'After account: infer BusinessSpec (landing). Create a reachable preview. On Launch / Go Live → launchBusiness or launchProductionApp (same job). No store, catalog, or payments chips. After LIVE: operate from BusinessRuntimeState. ≤4 chips.',
     )
   } else {
+    lines.push('## App ladder')
     lines.push(
-      '- Catalog is not ready. Do not claim the store is ready. Build preview or call launchProductionApp on Launch — the job provisions catalog.',
-    )
-  }
-  if (paymentsReady) {
-    lines.push('- Payments: keys appear configured — connectGateway already done; productionChecklist reads job evidence.')
-  } else {
-    lines.push(
-      '- Payments: after LIVE, offer Add payments CHOICES (India/Razorpay vs Stripe) then connectGateway. Full launch includes a checkout path.',
+      'After account: infer BusinessSpec (saas). Create a reachable preview. On Launch / Go Live → launchBusiness or launchProductionApp (same job). No store catalog chips.',
     )
   }
   return lines.join('\n')
@@ -429,7 +448,7 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       production_rules: LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
       /** Prefer static lane over Gadget iframe after first HTML exists (HARD — localStorage SecurityError). */
       preview_policy:
-        'HARD: Production LIVE is launchProductionApp (POST /api/os/apps/launch). launchBusiness is preview/draft only (production:false). Never tell the operator to use Gadget iframe preview.',
+        'HARD: launchBusiness and launchProductionApp enqueue executeProductionLaunchJob. production:false is draft preview only. Claim LIVE only from BusinessRuntimeState.live. Never tell the operator to use Gadget iframe preview.',
       draft_preview_path:
         authority.preview.status === 'ready' ? `/live/${session.projectRef}/` : null,
       enforce_static_over_gadget: true,

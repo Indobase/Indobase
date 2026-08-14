@@ -158,7 +158,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
               LAUNCH_TOOL: '/api/os/tools/launchBusiness',
               PRODUCTION_LAUNCH: '/api/os/apps/launch',
               LAUNCH_RULES:
-                'HARD PATH: production Go Live is POST /api/os/apps/launch. Claim live only when job status=live. Draft preview may use launchBusiness with production:false. Indobase subdomain or a domain you own. Never third-party hosts.',
+                'HARD PATH: launchBusiness and launchProductionApp run the same production job. Claim live only from BusinessRuntimeState.live. Draft preview may use launchBusiness with production:false. Indobase subdomain or a domain you own. Never third-party hosts.',
               PREVIEW_POLICY: (s.launch && s.launch.preview_policy) || '',
               LIVE_URL: (s.journey && s.journey.live_url) || null,
               PREVIEW_URL: window.__INDOBASE_PREVIEW_URL__,

@@ -387,9 +387,9 @@ export function operatorChipLabel(label: string, appKind?: JourneyChipFlags['app
     .replace(/\s+[—–-]\s*$/g, '')
     .trim()
   if (!out || /^with$/i.test(out)) out = 'Continue'
-  if (appKind === 'app' || appKind === 'booking') {
+  if (appKind === 'app' || appKind === 'saas' || appKind === 'booking') {
     out = out.replace(/\bLaunch store\b/gi, 'Launch app').replace(/\bOpen store\b/gi, 'Open app')
-  } else if (appKind === 'website' || appKind === 'agency') {
+  } else if (appKind === 'website' || appKind === 'landing' || appKind === 'agency') {
     out = out.replace(/\bLaunch store\b/gi, 'Launch website').replace(/\bOpen store\b/gi, 'Open website')
   }
   return out

@@ -7,6 +7,7 @@ import { getBusinessSpec } from './ux/business-spec.js'
 import {
   appTypeToKind,
   businessJourneyStageLabel,
+  isWebsiteJourneyKind,
   uxContextualActions,
   uxHeadline,
   type BusinessAppKind,
@@ -95,33 +96,42 @@ export function buildLaunchJourneyState(
       : null) ||
     (published && launch?.customDomain ? `https://${launch.customDomain}` : null)
 
+  const specKind = appTypeToKind(getBusinessSpec(session.projectRef)?.businessType)
+  const kind = appKind || specKind
+  const website = isWebsiteJourneyKind(kind)
   const accountDone = !guest
-  const backendDone = catalogReady
+  const backendDone = website ? true : catalogReady
   const liveDone = published
   const previewDone = Boolean(launch?.previewReady) || liveDone
-  const paymentsDone = paymentsReady
+  const paymentsDone = website ? true : paymentsReady
 
-  const productionDone = liveDone && backendDone && paymentsDone
+  const productionDone = liveDone && backendDone && (website || paymentsDone)
 
   let currentStage: LaunchJourneyStageId = 'account'
   if (guest) currentStage = 'account'
   else if (!previewDone && !liveDone) currentStage = 'preview'
   else if (previewDone && !liveDone) currentStage = 'live'
-  else if (liveDone && !backendDone) currentStage = 'backend'
-  else if (liveDone && backendDone && !paymentsDone) currentStage = 'payments'
+  else if (!website && liveDone && !backendDone) currentStage = 'backend'
+  else if (!website && liveDone && backendDone && !paymentsDone) currentStage = 'payments'
   else if (productionDone) currentStage = 'production'
   else currentStage = 'preview'
 
-  const specKind = appTypeToKind(getBusinessSpec(session.projectRef)?.businessType)
-  const kind = appKind || specKind
   const stages: LaunchJourneyStage[] = [
     stage('account', businessJourneyStageLabel('account', kind), accountDone, currentStage === 'account'),
     stage('preview', businessJourneyStageLabel('preview', kind), previewDone, currentStage === 'preview'),
-    stage('backend', businessJourneyStageLabel('backend', kind), backendDone, currentStage === 'backend'),
-    stage('live', businessJourneyStageLabel('live', kind), liveDone, currentStage === 'live'),
-    stage('payments', businessJourneyStageLabel('payments', kind), paymentsDone, currentStage === 'payments'),
-    stage('production', businessJourneyStageLabel('production', kind), productionDone, currentStage === 'production'),
   ]
+  if (!website) {
+    stages.push(stage('backend', businessJourneyStageLabel('backend', kind), backendDone, currentStage === 'backend'))
+  }
+  stages.push(stage('live', businessJourneyStageLabel('live', kind), liveDone, currentStage === 'live'))
+  if (!website) {
+    stages.push(
+      stage('payments', businessJourneyStageLabel('payments', kind), paymentsDone, currentStage === 'payments'),
+    )
+  }
+  stages.push(
+    stage('production', businessJourneyStageLabel('production', kind), productionDone, currentStage === 'production'),
+  )
 
   const flagsForUx: UxJourneyFlags = {
     guest,

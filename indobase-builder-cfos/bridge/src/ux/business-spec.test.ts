@@ -29,6 +29,15 @@ describe('BusinessSpec', () => {
     assert.equal(inferBusinessSpec('Launch a premium sneaker store called UrbanThread').businessType, 'ecommerce')
   })
 
+  it('infers landing from a website prompt, not a store', () => {
+    const spec = inferBusinessSpec('Build a website called Harbor Studio')
+    assert.equal(spec.businessName, 'Harbor Studio')
+    assert.equal(spec.businessType, 'landing')
+    assert.equal(inferBusinessSpec('Launch my website').businessType, 'landing')
+    assert.equal(inferBusinessSpec('I want a landing page for my brand').businessType, 'landing')
+    assert.equal(inferBusinessSpec('Launch a website to sell sneakers').businessType, 'ecommerce')
+  })
+
   it('extracts Call it TutorDesk and refuses a leftover placeholder name', () => {
     const spec = inferBusinessSpec('Build a SaaS invoicing app. Call it TutorDesk')
     assert.equal(spec.businessName, 'TutorDesk')

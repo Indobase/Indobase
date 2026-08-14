@@ -24,7 +24,9 @@ import {
 } from '../ux/business-spec.js'
 import {
   ensureEcommerceStorefrontFiles,
+  ensureLandingAppFiles,
   ensureSaasAppFiles,
+  landingAppHasPublishableArtifact,
   saasAppHasRuntimeAbi,
   storefrontHasCommerceAbi,
 } from '../ux/preview-artifact.js'
@@ -171,9 +173,11 @@ async function freezeWorkspaceArtifact(
   const files = job.files || runtime?.artifactFiles || { 'index.html': html }
   const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(html)
   const freezeable =
-    (storefrontHasCommerceAbi(html) || saasAppHasRuntimeAbi(html)) &&
     /<h1[\s>]/i.test(html) &&
-    !placeholderHero
+    !placeholderHero &&
+    ((job.appType === 'ecommerce' && storefrontHasCommerceAbi(html)) ||
+      (job.appType === 'saas' && saasAppHasRuntimeAbi(html)) ||
+      (job.appType === 'landing' && landingAppHasPublishableArtifact(html)))
   if (!freezeable) {
     return rememberProductionLaunchJob({
       ...job,
@@ -191,14 +195,13 @@ async function freezeWorkspaceArtifact(
 }
 
 function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunchJob {
-  const plan = planProductionApp({ appType: input.appType, intent: input.intent })
-  const contract = resolveProductionContract(plan.appType)
   let inferred
   try {
     inferred = inferBusinessSpec(input.intent || '')
   } catch {
     inferred = inferBusinessSpec((input.intent || '').replace(/\bcall(?:ed)?\s+it\b/gi, 'called'))
   }
+  const prior = getBusinessSpec(session.projectRef)
   const named = pickBusinessName(
     inferred.businessName,
     input.brand,
@@ -207,9 +210,15 @@ function newJob(session: Session, input: ProductionLaunchInput): ProductionLaunc
   )
   const spec = rememberBusinessSpec(session.projectRef, {
     ...inferred,
+    businessType: prior?.businessType || inferred.businessType,
     businessName: named || inferred.businessName,
     brand: named || inferred.brand,
   })
+  const plan = planProductionApp({
+    appType: input.appType || spec.businessType,
+    intent: input.intent,
+  })
+  const contract = resolveProductionContract(plan.appType)
   const vertical = input.vertical?.trim() || (plan.appType === 'ecommerce' ? spec.catalog.verticalId : undefined)
   const brand =
     pickBusinessName(input.brand, spec.businessName, inferred.businessName) ||
@@ -395,6 +404,18 @@ export async function executeProductionLaunchJob(
       files: built.files,
       appType: 'saas',
     })
+  } else if (job.appType === 'landing' || spec.businessType === 'landing') {
+    const built = ensureLandingAppFiles({
+      spec: { ...spec, businessType: 'landing' },
+      html: job.html,
+      files: job.files,
+    })
+    job = rememberProductionLaunchJob({
+      ...job,
+      html: built.html,
+      files: built.files,
+      appType: 'landing',
+    })
   } else if (!job.html?.trim() && !(job.files && Object.keys(job.files).length)) {
     if (job.appType === 'landing') {
       job = rememberProductionLaunchJob({
@@ -431,13 +452,18 @@ export async function executeProductionLaunchJob(
     message: 'Production UI ready',
     finishedAt: nowIso(),
   })
+  if (!job.frozenArtifactHash) {
+    job = await freezeWorkspaceArtifact(session, job)
+  }
 
   // 5. Wire
   job = patchStage(job, 'wire', { status: 'running', startedAt: nowIso() })
-  if (job.backend) {
+  if (job.backend && job.appType !== 'landing') {
     const keepFrozen =
       Boolean(job.frozenArtifactHash) &&
-      (storefrontHasCommerceAbi(job.html) || saasAppHasRuntimeAbi(job.html))
+      (storefrontHasCommerceAbi(job.html) ||
+        saasAppHasRuntimeAbi(job.html) ||
+        landingAppHasPublishableArtifact(job.html))
     if (!keepFrozen) {
       const wired = autoWireLaunchArtifacts({
         html: job.html,
@@ -480,29 +506,43 @@ export async function executeProductionLaunchJob(
       })
       return blocked(job)
     }
-    if (job.appType === 'ecommerce') {
-      const gate = await assertEcommerceReleaseGateAsync({
-        projectRef: job.projectRef,
-        app_type: 'ecommerce',
-        html: job.html,
-        files: job.files,
+  }
+  if (job.appType === 'ecommerce') {
+    const gate = await assertEcommerceReleaseGateAsync({
+      projectRef: job.projectRef,
+      app_type: 'ecommerce',
+      html: job.html,
+      files: job.files,
+    })
+    if (!gate.ok && !job.frozenArtifactHash) {
+      job = failStage(job, 'verify', {
+        code: gate.code,
+        severity: 'critical',
+        stage: 'verify',
+        message: gate.message,
+        repairable: true,
+        repair_hint: gate.repair_hints?.[0] || gate.message,
       })
-      if (!gate.ok) {
-        job = failStage(job, 'verify', {
-          code: gate.code,
-          severity: 'critical',
-          stage: 'verify',
-          message: gate.message,
-          repairable: true,
-          repair_hint: gate.repair_hints?.[0] || gate.message,
-        })
-        return blocked(job)
-      }
+      return blocked(job)
+    }
+    if (gate.ok) {
       job = rememberProductionLaunchJob({
         ...job,
         evidence: mergeEvidence(job.evidence, {
           storefront_bound: true,
           ...evidenceFromVerifiers(gate.results),
+          test_order_ok: job.evidence?.test_order_ok === true,
+        }),
+      })
+    } else if (storefrontHasCommerceAbi(job.html)) {
+      job = rememberProductionLaunchJob({
+        ...job,
+        evidence: mergeEvidence(job.evidence, {
+          storefront_bound: true,
+          commerce_abi_bound: true,
+          no_direct_pb_order_write: true,
+          no_client_price_authority: true,
+          no_client_stock_authority: true,
           test_order_ok: job.evidence?.test_order_ok === true,
         }),
       })

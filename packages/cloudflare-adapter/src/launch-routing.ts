@@ -80,31 +80,26 @@ export const LAUNCH_BUSINESS_TOOL = {
 export const LAUNCH_AGENT_HARD_RULES = `
 ## Go Live / Launch Business (HARD PATH — mandatory)
 
-Production LIVE is **launchProductionApp** (\`POST /api/os/apps/launch\`). Never say the launch service is unavailable — call it. Never ask the operator to refresh. launchBusiness is preview/draft only (\`production:false\`) or custom domain after LIVE.
+Production LIVE is the same job whether the operator (or agent) calls **launchBusiness** or **launchProductionApp**.
+launchBusiness without production:false runs executeProductionLaunchJob. production:false is draft preview only.
 
 When the operator says take live, launch, publish, go live, or launch my business:
 
-1. For production: call launchProductionApp immediately. For a draft preview only, call the launchBusiness tool (alias goLive) — same-origin POST /api/os/tools/launchBusiness
-   OR POST /api/os/launch — with REAL content:
-   { "title": "…", "subdomain": "aquaharvest", "customDomain": "www.theirbusiness.com" (optional), "html": "…" }
-   or { "files": { "index.html": "…" } }. Never call with empty html/files.
-2. Default live link: https://{subdomain}.indobase.in (local PoC may return /live/{ref}/).
-3. Optional customDomain: domain they already own — return DNS CNAME to sites.indobase.in. Do not move hosting off Indobase.
-4. ONLY claim live after the API JSON has ok:true AND a non-empty url. Quote that exact url.
-   NEVER invent, guess, or paste a third-party URL. NEVER say "your business is live" without the API url.
+1. Call launchBusiness or launchProductionApp immediately — they enqueue the same production job.
+   Never say the launch service is unavailable. Never ask the operator to refresh.
+2. Default live link: https://{subdomain}.sites.indobase.in (preview may be /live/{ref}/).
+3. Optional customDomain after LIVE: domain they already own — DNS CNAME to sites.indobase.in.
+4. ONLY claim live after BusinessRuntimeState.live.isLive and a non-empty live.url. Quote that exact url.
+   NEVER invent, guess, or paste a third-party URL. NEVER say the business is live without runtime evidence.
 5. NEVER ask which host to use. NEVER suggest page builders, git pages, generic CDNs, or external hosts.
-6. launchBusiness also syncs Studio hosting when Platform API is configured — still quote the tool url only.
-7. Auth/database: for apps that need login or data, call ensureLogin / ensureDatabase / applySchema
-   (or guidedBackend) BEFORE building those screens — do not ship a mock API then retrofit.
-   Landing/marketing sites may Go Live without ensure*. Payments/email only when they ask —
-   finish setup until truly live (never claim “Payments are live” from ensure alone).
+6. The production job enables accounts, catalog, or data when that business type needs them. Do not pick ensure* or guidedBackend.
    NEVER say Connect Neon/Coolify/Stripe/Postgres/Docker or ask which vendor.
    Providers are hidden. Enable ≠ Connect.
 `.trim()
 
 /** Compact one-liner for session hint bags. */
 export const LAUNCH_SESSION_HINT =
-  'Go Live HARD PATH: production is launchProductionApp (POST /api/os/apps/launch). launchBusiness (POST /api/os/tools/launchBusiness or /api/os/launch) is preview/draft only. Claim live ONLY after job status=live + url. The job runs ensure* internally. Never ask the operator to refresh. Never say the launch service is unavailable. Indobase subdomain (*.indobase.in) or their domain (CNAME → sites.indobase.in). NEVER third-party hosts. Enable ≠ Connect.'
+  'Go Live HARD PATH: launchBusiness and launchProductionApp run the same production job (executeProductionLaunchJob). production:false on launchBusiness is draft preview only. Claim live ONLY from BusinessRuntimeState.live. Never ask the operator to refresh. Never say the launch service is unavailable. Indobase subdomain (*.sites.indobase.in) or their domain (CNAME → sites.indobase.in). NEVER third-party hosts. Enable ≠ Connect.'
 
 export function promptLooksLikeGoLiveIntent(prompt: string): boolean {
   const text = String(prompt || '').toLowerCase()

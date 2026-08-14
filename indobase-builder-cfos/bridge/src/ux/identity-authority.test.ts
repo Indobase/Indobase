@@ -64,11 +64,11 @@ describe('BusinessSpec is the sole business-identity authority', () => {
     )
   })
 
-  it('website → Launch website → kind remains website', () => {
+  it('website → Launch website → kind remains landing', () => {
     const { spec, payload } = payloadFor('Build a landing page called Harbor Studio', 'saas')
     assert.equal(spec.businessType, 'landing')
-    assert.equal(payload.runtime.business.kind, 'website')
-    assert.equal(payload.project.kind, 'website')
+    assert.equal(payload.runtime.business.kind, 'landing')
+    assert.equal(payload.project.kind, 'landing')
     assert.equal(planProductionApp({ appType: spec.businessType, intent: 'Launch my website' }).appType, 'landing')
   })
 

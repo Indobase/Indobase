@@ -141,7 +141,10 @@ function inferBusinessType(intent: string): BusinessSpec['businessType'] {
   if (/\b(build|launch|create|make)\b.{0,48}\b(?:an?\s+)?(?:app|application|platform|software)\b/.test(q)) {
     return 'saas'
   }
-  if (/\b(landing|marketing site|website for)\b/.test(q) && !/\b(sell)\b/.test(q)) {
+  if (
+    /\b(landing(?:\s+page)?|marketing site|brochure|portfolio|\bwebsite\b)\b/.test(q) &&
+    !/\b(sell|shop|store|checkout|cart)\b/.test(q)
+  ) {
     return 'landing'
   }
   return 'ecommerce'

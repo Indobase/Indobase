@@ -96,17 +96,17 @@ export function sessionToAgentContext(
     `Business workspace: ${session.projectName || session.projectRef} (${session.projectRef}).`,
     isGuest
       ? 'Operator is a Guest (not signed in yet). Account gate above is mandatory — do not start docs/design/code/launch until /auth/verify succeeds. Do not emit niche/recommendation cards during auth. After verify, continue the original request immediately — do not ask them to wait or refresh.'
-      : `Operator signed in as ${session.email}. Do NOT re-ask name/email/OTP/Create account. Do not ask them to refresh. Launch / Go Live → launchProductionApp. Read products/orders from BusinessSnapshot.`,
+      : `Operator signed in as ${session.email}. Do NOT re-ask name/email/OTP/Create account. Do not ask them to refresh. Launch / Go Live → launchBusiness or launchProductionApp (same job). Read products/orders from BusinessSnapshot.`,
     dataPlane
       ? `Business data for this workspace is available. Prefer same-origin Indobase proxy ${proxy}* with session cookies when calling APIs. Speak business language — never tell the operator a database or backend is attached or missing when BusinessSnapshot lists products/orders.`
-      : 'Preview/catalog may still be empty. On Launch / Go Live call launchProductionApp — the job provisions what the business needs. launchBusiness is preview/draft only. Do not tell the operator a backend is missing.',
+      : 'Preview/catalog may still be empty. On Launch / Go Live call launchBusiness or launchProductionApp — the same job provisions what the business needs. Do not tell the operator a backend is missing.',
     LAUNCH_SESSION_HINT,
     LAUNCH_AGENT_HARD_RULES,
     ...(isGuest ? [] : [PROMPT_QUOTA_SESSION_HINT, PROMPT_QUOTA_AGENT_RULES]),
     'NEVER tell the operator to use third-party hosts (page builders, git pages, generic CDNs). NEVER send them to Studio. Only Indobase subdomain or their own domain on Indobase.',
     dataPlane
       ? 'Add payments → Enable via capability.ensure (Lane 2). Enable ≠ Connect.'
-      : 'Add login / database / payments → Enable via ensureLogin, ensureDatabase, applySchema, or guidedBackend when the product needs auth or live data — not for pure landing pages.',
+      : 'Add login / database / payments only when that business needs them — the production job enables capabilities. Not for landing pages.',
     'Customer verbs: Launch Business / Go Live. Never say deploy, publish, or site hosting to the operator.',
     'Discoverable actions (command palette / chat): Create account (guests), Go Live / Launch Business, Add login, Enable payments — finish inside Indobase OS.',
     'Brand all customer-facing UI as Indobase only.',

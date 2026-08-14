@@ -125,6 +125,7 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /Journey state \(session\)/)
     assert.match(payload.agent_hint, /North star \(HARD\)/)
     assert.match(payload.agent_hint, /Preview policy/)
+    assert.doesNotMatch(payload.agent_hint, /launchBusiness is preview\/draft only/)
     assert.match(payload.agent_hint, /Journey next_action chip/)
     assert.match(payload.agent_hint, /Catalog: not ready/)
     assert.match(payload.agent_hint, /productionChecklist/)
@@ -292,6 +293,27 @@ describe('session-payload', () => {
     assert.equal(payload.runtime.business.kind, 'saas')
     assert.equal(payload.runtime.spec?.businessName, 'TutorDesk')
     assert.notEqual(payload.runtime.spec?.businessName?.toLowerCase(), 'your business')
+    clearBusinessSpecsForTests()
+  })
+
+  it('landing BusinessSpec uses website journey and omits store ladder', () => {
+    clearBusinessSpecsForTests()
+    rememberBusinessSpec('proj_abc', inferBusinessSpec('Build a website called Harbor Studio'))
+    const payload = buildSessionApiPayload({
+      session: signedIn,
+      agentHint: 'hint',
+      generation: { schemaVersion: 1 },
+      agentRuntimeConfigured: true,
+      agentRuntimeUrl: 'http://127.0.0.1:8787',
+      osProxyPath: '/os/app/',
+      indobaseProxyPath: '/api/indobase/proxy/',
+    })
+    assert.equal(payload.project.kind, 'landing')
+    assert.equal(payload.runtime.business.kind, 'landing')
+    assert.equal(payload.runtime.spec?.businessType, 'landing')
+    assert.doesNotMatch(payload.agent_hint, /Default store ladder/)
+    assert.doesNotMatch(payload.agent_hint, /Catalog: not ready/)
+    assert.match(payload.agent_hint, /landing/)
     clearBusinessSpecsForTests()
   })
 })

@@ -495,4 +495,40 @@ describe('production launch job pipeline', () => {
     assert.equal(result.job.frozenArtifactHash, result.job.publishedArtifactHash)
     assert.match(result.job.html || '', /Midnight tutoring/)
   })
+
+  it('publishes the frozen landing preview HTML instead of replacing the edited headline', async () => {
+    const frozen = `<html><body>
+      <h1>Harbor at midnight</h1>
+      <p>A studio website.</p>
+      <a href="/privacy">Privacy</a>
+    </body></html>`
+    const result = await executeProductionLaunchJob(
+      session,
+      {
+        intent: 'Build a website called Harbor Studio',
+        appType: 'landing',
+        brand: 'Harbor Studio',
+        html: frozen,
+      },
+      {
+        launch: async () => ({
+          ok: true,
+          status: 'published',
+          url: 'https://harbor.sites.indobase.in',
+          message: 'published',
+          lane: 'static',
+          claim_live: true,
+          tool: 'launchBusiness',
+        }),
+        smoke: async () => ({ ok: true, message: 'ok' }),
+      },
+    )
+    assert.equal(result.ok, true)
+    assert.equal(result.job.status, 'live')
+    assert.equal(result.job.appType, 'landing')
+    assert.ok(result.job.frozenArtifactHash)
+    assert.equal(result.job.frozenArtifactHash, result.job.publishedArtifactHash)
+    assert.match(result.job.html || '', /Harbor at midnight/)
+    assert.doesNotMatch(result.job.html || '', /add to cart|indobase\.commerce/i)
+  })
 })

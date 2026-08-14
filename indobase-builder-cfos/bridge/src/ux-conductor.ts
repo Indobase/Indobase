@@ -9,6 +9,7 @@ export type BusinessAppKind =
   | 'store'
   | 'app'
   | 'website'
+  | 'landing'
   | 'booking'
   | 'ordering'
   | 'agency'
@@ -21,6 +22,10 @@ export function isAppJourneyKind(kind?: BusinessAppKind | null): boolean {
 
 export function isStoreJourneyKind(kind?: BusinessAppKind | null): boolean {
   return kind === 'store' || kind === 'ecommerce' || kind === 'ordering'
+}
+
+export function isWebsiteJourneyKind(kind?: BusinessAppKind | null): boolean {
+  return kind === 'website' || kind === 'landing' || kind === 'agency'
 }
 
 export type HomeIntent = {
@@ -164,7 +169,7 @@ export type UxAction = {
 
 export function businessNoun(kind: BusinessAppKind = 'store'): string {
   if (isAppJourneyKind(kind)) return 'app'
-  if (kind === 'website' || kind === 'agency') return 'website'
+  if (isWebsiteJourneyKind(kind)) return 'website'
   return 'store'
 }
 
@@ -172,14 +177,14 @@ export function businessNoun(kind: BusinessAppKind = 'store'): string {
 export function appTypeToKind(appType?: string | null): BusinessAppKind {
   const t = (appType || '').toLowerCase()
   if (t === 'saas' || t === 'app') return 'saas'
-  if (t === 'landing' || t === 'website') return 'website'
+  if (t === 'landing' || t === 'website') return 'landing'
   if (t === 'ecommerce' || t === 'store' || t === 'shop') return 'ecommerce'
   return 'store'
 }
 
 export function jobTitlesForKind(kind: BusinessAppKind = 'store'): Record<string, string> {
   if (isAppJourneyKind(kind)) return SAAS_JOB_TITLES
-  if (kind === 'website' || kind === 'agency') return WEBSITE_JOB_TITLES
+  if (isWebsiteJourneyKind(kind)) return WEBSITE_JOB_TITLES
   return STORE_JOB_TITLES
 }
 
@@ -191,7 +196,7 @@ export function businessJobStageTitle(id: string, appType?: string | null): stri
 export function businessJourneyStageLabel(id: string, kind?: BusinessAppKind): string {
   if (id === 'backend') {
     if (isAppJourneyKind(kind)) return 'App'
-    if (kind === 'website' || kind === 'agency') return 'Site'
+    if (isWebsiteJourneyKind(kind)) return 'Site'
     return 'Store'
   }
   return JOURNEY_STAGE_LABELS[id as keyof typeof JOURNEY_STAGE_LABELS] || id
@@ -301,6 +306,14 @@ export type BusinessReadinessItem = {
 export function businessReadiness(flags: UxJourneyFlags): BusinessReadinessItem[] {
   const live = flags.live
   const store = flags.backendReady
+  const kind = flags.appKind
+  if (isWebsiteJourneyKind(kind)) {
+    return [
+      { id: 'website', label: 'Website', status: live ? 'ready' : 'pending' },
+      { id: 'content', label: 'Content', status: live ? 'ready' : 'pending' },
+      { id: 'security', label: 'Security checks', status: live ? 'ready' : 'pending' },
+    ]
+  }
   return [
     { id: 'storefront', label: 'Storefront', status: live || store ? 'ready' : 'pending' },
     { id: 'products', label: 'Products', status: store ? 'ready' : 'pending' },
@@ -371,7 +384,7 @@ export function projectCapabilities(input: {
     found.add('data')
     found.add('activity')
     found.add('storefront')
-  } else if (kind === 'website' || kind === 'agency') {
+  } else if (isWebsiteJourneyKind(kind)) {
     found.add('storefront')
     found.add('content')
     found.add('leads')
@@ -413,7 +426,7 @@ export function controlCenterNav(
     if (has('customers')) nav.push({ id: 'customers', label: 'Customers', capability: 'customers' })
     if (has('services')) nav.push({ id: 'services', label: 'Services', capability: 'services' })
     if (has('calendar')) nav.push({ id: 'calendar', label: 'Calendar', capability: 'calendar' })
-  } else if (kind === 'website' || kind === 'agency') {
+  } else if (isWebsiteJourneyKind(kind)) {
     nav.push({ id: 'website', label: 'Website', capability: 'storefront' })
     if (has('content')) nav.push({ id: 'content', label: 'Content', capability: 'content' })
     if (has('leads')) nav.push({ id: 'leads', label: 'Leads', capability: 'leads' })

@@ -22,7 +22,7 @@ import { autoWireLaunchArtifacts } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
 import { getBusinessSpec, inferBusinessSpec } from './ux/business-spec.js'
-import { ensureEcommerceStorefrontFiles, ensureSaasAppFiles } from './ux/preview-artifact.js'
+import { ensureEcommerceStorefrontFiles, ensureLandingAppFiles, ensureSaasAppFiles } from './ux/preview-artifact.js'
 import { rememberLivePublishJob } from './production-launch/job-store.js'
 import {
   applyLaunchGateToTaskGraph,
@@ -160,8 +160,27 @@ export async function executeLaunchBusinessTool(
     })
     launchHtml = built.html
     launchFiles = built.files
+  } else if (
+    spec.businessType === 'landing' ||
+    effectiveAppType === 'landing' ||
+    input.app_type === 'landing' ||
+    input.app_type === 'website'
+  ) {
+    const built = ensureLandingAppFiles({
+      spec: { ...spec, businessType: 'landing' },
+      html: launchHtml,
+      files: launchFiles,
+    })
+    launchHtml = built.html
+    launchFiles = built.files
   }
-  if (defaults?.backend) {
+  if (
+    defaults?.backend &&
+    spec.businessType !== 'landing' &&
+    effectiveAppType !== 'landing' &&
+    input.app_type !== 'landing' &&
+    input.app_type !== 'website'
+  ) {
     const looksShop = /add to cart|storefront|product grid|checkout|inventory/i.test(
       `${launchHtml || ''}${JSON.stringify(launchFiles || {})}`,
     )

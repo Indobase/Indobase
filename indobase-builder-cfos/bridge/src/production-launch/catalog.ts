@@ -37,9 +37,9 @@ Do **not** assemble production yourself. Call **launchProductionApp** for Launch
 3. Quote job.jobId + stages. ONLY claim a live URL when the job returns status=live and claim_live=true.
 4. If status=awaiting_generate: POST the same jobId with html/files.
 5. If status=blocked: say what the customer cannot do yet and retry the same jobId (max 3). Never invent a URL.
-6. Draft/preview (production:false) may still use launchBusiness. Production Go Live is this job.
+6. launchBusiness without production:false runs this same job. production:false is draft preview only.
 7. The job provisions catalog and commerce when the operator asked for a store. Do not pick other tools.
-8. claim_production_ready comes from job evidence after LIVE — never invent it.
+8. claim_production_ready comes from job evidence after LIVE — never invent it. Claim live only from BusinessRuntimeState.
 `.trim()
 
 export function launchProductionAppToolCatalog() {

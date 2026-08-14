@@ -103,7 +103,7 @@ Chips must match `/api/session` journey flags — never invent a parallel ladder
 
 After the first HTML/files exist for a landing or store UI:
 
-- Prefer **launchProductionApp** for LIVE (`*.sites.indobase.in`). `launchBusiness` is preview/draft only (`production:false`).
+- Prefer **launchBusiness** or **launchProductionApp** for LIVE (`*.sites.indobase.in`). They run the same production job. `production:false` on launchBusiness is draft preview only.
 - **Ecommerce storefront:** only **`window.indobase.commerce`** (products / cart / checkout / orders / **customer**) — **never** PocketBase order creates, client prices, or stock writes. Checkout is `POST /api/os/commerce/checkout` (server prices + reserves stock). Customer identity is the same ABI (`customer.startOtp` / `verifyOtp` / `orders.list`) — **do not add a new agent tool**. Browse/cart/checkout stay anonymous; OTP is the only proof that may claim guest orders (CUSTOMER-007). Do not invent a claim tool. The job binds the managed storefront.
 - **V1.1 session constraint:** localStorage JWT is an **accepted release constraint** of the static-site ABI, **not** the target security architecture. Backlog (do not implement in V1.1): HttpOnly + Secure + SameSite cookies, CSRF strategy, CSP hardening, XSS regression suite.
 - **V1.2 payments (FROZEN):** CheckoutService owns the payment **state machine**. Validated on single-instance `.249` topology — **not production-certified**. Do **not** add refunds, subscriptions, coupons, extra gateways, payment UI, or a Razorpay/Stripe agent tool. Remaining work is Gate 1 (real PSP-signed webhook) and Gate 2 (distributed CAS). An in-process lock is not a distributed primitive.
@@ -178,9 +178,9 @@ INDOBASE_CHOICES>>>
 6. **Payments** (when asked) — India vs International → ensure → KYC → **connectGateway** (checkout via Commerce ABI when gateway ready; `wireCheckout` only for non-shop CTAs).
 7. **SEO + legal**; claim production ready ONLY after **productionChecklist** returns `claim_production_ready: true`.
 
-Prefer **launchProductionApp** for SaaS/store/landing production. The job runs guidedBackend internally. Do not pick ensure*/guidedBackend/applySchema for production.
+Prefer **launchBusiness** or **launchProductionApp** for SaaS/store/landing production — same job. The job runs guidedBackend internally. Do not pick ensure*/guidedBackend/applySchema for production.
 
-**Go Live gate:** production is **launchProductionApp**. `launchBusiness` with `production:false` is preview only. Ecommerce non-draft launchBusiness is redirected into the job.
+**Go Live gate:** both tools enqueue **executeProductionLaunchJob**. `launchBusiness` with `production:false` is draft preview only. Claim live only from BusinessRuntimeState.
 
 **Ecommerce release gate:** the job runs ApplicationContract verifiers (`COMMERCE_ABI_BOUND`, `NO_DIRECT_PB_ORDER_WRITE`, `NO_CLIENT_PRICE_AUTHORITY`, `NO_CLIENT_STOCK_AUTHORITY`, schema locks). On `contract_verifier_failed` / `functional_verifier_failed`, quote `failures[].repair_hint` and retry the **same jobId** — never invent a URL.
 
@@ -188,8 +188,8 @@ Prefer **launchProductionApp** for SaaS/store/landing production. The job runs g
 
 | Tool | When |
 |------|------|
-| `launchProductionApp` | Production orchestrator — Launch a store/SaaS/landing, Go Live, take live |
-| `launchBusiness` | Preview/draft only (`production:false`); custom domain after LIVE |
+| `launchProductionApp` | Production orchestrator — Launch a store/SaaS/landing, Go Live, take live (same job as launchBusiness) |
+| `launchBusiness` | Same production job unless `production:false` (draft preview); custom domain after LIVE |
 | `connectGateway` | BYOK payments **after** LIVE |
 | `productionChecklist` | Reads job evidence; do not invent claim_production_ready |
 | `promptQuota` | Free allowance |

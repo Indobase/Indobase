@@ -114,6 +114,61 @@ export function ensureSaasAppFiles(input: {
   }
 }
 
+export function landingAppHasPublishableArtifact(html: string | null | undefined): boolean {
+  const text = html || ''
+  if (!text || storefrontHasCommerceAbi(text) || saasAppHasRuntimeAbi(text)) return false
+  return /<h1[\s>]/i.test(text)
+}
+
+export function ensureLandingAppFiles(input: {
+  spec: BusinessSpec
+  html?: string | null
+  files?: Record<string, string> | null
+}): { html: string; files: Record<string, string>; rebuilt: boolean } {
+  const current = input.files?.['index.html'] || input.html || ''
+  if (landingAppHasPublishableArtifact(current) || (/<h1[\s>]/i.test(current) && !storefrontHasCommerceAbi(current))) {
+    const headline = extractLiveHeadline(current)
+    if (headline && landingAppHasPublishableArtifact(current)) {
+      return {
+        html: current,
+        files: { ...(input.files || {}), 'index.html': current },
+        rebuilt: false,
+      }
+    }
+    if (headline && !storefrontHasCommerceAbi(current) && !saasAppHasRuntimeAbi(current)) {
+      const html = mutateHeroHeadline(
+        buildProductionLandingHtml({ brand: headline, intent: input.spec.sourceIntent }),
+        headline,
+      )
+      return {
+        html,
+        files: {
+          ...(input.files || {}),
+          'index.html': html,
+          'metadata.json': metadataFor({ ...input.spec, businessType: 'landing' }),
+        },
+        rebuilt: true,
+      }
+    }
+  }
+  const html = buildProductionLandingHtml({
+    brand:
+      input.spec.businessName && !isPlaceholderBusinessName(input.spec.businessName)
+        ? input.spec.businessName
+        : 'Your business',
+    intent: input.spec.sourceIntent,
+  })
+  return {
+    html,
+    files: {
+      ...(input.files || {}),
+      'index.html': html,
+      'metadata.json': metadataFor({ ...input.spec, businessType: 'landing' }),
+    },
+    rebuilt: true,
+  }
+}
+
 export function ensureEcommerceStorefrontFiles(input: {
   spec: BusinessSpec
   projectRef: string
