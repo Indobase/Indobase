@@ -201,6 +201,22 @@ function inferVerticalId(intent: string): string {
   return 'unspecified'
 }
 
+/** True when the operator named a brand/vertical/app type — BUILD may run. Vague “ordering site / infer the rest” stays clarify. */
+export function intentReadyToBuild(intent: string): boolean {
+  const q = (intent || '').trim()
+  if (!q) return false
+  if (/infer the rest/i.test(q) && !/vertical\s*=/.test(q)) return false
+  if (/i['’]ll type my specific niche/i.test(q) && !/vertical\s*=/.test(q)) return false
+  if (/vertical\s*=\s*[a-z0-9-]+/i.test(q)) return true
+  if (/this is a landing website/i.test(q) || /this is a saas app/i.test(q)) return true
+  if (/this is an online store/i.test(q) && !/vertical\s*=/.test(q) && !findEcommerceVertical(q)) return false
+  const spec = inferBusinessSpec(q)
+  if (spec.catalog.verticalId && spec.catalog.verticalId !== 'unspecified') return true
+  if (spec.businessType === 'landing' && /\b(landing|marketing site|brochure|website)\b/i.test(q)) return true
+  if (spec.businessType === 'saas' && /\b(saas|crm|tutoring)\b/i.test(q) && inferName(q)) return true
+  return false
+}
+
 export function verticalForSpec(spec: Pick<BusinessSpec, 'catalog'>): AppVertical | null {
   const id = spec.catalog.verticalId
   return ECOMMERCE_VERTICALS.find((v) => v.id === id) || findEcommerceVertical(id)

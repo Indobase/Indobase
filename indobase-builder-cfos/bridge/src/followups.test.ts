@@ -162,7 +162,7 @@ INDOBASE_CHOICES>>>
     assert.equal(resolveFollowUps('What color should the logo be?'), null)
   })
 
-  it('guest_gate stage strips ALL chips including niche CHOICES', () => {
+  it('guest_gate stage strips launch/payments walls but keeps niche CHOICES', () => {
     const wall = `Clarifying guest gate needs
 
 I can create a polished headphone product website. Before I begin, please share:
@@ -199,7 +199,9 @@ INDOBASE_CHOICES>>>
 `
     const resolvedNiche = resolveFollowUps(niche)
     assert.ok(resolvedNiche)
-    assert.equal(resolvedNiche.items.length, 0)
+    assert.ok(resolvedNiche.items.length > 0)
+    const guestKept = filterChipsForJourneyState(resolvedNiche, { isGuest: true })
+    assert.ok(guestKept.items.length > 0)
   })
 
   it('strips chips when agent says I will build then asks name/email/DPDP', () => {
@@ -220,7 +222,7 @@ INDOBASE_CHOICES>>>
     assert.equal(inferChipStage(flower), 'guest_gate')
     const resolved = resolveFollowUps(flower)
     assert.ok(resolved)
-    assert.equal(resolved.items.length, 0)
+    assert.ok(resolved.items.length > 0)
   })
 
   it('does not inject niche CHOICES during guest/auth prose', () => {

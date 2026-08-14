@@ -16,6 +16,8 @@ import {
   readLiveFile,
   writeDraftPreview,
 } from '../static-launch.js'
+import { flattenSafeFiles, isViteReactProject } from '../production-launch/react-project.js'
+import { buildViteReactApp, type ViteBuildRunner } from '../production-launch/vite-build.js'
 import { injectPreviewBoot } from './preview-boot.js'
 import { isPlaceholderBusinessName, verticalForSpec, type BusinessSpec } from './business-spec.js'
 import type { PreviewStatus } from './preview-gate.js'
@@ -479,6 +481,37 @@ export function mutateHeroHeadline(html: string, headline: string): string {
   return html.replace(/(<h1[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${next}$2`)
 }
 
+/** Patch hero in Vite source (tsx) when present so MODIFY recompiles instead of only editing dist HTML. */
+export function applyHeadlineToProjectFiles(
+  files: Record<string, string> | null | undefined,
+  headline: string,
+): { files: Record<string, string>; mutated: boolean } {
+  const tree = flattenSafeFiles(files)
+  if (isViteReactProject(tree)) {
+    const next = { ...tree }
+    let mutated = false
+    const keys = Object.keys(next)
+      .filter((k) => k.startsWith('src/') && /\.tsx?$/.test(k))
+      .sort()
+    const jsxSafe = headline.replace(/[<>]/g, '')
+    for (const key of keys) {
+      const body = next[key]
+      if (!/<h1[\s>]/i.test(body)) continue
+      const updated = body.replace(/(<h1[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${jsxSafe}$2`)
+      if (updated !== body) {
+        next[key] = updated
+        mutated = true
+        break
+      }
+    }
+    return { files: next, mutated }
+  }
+  const html = tree['index.html'] || ''
+  if (!html) return { files: tree, mutated: false }
+  const nextHtml = mutateHeroHeadline(html, headline)
+  return { files: { ...tree, 'index.html': nextHtml }, mutated: nextHtml !== html }
+}
+
 export function hashPreviewFiles(files: Record<string, string>): string {
   const hash = createHash('sha256')
   for (const [rel, content] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
@@ -500,13 +533,69 @@ export async function verifyPreviewReachable(input: {
   return Boolean(file && file.body.length > 32)
 }
 
+async function compileVitePreview(input: {
+  projectRef: string
+  spec: BusinessSpec
+  files: Record<string, string>
+  buildReact?: ViteBuildRunner
+}): Promise<{ ok: true; files: Record<string, string>; html: string } | { ok: false; message: string }> {
+  const compiled = input.buildReact
+    ? await input.buildReact({ cwd: input.projectRef, files: input.files })
+    : await buildViteReactApp(input.files, input.projectRef)
+  if (!compiled.ok) {
+    return {
+      ok: false,
+      message: `react_build_failed: ${compiled.message || 'vite build failed'}`,
+    }
+  }
+  let html = compiled.html
+  if (input.spec.businessType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html)
+  if (input.spec.businessType === 'saas') html = injectSaasRuntimeIntoHtml(html)
+  const hashed = hashPreviewFiles({ ...compiled.files, 'index.html': html })
+  html = injectPreviewBoot(html, {
+    projectRef: input.projectRef,
+    artifactHash: hashed,
+    applicationType: input.spec.businessType,
+  })
+  return { ok: true, html, files: { ...compiled.files, 'index.html': html } }
+}
+
 export async function materializePreview(input: {
   projectRef: string
   spec: BusinessSpec
   probe?: typeof probePreviewHttp
+  files?: Record<string, string> | null
+  buildReact?: ViteBuildRunner
 }): Promise<PreviewBuildResult> {
-  const files = buildPreviewFiles(input.spec, input.projectRef)
-  const html = files['index.html'] || ''
+  const incoming = flattenSafeFiles(input.files)
+  let files: Record<string, string>
+  let html: string
+  if (isViteReactProject(incoming)) {
+    const compiled = await compileVitePreview({
+      projectRef: input.projectRef,
+      spec: input.spec,
+      files: incoming,
+      buildReact: input.buildReact,
+    })
+    if (!compiled.ok) {
+      return {
+        ok: false,
+        status: 'failed',
+        url: null,
+        artifactRef: null,
+        contentHash: null,
+        httpOk: false,
+        files: incoming,
+        html: incoming['index.html'] || '',
+        message: compiled.message,
+      }
+    }
+    files = compiled.files
+    html = compiled.html
+  } else {
+    files = buildPreviewFiles(input.spec, input.projectRef)
+    html = files['index.html'] || ''
+  }
   if (!html.includes('<html') && !html.includes('<!DOCTYPE')) {
     return {
       ok: false,

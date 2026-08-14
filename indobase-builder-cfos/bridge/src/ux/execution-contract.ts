@@ -26,6 +26,7 @@ import {
   getBusinessSpec,
   inferBusinessSpec,
   inferName,
+  intentReadyToBuild,
   isPlaceholderBusinessName,
   pickBusinessName,
   rememberBusinessSpec,
@@ -35,6 +36,13 @@ import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotS
 import { type probePreviewHttp, readLiveFile } from '../static-launch.js'
 import { createLiveProbeHttp } from './runtime-probes.js'
 import { classifyStoreCommand, looksLikeStoreCommand, type StoreCommandDeps, type StoreCommandResult } from './store-commands.js'
+import {
+  APP_TYPE_FOLLOWUPS,
+  APP_TYPE_TITLE,
+  ECOMMERCE_NICHE_FOLLOWUPS,
+  ECOMMERCE_NICHE_TITLE,
+  formatFollowUpsBlock,
+} from '../followups.js'
 import {
   emptyPersistedRuntime,
   getWorkspaceRuntime,
@@ -142,6 +150,32 @@ function looksLikeAuthNoise(text: string): boolean {
   return false
 }
 
+function looksLikeStoreAsk(text: string): boolean {
+  const q = (text || '').toLowerCase()
+  return /\b(store|shop|ecommerce|order(?:ing)?|checkout|cart|sell|pay)\b/.test(q)
+}
+
+function clarifyKindForMessage(text: string): 'niche' | 'app_type' | null {
+  if (intentReadyToBuild(text)) return null
+  if (looksLikeStoreAsk(text) || looksLikeCreateBusiness(text)) {
+    return looksLikeStoreAsk(text) ? 'niche' : 'app_type'
+  }
+  return 'app_type'
+}
+
+function clarifyOperatorMessage(kind: 'niche' | 'app_type', accountPrefix?: string): string {
+  const cards =
+    kind === 'niche'
+      ? formatFollowUpsBlock(ECOMMERCE_NICHE_TITLE, ECOMMERCE_NICHE_FOLLOWUPS)
+      : formatFollowUpsBlock(APP_TYPE_TITLE, APP_TYPE_FOLLOWUPS)
+  const ask =
+    kind === 'niche'
+      ? 'What will your store sell? Pick a card and I will build the preview.'
+      : 'What kind of web app is this? Pick a card and I will start building.'
+  const prefix = (accountPrefix || '').trim()
+  return prefix ? `${prefix}\n\n${ask}\n\n${cards}` : `${ask}\n\n${cards}`
+}
+
 function looksLikeCreateBusiness(text: string): boolean {
   const q = text.toLowerCase()
   if (looksLikeStoreCommand(text)) return false
@@ -164,6 +198,8 @@ function looksLikeOperateQuestion(text: string): boolean {
 function looksLikeGoLive(text: string): boolean {
   const q = text.toLowerCase()
   if (/\blaunch a\b/.test(q)) return false
+  if (/when the preview is ready/.test(q)) return false
+  if (/this is an online store/.test(q) && /preview is ready/.test(q)) return false
   return (
     /\b(go live|take live|publish (?:this|it|my)|launch my (?:store|shop|site|website|landing|business|app)|launch store|launch this|launchproductionapp|\/api\/os\/apps\/launch)\b/.test(
       q,
@@ -271,12 +307,11 @@ export async function rehydrateWorkspaceRuntime(
     null
   const previewUrl =
     existingEmbed ||
-    (session.projectRef ? `/live/${session.projectRef}/` : launch?.previewUrl || null)
+    (artifactHtml && session.projectRef ? `/live/${session.projectRef}/` : launch?.previewUrl || null)
   const durablePreview =
     Boolean(launch?.previewReady) ||
     Boolean(job && (job.status === 'live' || job.html || job.files?.['index.html'])) ||
-    Boolean(artifactHtml) ||
-    Boolean(previewUrl)
+    Boolean(artifactHtml)
   if (runtime.preview.status !== 'ready' && durablePreview) {
     const probed = runtime.preview.httpOk
     runtime = {
@@ -557,6 +592,13 @@ function composeAgentContext(result: {
     if (result.operatorMessage) {
       lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
     }
+  } else if (result.turnClass === 'other' && result.intent === 'create_business') {
+    lines.push(
+      'OWNER=clarify. Do not build, invent a brand (Circuit Nest), or go LIVE. Wait for the operator to pick a recommendation card.',
+    )
+    if (result.operatorMessage) {
+      lines.push(`REPLY_CONTRACT: ${result.operatorMessage}`)
+    }
   } else if (result.operatorMessage) {
     lines.push(
       'OWNER=none. Answer from BusinessRuntimeState. Do not rebuild unless the operator asks to build, edit, or go live.',
@@ -658,7 +700,10 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       rememberPendingIntentForSession(session, message)
     }
     const businessRuntime = toSessionRuntime(session, runtime, input.snapshot)
-    const operatorMessage = 'Finish account setup first. I already have your request.'
+    const kind = clarifyKindForMessage(message || peekPendingIntent(session.projectRef) || '')
+    const operatorMessage = kind
+      ? clarifyOperatorMessage(kind, 'Finish account setup first. I already have your request.')
+      : 'Finish account setup first. I already have your request.'
     return {
       ok: true,
       intent: 'other',
@@ -691,10 +736,44 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     (!message || looksLikeAuthNoise(message)) && pending ? pending : message || pending || ''
   const specSource =
     pending && looksLikeCreateBusiness(pending)
-      ? pending
+      ? [pending, message || effectiveMessage].filter(Boolean).join('\n')
       : [pending, message || effectiveMessage].filter(Boolean).join('\n') || effectiveMessage
   const intent = classifyOperatorIntent(effectiveMessage, runtime)
   const classifiedStore = classifyStoreCommand(effectiveMessage || message)
+
+  const previewAlready = previewIsReadyForLaunch(runtime)
+  const readyToBuild = previewAlready || intentReadyToBuild(specSource) || intentReadyToBuild(effectiveMessage)
+  if (
+    !previewAlready &&
+    !readyToBuild &&
+    (intent === 'create_business' ||
+      intent === 'launch_production' ||
+      looksLikeCreateBusiness(specSource) ||
+      looksLikeCreateBusiness(effectiveMessage))
+  ) {
+    rememberPendingIntentForSession(session, specSource || effectiveMessage)
+    const kind = clarifyKindForMessage(specSource || effectiveMessage) || 'niche'
+    const operatorMessage = clarifyOperatorMessage(kind)
+    const businessRuntime = toSessionRuntime(session, runtime, input.snapshot)
+    return {
+      ok: true,
+      intent: 'create_business',
+      turnClass: 'other',
+      spec: runtime.spec,
+      runtime,
+      businessRuntime,
+      recovered: false,
+      agentContext: composeAgentContext({
+        intent: 'create_business',
+        turnClass: 'other',
+        spec: runtime.spec,
+        runtime,
+        businessRuntime,
+        operatorMessage,
+      }),
+      operatorMessage,
+    }
+  }
 
   let launch: ProductionLaunchExecuteResult | null = null
   let recovered = false

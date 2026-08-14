@@ -10,10 +10,11 @@ import {
   specIdentityFingerprint,
   type BusinessSpec,
 } from '../business-spec.js'
+import { getLatestProductionLaunchJob } from '../../production-launch/index.js'
+import { flattenSafeFiles, isViteReactProject } from '../../production-launch/react-project.js'
 import { materializePreview } from '../preview-artifact.js'
 import { rememberArtifact, currentArtifact } from '../artifact-store.js'
 import { getApplicationLifecycle, patchApplicationLifecycle } from '../lifecycle-store.js'
-import { sealBusinessSpec } from '../business-spec.js'
 import {
   appendRuntimeEvent,
   getWorkspaceRuntime,
@@ -134,10 +135,22 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
   })
   markStepStatus(plan, PLAN_STEP.preview, 'running')
 
-  let built = await materializePreview({ projectRef: session.projectRef, spec, probe: ctx.probe })
+  const job = getLatestProductionLaunchJob(session.projectRef)
+  const candidateFiles = flattenSafeFiles({
+    ...(job?.files || {}),
+    ...(existing?.artifactFiles || {}),
+  })
+  const previewInput = {
+    projectRef: session.projectRef,
+    spec,
+    probe: ctx.probe,
+    files: Object.keys(candidateFiles).length ? candidateFiles : undefined,
+    buildReact: ctx.launchDeps?.buildReact,
+  }
+  let built = await materializePreview(previewInput)
   let recovered = false
   if (!built.ok) {
-    built = await materializePreview({ projectRef: session.projectRef, spec, probe: ctx.probe })
+    built = await materializePreview(previewInput)
     recovered = built.ok
     appendRuntimeEvent(session.projectRef, {
       kind: 'runtime.repair',
@@ -157,7 +170,9 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
       httpOk: built.httpOk,
     },
     artifactHtml: built.html,
-    artifactFiles: built.files,
+    artifactFiles: isViteReactProject(candidateFiles)
+      ? { ...candidateFiles, ...built.files }
+      : built.files,
     lastCommandId: previewCmd.id,
   })
   if (built.ok && built.files) {

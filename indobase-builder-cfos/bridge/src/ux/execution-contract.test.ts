@@ -914,6 +914,41 @@ describe('FTU execution contract A–Q', () => {
     assert.doesNotMatch(refused, /truthfully|launchBusiness/i)
   })
 
+  it('vague ordering-site ask shows niche CHOICES instead of inventing a brand', async () => {
+    const vague = 'I want to launch an ordering site. Infer the rest and start building'
+    const turn = await applyOperatorIntent({
+      session: { ...session, projectRef: 'vagueorder01' },
+      message: vague,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(turn.turnClass, 'other')
+    assert.notEqual(turn.runtime.preview.status, 'ready')
+    assert.match(turn.operatorMessage, /What will your store sell/)
+    assert.match(turn.operatorMessage, /INDOBASE_CHOICES|INDOBASE_FOLLOWUPS/)
+    assert.doesNotMatch(turn.operatorMessage, /Circuit Nest/i)
+  })
+
+  it('niche card after a vague ask starts BUILD', async () => {
+    const vagueSess: Session = { ...session, projectRef: 'nichepick01aa' }
+    await applyOperatorIntent({
+      session: vagueSess,
+      message: 'I want to launch an ordering site. Infer the rest and start building',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    const built = await applyOperatorIntent({
+      session: vagueSess,
+      message:
+        'Niche Apparel — invent brand + aesthetic, build a preview storefront with localStorage cart (vertical=apparel).',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(built.turnClass, 'build')
+    assert.equal(built.spec?.catalog.verticalId, 'apparel')
+    assert.notEqual(built.spec?.businessName, 'Circuit Nest')
+  })
+
   it('first complete-shop ask stays BUILD and does not skip to LIVE', async () => {
     const turn = await applyOperatorIntent({
       session: { ...session, projectRef: 'buildshopaa11bb' },

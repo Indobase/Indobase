@@ -142,7 +142,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   } | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const view = useMemo(() => workspaceViewModel(snap), [snap])
+  const gadgetPreview = useGadgetPreviewPane(view, snap)
   const showControl = view.showControlCenter && pane === 'control'
+  const showChromeAside = showControl || (!gadgetPreview && view.state === 'needs_attention')
 
   const refresh = useCallback(() => {
     setSnap(readSnapshot())
@@ -217,7 +219,6 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
 
   useEffect(() => {
     if (view.showControlCenter) setPane('control')
-    else setPane('preview')
   }, [view.showControlCenter])
 
   const onPickRef = useRef(onPick)
@@ -287,7 +288,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   }, [])
 
   const previewSrc = withEditQuery(
-    embedPreviewSrc(readProjectRef(), view.previewUrl, view.liveUrl),
+    gadgetPreview || !showChromeAside
+      ? null
+      : embedPreviewSrc(readProjectRef(), view.previewUrl, view.liveUrl),
   )
 
   useEffect(() => {
@@ -298,6 +301,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
 
   useEffect(() => {
     const html = document.documentElement
+    if (!showChromeAside) {
+      html.classList.remove('indobase-workspace-split', 'indobase-workspace-preview-open')
+      html.removeAttribute(WORKSPACE_ATTR)
+      return
+    }
     html.classList.add('indobase-workspace-split')
     html.setAttribute(WORKSPACE_ATTR, view.state)
     if (previewOpen) html.classList.add('indobase-workspace-preview-open')
@@ -307,22 +315,21 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
       const el = document.createElement('style')
       el.id = styleId
       el.textContent =
-        '@media (min-width: 960px){html.indobase-workspace-split body{margin-right:min(52vw,820px)!important;}}' +
-        'html.indobase-workspace-split[data-indobase-workspace-chrome]:not([data-indobase-workspace-chrome="empty"]) [class*="NoGadget"],' +
-        'html.indobase-workspace-split[data-indobase-workspace-chrome]:not([data-indobase-workspace-chrome="empty"]) [data-indobase-gadget-empty]{display:none!important;}'
+        '@media (min-width: 960px){html.indobase-workspace-split body{margin-right:min(52vw,820px)!important;}}'
       document.head.appendChild(el)
     }
     return () => {
       html.classList.remove('indobase-workspace-split', 'indobase-workspace-preview-open')
       html.removeAttribute(WORKSPACE_ATTR)
     }
-  }, [previewOpen, view.state])
+  }, [previewOpen, view.state, showChromeAside])
 
   if (typeof document === 'undefined') return null
 
-  const previewSrcReady = Boolean(previewSrc)
-  const showIframe = previewSrcReady && (view.state !== 'empty' || Boolean(view.liveUrl))
-  const overlay = overlayFor(view)
+  const showIframe = false
+  const overlay = showChromeAside ? overlayFor(view) : null
+
+  if (!showChromeAside) return null
 
   return createPortal(
     <div className={styles.portal}>
@@ -333,9 +340,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
           {readUxLabel() && view.state !== 'live' ? (
             <span className={styles.previewBadge}>{readUxLabel()}</span>
           ) : null}
+          {showChromeAside ? (
           <button type="button" className={styles.toggle} onClick={() => setPreviewOpen((v) => !v)}>
-            {previewOpen ? 'Hide preview' : 'Preview'}
+            {previewOpen ? 'Hide panel' : 'Manage'}
           </button>
+          ) : null}
           {view.actions[0] ? (
             <button
               type="button"
@@ -366,9 +375,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
               <button
                 type="button"
                 className={`${styles.action} ${styles.actionSecondary}`}
-                onClick={() => setPane(pane === 'control' ? 'preview' : 'control')}
+                onClick={() => {
+                  if (view.liveUrl) window.open(view.liveUrl, '_blank', 'noopener,noreferrer')
+                }}
               >
-                {pane === 'control' ? 'Storefront' : 'Manage'}
+                Open site
               </button>
             ) : null}
             {view.actions.slice(0, 2).map((a) => (
@@ -399,7 +410,9 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
               projectRef={readProjectRef()}
               disabled={disabled}
               onPick={onPick}
-              onOpenStorefront={() => setPane('preview')}
+              onOpenStorefront={() => {
+                if (view.liveUrl) window.open(view.liveUrl, '_blank', 'noopener,noreferrer')
+              }}
               onScreen={persistScreen}
             />
           ) : showIframe ? (
@@ -537,6 +550,29 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     document.body,
   )
 })
+
+function hostedWebsiteKind(kind: string | null | undefined): boolean {
+  const k = (kind || '').toLowerCase()
+  return (
+    k === 'store' ||
+    k === 'ecommerce' ||
+    k === 'ordering' ||
+    k === 'saas' ||
+    k === 'app' ||
+    k === 'landing' ||
+    k === 'website' ||
+    k === 'booking' ||
+    k === 'agency'
+  )
+}
+
+/** Sites publish to /live and domains — do not iframe them over Gadget. Docs / Insta / Design keep native preview. */
+function useGadgetPreviewPane(view: WorkspaceViewModel, snap: WorkspaceSnapshot): boolean {
+  if (view.state === 'empty') return true
+  if (view.showControlCenter) return false
+  if (hostedWebsiteKind(view.kind) || hostedWebsiteKind(snap.appType)) return false
+  return true
+}
 
 function overlayFor(view: WorkspaceViewModel): {
   title: string

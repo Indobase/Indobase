@@ -36,6 +36,8 @@ import {
   launchProductionAppToolCatalog,
   resolveAuthoritativeAppType,
   summarizeProductionLaunchJob,
+  composeGenerateSkillsHint,
+  blueprintForAppType,
   type ProductionLaunchJob,
 } from './production-launch/index.js'
 import { OS_ACHIEVEMENTS, OS_HOME_HEADLINE, OS_HOME_SUBHEAD } from './os-home.js'
@@ -124,7 +126,7 @@ export function buildJourneyStateAppendix(
   if (store) {
     lines.push('## Default store ladder (when building a shop)')
     lines.push(
-      'After account: infer BusinessSpec from their words (sneakers stay sneakers). Create a reachable preview first. On Launch / Go Live → launchBusiness or launchProductionApp (same job, appType from BusinessSpec). The job owns catalog + commerce. After LIVE: Domain / Add payments / checklist. ≤4 chips.',
+      'After account: if niche/app type is unknown, emit CHOICES cards and wait. Do not invent Circuit Nest. Infer BusinessSpec only after they pick a card or name brand+vertical. Then create a reachable preview. On Launch / Go Live → launchBusiness or launchProductionApp. After LIVE: Domain / Add payments / checklist. ≤4 chips.',
     )
     if (catalogReady) {
       lines.push(
@@ -216,7 +218,9 @@ export function composeAgentHintForSession(
       workspace: { ref: session.projectRef, slug: session.orgSlug },
     })
   const truthHint = composeRuntimeStateHint(runtime)
-  const agentHintBody = `${agentHint}\n\n${journey}\n\n${truthHint}\n\n${screenHint ? `${screenHint}\n\n` : ''}${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
+  const specForHint = truth?.spec || getBusinessSpec(session.projectRef)
+  const generateHint = composeGenerateSkillsHint(specForHint?.businessType || null)
+  const agentHintBody = `${agentHint}\n\n${journey}\n\n${truthHint}\n\n${generateHint}\n\n${screenHint ? `${screenHint}\n\n` : ''}${UX_CONDUCTOR_AGENT_RULES}\n\n${AGENT_SURFACE_HARD_RULES}\n\n${LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES}\n\n${CONNECT_GATEWAY_AGENT_HARD_RULES}\n\n${PRODUCTION_CHECKLIST_AGENT_HARD_RULES}`
   if (!guest) {
     return agentHintBody.startsWith('SIGNED-IN SESSION')
       ? agentHintBody
@@ -454,6 +458,14 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
       production_tool: '/api/os/tools/launchProductionApp',
       rules: LAUNCH_AGENT_HARD_RULES,
       production_rules: LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
+      generate: {
+        mode: 'blueprint_skills',
+        stack: 'vite-react-ts',
+        skills: composeGenerateSkillsHint(spec?.businessType || productionJob?.appType || null),
+        blueprint: spec?.businessType || productionJob?.appType
+          ? blueprintForAppType((spec?.businessType || productionJob?.appType) as 'landing' | 'saas' | 'ecommerce')
+          : null,
+      },
       /** Prefer static lane over Gadget iframe after first HTML exists (HARD — localStorage SecurityError). */
       preview_policy:
         'HARD: launchBusiness and launchProductionApp enqueue executeProductionLaunchJob. production:false is draft preview only. Claim LIVE only from BusinessRuntimeState.live. Never tell the operator to use Gadget iframe preview.',

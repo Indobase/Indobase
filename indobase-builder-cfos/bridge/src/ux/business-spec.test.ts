@@ -5,6 +5,7 @@ import { findEcommerceVertical } from '../vertical-catalog.ts'
 import {
   clearBusinessSpecsForTests,
   inferBusinessSpec,
+  intentReadyToBuild,
   rememberBusinessSpec,
   getBusinessSpec,
 } from './business-spec.ts'
@@ -56,7 +57,7 @@ describe('BusinessSpec', () => {
     assert.equal(getBusinessSpec('proj_glow')?.businessName, 'Glow')
     assert.equal(getBusinessSpec('proj_glow')?.catalog.verticalId, 'beauty')
     clearBusinessSpecsForTests()
-    assert.equal(getBusinessSpec('proj_glow'), null)
+    assert.equal(getBusinessSpec('proj_glow')?.businessName, 'Glow')
   })
 
   it('infers UrbanThread from lowercase, quoted, and markdown called-X', () => {
@@ -111,5 +112,17 @@ describe('BusinessSpec', () => {
     const spec = inferBusinessSpec('Build a website for my robotics company')
     assert.equal(spec.businessType, 'landing')
     assert.match(spec.businessName, /robotics/i)
+  })
+
+  it('intentReadyToBuild waits for a named vertical or brand, not vague ordering-site asks', () => {
+    assert.equal(intentReadyToBuild('Launch a premium sneaker store called UrbanThread'), true)
+    assert.equal(intentReadyToBuild('Build me a complete online shop for apparel'), true)
+    assert.equal(intentReadyToBuild('Niche Apparel — invent brand (vertical=apparel)'), true)
+    assert.equal(
+      intentReadyToBuild('I want to launch an ordering site. Infer the rest and start building'),
+      false,
+    )
+    assert.equal(intentReadyToBuild("I'll type my specific niche"), false)
+    assert.equal(intentReadyToBuild('This is an online store'), false)
   })
 })

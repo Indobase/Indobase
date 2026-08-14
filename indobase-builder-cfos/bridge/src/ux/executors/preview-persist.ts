@@ -4,6 +4,8 @@ import {
   rememberProductionLaunchJob,
   type ProductionLaunchDeps,
 } from '../../production-launch/index.js'
+import { flattenSafeFiles, isViteReactProject } from '../../production-launch/react-project.js'
+import { buildViteReactApp } from '../../production-launch/vite-build.js'
 import { readLiveFile, writeDraftPreview } from '../../static-launch.js'
 import type { PersistedWorkspaceRuntime } from '../runtime-store.js'
 import { appendRuntimeEvent, getWorkspaceRuntime, issueRuntimeCommand, patchWorkspaceRuntime } from '../runtime-store.js'
@@ -31,10 +33,56 @@ export async function persistPreviewHtml(input: {
   launchDeps?: ProductionLaunchDeps
 }): Promise<PersistedWorkspaceRuntime> {
   const { session } = input
+  const incoming = flattenSafeFiles(input.files)
+  const viteSource = isViteReactProject(incoming)
+  let diskFiles = incoming
+  let html = input.html
+  let artifactFiles = incoming
+  if (viteSource) {
+    const compiled = input.launchDeps?.buildReact
+      ? await input.launchDeps.buildReact({ cwd: session.projectRef, files: incoming })
+      : await buildViteReactApp(incoming, session.projectRef)
+    if (!compiled.ok) {
+      const command = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
+        mutation: input.mutation,
+      })
+      patchWorkspaceRuntime(session.projectRef, {
+        preview: {
+          ...input.runtime.preview,
+          status: 'failed',
+          httpOk: false,
+        },
+        artifactHtml: input.html,
+        artifactFiles: incoming,
+        lastCommandId: command.id,
+      })
+      appendRuntimeEvent(session.projectRef, {
+        kind: 'runtime.preview.failed',
+        message: `react_build_failed: ${compiled.message || 'vite build failed'}`,
+        commandId: command.id,
+      })
+      const job = getLatestProductionLaunchJob(session.projectRef)
+      if (job && job.status !== 'live') {
+        rememberProductionLaunchJob({
+          ...job,
+          files: { ...(job.files || {}), ...incoming },
+        })
+      }
+      return getWorkspaceRuntime(session.projectRef) || input.runtime
+    }
+    diskFiles = compiled.files
+    html = compiled.html
+    artifactFiles = incoming
+  } else {
+    diskFiles = { ...incoming }
+    if (html) diskFiles['index.html'] = diskFiles['index.html'] || html
+    artifactFiles = diskFiles
+  }
+
   const written = await writeDraftPreview({
     workspaceRef: session.projectRef,
     title: input.runtime.spec?.businessName || session.projectName || 'Preview',
-    files: input.files,
+    files: diskFiles,
   })
   const command = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
     mutation: input.mutation,
@@ -48,8 +96,8 @@ export async function persistPreviewHtml(input: {
       contentHash: written.contentHash,
       httpOk: true,
     },
-    artifactHtml: input.html,
-    artifactFiles: input.files,
+    artifactHtml: html,
+    artifactFiles,
     lastCommandId: command.id,
   })
   appendRuntimeEvent(session.projectRef, {
@@ -61,8 +109,10 @@ export async function persistPreviewHtml(input: {
   if (job && job.status !== 'live') {
     rememberProductionLaunchJob({
       ...job,
-      html: input.html,
-      files: { ...(job.files || {}), 'index.html': input.html },
+      html,
+      files: viteSource
+        ? { ...(job.files || {}), ...incoming }
+        : { ...(job.files || {}), ...diskFiles },
     })
   }
   return getWorkspaceRuntime(session.projectRef) || input.runtime

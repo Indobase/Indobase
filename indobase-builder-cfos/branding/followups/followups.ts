@@ -296,6 +296,15 @@ export function itemsLookLikeEcommerceNiche(items: readonly FollowUpItem[]): boo
   )
 }
 
+export function itemsLookLikePreBuildChoices(items: readonly FollowUpItem[]): boolean {
+  if (itemsLookLikeEcommerceNiche(items)) return true
+  return items.some((i) =>
+    /what kind of web app|landing \/ marketing|saas \/ web app|ecommerce \/ store|i'll describe it/i.test(
+      `${i.label} ${i.message}`,
+    ),
+  )
+}
+
 export function looksLikeEcommerceNicheAsk(message: string): boolean {
   const text = message.toLowerCase()
   return /what will (your|the) store sell|which vertical|apparel \/ fashion|streetwear|women'?s fashion|handmade|pick a (store )?niche|store category|what (kind of|type of) (products|goods)|digital products \(downloads\)|electronics \/ gadgets|home lifestyle/.test(
@@ -724,6 +733,9 @@ export function filterChipsForJourneyState(
 ): ParsedFollowUps {
   if (!flags) return parsed
   if (flags.isGuest) {
+    if (itemsLookLikePreBuildChoices(parsed.items)) {
+      return { ...parsed, items: dedupeFollowUpItems(parsed.items).slice(0, MAX_VISIBLE_CHIPS) }
+    }
     return { ...parsed, title: '', items: [] }
   }
   let items = [...parsed.items]
@@ -1271,7 +1283,7 @@ export function stripDeadEndChips(parsed: ParsedFollowUps): ParsedFollowUps {
 
 /**
  * Enforce Naive-style timing + brevity.
- * Guest/auth turn: strip ALL chips (no niche cards while signing up).
+ * Guest/auth turn: strip launch/payments walls; keep niche / app-type CHOICES.
  * Building: strip only long canned walls — keep ≤3 personalized launch-ladder chips
  * so the operator can keep advancing to launch.
  */
@@ -1279,7 +1291,7 @@ export function applyStageGate(parsed: ParsedFollowUps, stage: ChipStage = infer
   const cleaned = stripDeadEndChips({ ...parsed, body: stripLeakedCot(parsed.body) })
 
   if (stage === 'guest_gate') {
-    // Auth / DPDP / OTP turn — never show recommendation or niche cards.
+    if (itemsLookLikePreBuildChoices(cleaned.items)) return capChips(cleaned)
     return { body: cleaned.body, title: '', items: [] }
   }
 

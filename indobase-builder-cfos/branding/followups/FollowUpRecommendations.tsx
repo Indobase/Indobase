@@ -5,11 +5,12 @@
 import { memo, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 
 import {
-  inferChipStage,
   parseFollowUps,
   resolveFollowUps,
   cleanOperatorMessage,
   shouldShowLaunchJourneyCard,
+  inferChipStage,
+  itemsLookLikePreBuildChoices,
   type FollowUpItem,
   type ParsedFollowUps,
 } from './followups'
@@ -267,8 +268,8 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
           ? resolveFollowUps(cleaned, journeyOpts)
           : null)
     if (!raw) return null
-    // Defense in depth: hide chips while unsigned-in / auth ask.
     if (isBrowserGuestSession() || inferChipStage(cleaned) === 'guest_gate') {
+      if (itemsLookLikePreBuildChoices(raw.items)) return raw
       return { ...raw, title: '', items: [] as FollowUpItem[] }
     }
     return raw

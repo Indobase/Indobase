@@ -53,6 +53,14 @@ export {
   rejectAgentPrimitiveIfNeeded,
 } from './agent-primitive-guard.js'
 export {
+  blueprintForAppType,
+  composeGenerateSkillsHint,
+  GENERATE_SKILL_ID,
+  type ApplicationBlueprint,
+} from './agent-blueprint.js'
+export { isViteReactProject } from './react-project.js'
+export { buildViteReactApp } from './vite-build.js'
+export {
   deriveProductionChecklist,
   emptyProductionEvidence,
   evidenceFromVerifiers,

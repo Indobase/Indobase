@@ -18,6 +18,9 @@ import {
   buildProductionSaasHtml,
   summarizeProductionLaunchJob,
   launchProductionAppToolCatalog,
+  blueprintForAppType,
+  composeGenerateSkillsHint,
+  isViteReactProject,
 } from './index.ts'
 import { passingEcommerceProbes } from '../ux/runtime-probes.ts'
 
@@ -150,7 +153,9 @@ describe('production launch job pipeline', () => {
     const catalog = launchProductionAppToolCatalog()
     assert.equal(catalog.name, 'launchProductionApp')
     assert.equal(catalog.path, '/api/os/apps/launch')
-    assert.match(catalog.description, /Do not assemble production yourself/)
+    assert.match(catalog.description, /launchProductionApp|\/api\/os\/apps\/launch/)
+    assert.match(catalog.description, /blueprint/)
+    assert.doesNotMatch(catalog.description, /ensureDatabase|guidedBackend/)
   })
 
   it('landing job skips provision and reaches LIVE', async () => {
@@ -674,4 +679,100 @@ describe('production launch job pipeline', () => {
     assert.match(result.job.html || '', /Harbor at midnight/)
     assert.doesNotMatch(result.job.html || '', /add to cart|indobase\.commerce/i)
   })
+
+  it('compiles an agent Vite+React tree instead of cloning a starter', async () => {
+    const viteFiles = {
+      'package.json': JSON.stringify({
+        name: 'site',
+        scripts: { build: 'vite build' },
+        dependencies: { react: '19.0.0', 'react-dom': '19.0.0' },
+        devDependencies: { vite: '6.0.0', '@vitejs/plugin-react': '4.0.0', typescript: '5.0.0' },
+      }),
+      'index.html': '<div id="root"></div><script type="module" src="/src/main.tsx"></script>',
+      'vite.config.ts': "import { defineConfig } from 'vite'\nexport default defineConfig({ base: './' })",
+      'src/main.tsx': "import { createRoot } from 'react-dom/client'\ncreateRoot(document.getElementById('root')!).render(<App/>)",
+      'src/App.tsx': 'export default function App(){return <h1>Flour & Co</h1>}',
+    }
+    let built = false
+    const result = await executeProductionLaunchJob(
+      session,
+      { intent: 'Website for my bakery', appType: 'landing', brand: 'Flour & Co', files: viteFiles },
+      {
+        buildReact: async ({ files }) => {
+          built = true
+          assert.equal(files['src/App.tsx']?.includes('Flour'), true)
+          return {
+            ok: true,
+            html: '<html><body><h1>Flour & Co</h1><script src="./assets/app.js"></script></body></html>',
+            files: {
+              'index.html': '<html><body><h1>Flour & Co</h1></body></html>',
+              'assets/app.js': 'console.log("ok")',
+            },
+            message: 'compiled',
+          }
+        },
+        launch: async (_ref, input) => {
+          assert.match(input.html || '', /Flour & Co/)
+          assert.ok(input.files && 'assets/app.js' in input.files)
+          return {
+            ok: true,
+            status: 'published',
+            url: 'https://flour.sites.indobase.in',
+            message: 'published',
+            lane: 'static',
+            claim_live: true,
+            tool: 'launchBusiness',
+          }
+        },
+        smoke: async () => ({ ok: true, message: 'ok' }),
+      },
+    )
+    assert.equal(built, true)
+    assert.equal(result.ok, true)
+    assert.equal(result.job.status, 'live')
+    assert.match(result.job.html || '', /Flour & Co/)
+  })
+
+  it('blocks LIVE when vite build fails', async () => {
+    const viteFiles = {
+      'package.json': JSON.stringify({
+        scripts: { build: 'vite build' },
+        dependencies: { react: '19.0.0' },
+        devDependencies: { vite: '6.0.0' },
+      }),
+      'index.html': '<div id="root"></div>',
+      'src/App.tsx': 'export default function App(){return null}',
+    }
+    const result = await executeProductionLaunchJob(
+      session,
+      { intent: 'Website for my bakery', appType: 'landing', files: viteFiles },
+      {
+        buildReact: async () => ({ ok: false, message: 'vite build failed: syntax' }),
+      },
+    )
+    assert.equal(result.ok, false)
+    assert.equal(result.claim_live, false)
+    assert.equal(result.job.status, 'blocked')
+    assert.equal(result.job.failures.at(-1)?.code, 'react_build_failed')
+  })
 })
+
+describe('generate blueprint + skills', () => {
+  it('store blueprint is a contract, not a UI kit', () => {
+    const bp = blueprintForAppType('ecommerce')
+    assert.equal(bp.stack, 'vite-react-ts')
+    assert.ok(bp.mustProduce.some((x) => /checkout/i.test(x)))
+    assert.ok(bp.forbidden.join(' ').match(/Next|gadget/i))
+    assert.match(composeGenerateSkillsHint('ecommerce'), /Do not clone a starter/)
+    assert.equal(
+      isViteReactProject({
+        'package.json': '{"scripts":{"build":"vite build"},"dependencies":{"react":"1","vite":"1"}}',
+        'index.html': '<div id="root">',
+        'src/App.tsx': 'export default function App(){return null}',
+      }),
+      true,
+    )
+    assert.equal(isViteReactProject({ 'index.html': '<h1>no</h1>' }), false)
+  })
+})
+

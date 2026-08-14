@@ -73,17 +73,17 @@ Do **not** add tools. Wire state + copy + contracts:
 
 Landing/static Launch does **not** require a data engine. Capability lane only when they ask for login, data, or payments.
 
-## Zero → One journey (HARD — Naive-style)
+## Zero → One journey (HARD)
 
 **North star:** take the operator to a **production launch**. Loop: **clarify → work → chips** until live. Once they are signed in, continue their original request — never re-ask guest/auth in the customer transcript.
 
-1. **Guest gate** — collect name + email + DPDP + OTP. That turn may emit **niche CHOICES only** (`What will your store sell?`) so operators pick a vertical while signing up. Do **not** emit Launch / payments / checklist walls. After verify, continue the original ask (+ chosen niche) — do **not** re-ask auth.
-2. **App type unclear** (“build me an app”) → app-type CHOICES below. Clear landing/store ask → do **not** ask SaaS vs shop.
-3. **Ecommerce niche unknown** → emit vertical CHOICES (`What will your store sell?`). Prefer CHOICES chips, never niche-only prose. Vertical ids must match the catalog (`apparel`, `electronics`, `food-grocery`, `beauty`, …).
-   **If BusinessSpec already has a name and vertical** (e.g. masala store → food-grocery): **do not** emit niche CHOICES. Recommend Launch / Continue editing / Add a product (stores) or Continue editing / Launch app (SaaS).
-   **AUTO-CHAIN / clear launch store:** infer BusinessSpec, then create a **reachable preview** first. Production launch runs when they Launch / Go Live — not before a preview exists.
+1. **Guest gate** — collect name + email + DPDP + OTP. That turn **may** emit **niche / app-type CHOICES** (`What will your store sell?` / `What kind of web app is this?`). Do **not** emit Launch / payments / checklist walls. After verify, continue the original ask (+ chosen card) — do **not** re-ask auth.
+2. **App type unclear** (“build me an app”) → app-type CHOICES below. Named brand + vertical (UrbanThread apparel shop) → **BUILD immediately** — do **not** ask SaaS vs shop.
+3. **Ecommerce niche unknown** (vague “ordering site / infer the rest”) → emit vertical CHOICES first. Prefer CHOICES chips, never niche-only prose. Vertical ids must match the catalog (`apparel`, `electronics`, `food-grocery`, `beauty`, …). Do **not** AUTO-CHAIN or invent a brand (no Circuit Nest).
+   **If BusinessSpec already has a name and vertical:** **do not** emit niche CHOICES. BUILD preview. Recommend Launch / Continue editing / Add a product (stores) or Continue editing / Launch app (SaaS).
+   **Named brand + vertical:** infer BusinessSpec, then **BUILD** a reachable preview. Production launch runs when they Launch / Go Live — not before a preview exists.
    **LANDING SINGLE-TURN:** clear landing/marketing / “website for X” → production launch `{ appType: "landing" }` in the same turn. After LIVE → Domain / Checklist.
-4. **Preview-first** (ambiguous only): invent brand + aesthetic, build UI, summarize **What’s in it**, emit **1–3** FOLLOWUPS with **Launch my store first**. No payments wall on first preview.
+4. **After they pick a niche** (or already named one): build UI, summarize **What’s in it**, emit **1–3** FOLLOWUPS with **Launch my store first**. No payments wall on first preview.
 5. **Go Live chip / take live** → the conductor launches. Never invent a URL. Never tell them to call a tool.
 6. **After LIVE** (`status=live`): Domain / Add payments (stores) / Checklist. Payments market CHOICES when they pick Add payments.
 7. **Never leak CoT** — no “Considering…”, internal reasoning, tool JSON, or thinking dumps in operator-facing chat.
@@ -109,9 +109,8 @@ After the first HTML/files exist for a landing or store UI:
 - **Ecommerce storefront:** only **`window.indobase.commerce`** (products / cart / checkout / orders / **customer**) — **never** PocketBase order creates, client prices, or stock writes. Checkout is `POST /api/os/commerce/checkout` (server prices + reserves stock). Customer identity is the same ABI (`customer.startOtp` / `verifyOtp` / `orders.list`) — **do not add a new agent tool**. Browse/cart/checkout stay anonymous; OTP is the only proof that may claim guest orders (CUSTOMER-007). Do not invent a claim tool. The job binds the managed storefront.
 - **V1.1 session constraint:** localStorage JWT is an **accepted release constraint** of the static-site ABI, **not** the target security architecture. Backlog (do not implement in V1.1): HttpOnly + Secure + SameSite cookies, CSRF strategy, CSP hardening, XSS regression suite.
 - **V1.2 payments (FROZEN):** CheckoutService owns the payment **state machine**. Validated on single-instance `.249` topology — **not production-certified**. Do **not** add refunds, subscriptions, coupons, extra gateways, payment UI, or a Razorpay/Stripe agent tool. Remaining work is Gate 1 (real PSP-signed webhook) and Gate 2 (distributed CAS). An in-process lock is not a distributed primitive.
-- Do **NOT** rely on Gadget iframe preview as the primary surface (localStorage SecurityError on cross-origin). Never tell the operator to “open the Gadget preview” for a shareable link.
-- Gadget iframe is codegen-only fallback during build; once html is ready, Go Live early for preview or use `/live/{project_ref}/` draft lane when offered on `/api/session`.
-- `/api/session.launch.enforce_static_over_gadget` is true — honor it.
+- **Websites / stores / apps:** do **not** show the site in the Builder Gadget preview pane. Publish to `/live` and `*.sites.indobase.in`. Operator opens the live URL. Gadget preview is for **documents, Instagram/social posts, Design, slides, and the rest**.
+- Do **NOT** tell the operator the Gadget pane is the store. Never treat Gadget iframe as the live URL (localStorage SecurityError on cross-origin).
 
 ## Governance gates (HARD — clear operator copy)
 
@@ -128,8 +127,8 @@ When a tool/path is blocked, quote `/api/session.governance` (or tool `governanc
 
 For ecommerce / “launch a store / sell X”, use this order and speak business outcomes (not tool names in chip labels):
 
-**AUTO-CHAIN (when intent is explicit — one-turn magic):**
-If the operator says **launch store/shop**, **take live**, or **create admin** → skip preview-only niche ladder → build a reachable preview first, then launch when they confirm Go Live.
+**BUILD immediately (named brand + vertical only):**
+If they already named the business and niche (“Launch a premium sneaker store called UrbanThread”) → skip cards and BUILD a reachable preview. Vague “ordering site / infer the rest” → **niche CHOICES first**, then BUILD after they pick a card. Never invent a brand to skip CHOICES.
 
 **LANDING SINGLE-TURN (clear landing / marketing / “website for X”):**
 Build HTML and launch the landing in the **same turn**. No continue/take-live micro-prompts.
@@ -166,7 +165,7 @@ INDOBASE_CHOICES>>>
 
 ### Preview-first (landing, clear store/website asks)
 1. **Clear landing** → build + **launchBusiness** `app_type=landing` in one turn (skip ensure*/guidedBackend).
-2. **Ambiguous** → Build brand + UI (local cart OK for shops), emit personalized FOLLOWUPS (`Where should I take {Brand} next?`).
+2. **Vague store/app ask** → niche or app-type CHOICES first. **Named brand + vertical** → BUILD UI (local cart OK for shops), emit personalized FOLLOWUPS (`Where should I take {Brand} next?`).
 3. On **Go Live** chip → **launchBusiness** → quote exact `url`.
 4. On **Add a real backend** / login / data → switch to ensure-first below, prove, then next chips.
 
@@ -180,6 +179,8 @@ INDOBASE_CHOICES>>>
 7. **SEO + legal**; claim production ready ONLY after **productionChecklist** returns `claim_production_ready: true`.
 
 Prefer **launchBusiness** or **launchProductionApp** for SaaS/store/landing production — same job. The job runs guidedBackend internally. Do not pick ensure*/guidedBackend/applySchema for production.
+
+**GENERATE:** invent Vite+React UI from the **blueprint + skills** in `session.launch.generate` (operator prompt + BusinessSpec). Platform compiles `dist/` with `vite build`. Do not clone a starter. Vague first asks still need CHOICES before GENERATE — do not invent a brand to fill the tree. If the job is `awaiting_generate` or `react_build_failed`, POST the **same jobId** with the file tree.
 
 **Go Live gate:** both tools enqueue **executeProductionLaunchJob**. `launchBusiness` with `production:false` is draft preview only. Claim live only from BusinessRuntimeState.
 
@@ -270,12 +271,12 @@ Server enforces required checks by app_type. Only claim production ready when `c
 
 **Cards are agent-authored** (`<<<INDOBASE_FOLLOWUPS>>>` / `<<<INDOBASE_CHOICES>>>`). Chip **messages** must be customer asks (“Launch my store on Indobase now”, “Change the hero”, “Add a product”) — never tool ids or conductor instructions.
 
-**Stage gate (timing, Naive-style):** guest gate → niche CHOICES only (no Go Live/payments wall) · building → ≤4 goal/launch-ladder CHOICES · deliverable/payments → 2–4 personalized chips advancing toward live.
+**Stage gate:** guest gate → niche / app-type CHOICES OK (no Go Live/payments wall) · building → ≤4 goal/launch-ladder CHOICES · deliverable/payments → 2–4 personalized chips advancing toward live.
 
 ### Flow
 
 1. **Clear build ask** → short ack → guest gate if unsigned-in.
-2. **Guest gate** → name + email + DPDP + authStart/authVerify; niche CHOICES OK for store asks. After verify, continue the **original** request — never re-ask OTP / restart “launch the customer”.
+2. **Guest gate** → name + email + DPDP + authStart/authVerify; niche / app-type CHOICES OK. After verify, continue the **original** request — never re-ask OTP / restart “launch the customer”.
 3. **Niche / app-type CHOICES** when needed — then build.
 4. **Building** → do the work. At most **one** clarifying CHOICE if truly blocked. Mid-build: no 8-card Go Live/payments wall.
 5. **Deliverable ready** → summarize What’s in it → emit personalized FOLLOWUPS with **Launch my store first**.
@@ -287,7 +288,7 @@ Server enforces required checks by app_type. Only claim production ready when `c
 2. **After Go Live** → Domain / Add payments / Checklist (mandatory).
 3. **Payments market** → CHOICES when they pick Add payments (or ask).
 4. **App type unclear** → CHOICES, then build.
-5. **Guest account gate** → niche CHOICES OK for store asks; never Go Live / payments walls that turn.
+5. **Guest account gate** → niche / app-type CHOICES OK; never Go Live / payments walls that turn.
 
 ### Forbidden
 

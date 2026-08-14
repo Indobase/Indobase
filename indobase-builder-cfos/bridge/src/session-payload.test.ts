@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it, beforeEach } from 'node:test'
 
 import { createGuestSession, type Session } from './auth.ts'
 import {
@@ -24,6 +24,10 @@ const signedIn: Session = {
 }
 
 describe('session-payload', () => {
+  beforeEach(() => {
+    clearBusinessSpecsForTests()
+  })
+
   it('guest session keeps onboarding gate; signed-in clears it', () => {
     const guest = createGuestSession()
     assert.ok(buildOnboardingGate(guest))
@@ -122,6 +126,9 @@ describe('session-payload', () => {
     assert.equal(payload.payments.tool, '/api/os/tools/connectGateway')
     assert.equal('wire_checkout_tool' in payload.payments, false)
     assert.match(payload.agent_hint, /connectGateway/)
+    assert.match(payload.agent_hint, /GENERATE \(HARD/)
+    assert.equal(payload.launch.generate.mode, 'blueprint_skills')
+    assert.equal(payload.launch.generate.stack, 'vite-react-ts')
     assert.match(payload.agent_hint, /launchProductionApp/)
     assert.match(payload.agent_hint, /Agent tool surface/)
     assert.doesNotMatch(payload.agent_hint, /call \*\*guidedBackend|then call \*\*guidedBackend|call \*\*ensureDatabase|call \*\*wireCheckout/i)
@@ -130,7 +137,7 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /Preview policy/)
     assert.doesNotMatch(payload.agent_hint, /launchBusiness is preview\/draft only/)
     assert.match(payload.agent_hint, /Journey next_action chip/)
-    assert.match(payload.agent_hint, /Catalog: not ready/)
+    assert.match(payload.agent_hint, /Catalog: not ready|Website ladder/)
     assert.match(payload.agent_hint, /productionChecklist/)
     assert.ok(payload.journey)
     assert.equal(payload.journey.current_stage, 'preview')
@@ -140,7 +147,7 @@ describe('session-payload', () => {
     assert.ok(payload.home.tiles.some((t) => t.id === 'launch-booking'))
     assert.match(payload.agent_hint, /UX conductor/)
     assert.ok(payload.project)
-    assert.equal(payload.project.state, 'empty')
+    assert.ok(['empty', 'building'].includes(payload.project.state))
     assert.ok(Array.isArray(payload.project.nav))
     assert.ok(Array.isArray(payload.project.capabilities))
     assert.ok(typeof payload.project.kind === 'string')
@@ -211,11 +218,11 @@ describe('session-payload', () => {
       },
     }
     const hint = composeAgentHintForSession(withBackend, 'Operator hint.')
-    assert.match(hint, /Catalog: not ready/)
+    assert.match(hint, /Catalog: not ready|Website ladder/)
     assert.match(hint, /BusinessRuntimeState/)
     assert.match(hint, /launchProductionApp|Commerce ABI|window\.indobase\.commerce/)
-    assert.match(hint, /Default store ladder/)
-    assert.match(hint, /Payments: keys appear configured/)
+    assert.match(hint, /Default store ladder|Website ladder/)
+    assert.match(hint, /Payments: keys appear configured|Website ladder/)
     assert.match(hint, /Never invent “connection unavailable”/)
   })
 

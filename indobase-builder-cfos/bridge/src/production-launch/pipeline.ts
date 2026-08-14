@@ -38,6 +38,9 @@ import {
 import { planProductionApp } from './application-planner.js'
 import { resolveProductionContract } from './production-contract.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from './shells.js'
+import { blueprintForAppType } from './agent-blueprint.js'
+import { flattenSafeFiles, isViteReactProject } from './react-project.js'
+import { buildViteReactApp, type ViteBuildRunner } from './vite-build.js'
 import {
   MAX_REPAIR_ATTEMPTS,
   buildEmptyStages,
@@ -82,6 +85,7 @@ export type ProductionLaunchDeps = {
   ecommerceProbes?: import('../ux/runtime-probes.js').EcommerceProbeResult
   saasProbes?: import('../ux/runtime-probes.js').SaasProbeResult
   probes?: import('../ux/runtime-probes.js').ProbeHttp
+  buildReact?: ViteBuildRunner
 }
 
 export type ProductionLaunchExecuteResult = {
@@ -283,6 +287,7 @@ export async function executeProductionLaunchJob(
   const launchFn = deps.launch || executeLaunchBusinessTool
   const guidedFn = deps.guided || executeGuidedBackend
   const smokeFn = deps.smoke || smokeLiveUrl
+  const buildReact = deps.buildReact
   const sessionRef = (session.projectRef || '').trim()
   const specBefore = getBusinessSpec(sessionRef)
   const runtimeBefore = getWorkspaceRuntime(sessionRef)
@@ -467,10 +472,38 @@ export async function executeProductionLaunchJob(
     job = await freezeWorkspaceArtifact(session, { ...job, html: job.html })
   }
 
-  // 4. Generate
+  // 4. Generate — Vite+React tree (blueprint+skills) compiles to dist/; else HTML compilers.
   job = patchStage(job, 'generate', { status: 'running', startedAt: nowIso() })
   const spec = getBusinessSpec(session.projectRef) || inferBusinessSpec(job.intent || job.title || '')
-  if (job.frozenArtifactHash && job.html?.trim()) {
+  const candidateFiles = flattenSafeFiles({
+    ...(runtimeBefore?.artifactFiles || {}),
+    ...(job.files || {}),
+  })
+  if (isViteReactProject(candidateFiles)) {
+    const compiled = buildReact
+      ? await buildReact({ cwd: session.projectRef, files: candidateFiles })
+      : await buildViteReactApp(candidateFiles, session.projectRef)
+    if (!compiled.ok) {
+      job = failStage(job, 'generate', {
+        code: 'react_build_failed',
+        severity: 'critical',
+        stage: 'generate',
+        message: compiled.message,
+        repairable: true,
+        repair_hint:
+          'Fix the Vite + React tree against the app-type blueprint (vite build must succeed), then POST the same jobId + files.',
+      })
+      return blocked(job)
+    }
+    let html = compiled.html
+    if (job.appType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html)
+    if (job.appType === 'saas') html = injectSaasRuntimeIntoHtml(html)
+    job = rememberProductionLaunchJob({
+      ...job,
+      html,
+      files: { ...compiled.files, 'index.html': html },
+    })
+  } else if (job.frozenArtifactHash && job.html?.trim()) {
     job = rememberProductionLaunchJob({
       ...job,
       html: job.html,
