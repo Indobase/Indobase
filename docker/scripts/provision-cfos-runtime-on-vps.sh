@@ -45,6 +45,9 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/WorkspaceChrome.module.css" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/BusinessControlCenter.tsx" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/followups/BusinessControlCenter.module.css" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/ExecutionCard.tsx" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/ExecutionCard.module.css" \
+  "${REPO_ROOT}/indobase-builder-cfos/branding/followups/presentation.ts" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/branding/followups/"
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p /opt/indobase-builder-cfos/bridge/src"
 scp "${SSH_OPTS[@]}" \
