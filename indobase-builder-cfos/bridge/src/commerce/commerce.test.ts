@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
+import { Hono } from 'hono'
+
+import { CHECKOUT_CONNECTION_FAILURE } from './customer-copy.ts'
+import { handleCommerceCheckout } from './http.ts'
 import { majorToMinor, minorToMajor, currencyMinorDigits } from './money.ts'
 import { pocketBaseDateTime } from './pb-adapter.ts'
 import { buildCommerceRuntimeJs } from './runtime.ts'
@@ -42,6 +46,31 @@ describe('commerce runtime ABI', () => {
     assert.doesNotMatch(js, /PocketBase/)
     assert.match(js, /variantId/)
     assert.match(js, /I couldn't complete the order yet/)
+  })
+})
+
+describe('commerce checkout HTTP', () => {
+  it('does not 500 when checkout fails (customerFacingCheckoutMessage is imported)', async () => {
+    const app = new Hono()
+    app.post('/api/os/commerce/checkout', handleCommerceCheckout)
+    const res = await app.request('/api/os/commerce/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Indobase-Project-Ref': 'roshebc9c233f2',
+      },
+      body: JSON.stringify({
+        items: [{ productId: 'prod_test', variantId: 'var_test', quantity: 1 }],
+        customer: { email: 'guest@example.com' },
+        idempotencyKey: 'checkout-copy-import-guard',
+      }),
+    })
+    assert.notEqual(res.status, 500)
+    const body = (await res.json()) as { ok?: boolean; message?: string }
+    assert.equal(body.ok, false)
+    assert.equal(body.message, CHECKOUT_CONNECTION_FAILURE)
+    assert.equal(typeof body.message, 'string')
+    assert.doesNotMatch(String(body.message), /customerFacingCheckoutMessage is not defined|ReferenceError/)
   })
 })
 

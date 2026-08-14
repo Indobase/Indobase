@@ -19,6 +19,7 @@ import {
   reservationIsActive,
   sumActiveReservations,
 } from './pb-adapter.js'
+import { CHECKOUT_CONNECTION_FAILURE, customerFacingCheckoutMessage } from './customer-copy.js'
 import { normalizeCustomerEmail } from './customer-identity.js'
 import { resolveCheckoutCustomer } from './customer-service.js'
 import { compareAndApplyPaymentEvent, snapshotFromRecords } from './payment-machine.js'

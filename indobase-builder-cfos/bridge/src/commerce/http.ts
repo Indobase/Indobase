@@ -15,6 +15,7 @@ import { sanitizeAppId } from '../pocketbase/managed.js'
 import { getLatestProductionLaunchJob } from '../production-launch/job-store.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
 import { authorizeControlCenterAccess, resolvePublicCatalogProjectRef, resolveTenantProjectRef } from './control-center-auth.js'
+import { customerFacingCheckoutMessage } from './customer-copy.js'
 import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
