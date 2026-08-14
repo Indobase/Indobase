@@ -67,6 +67,8 @@ describe('agent truth reconciliation', () => {
     assert.match(hint, /sneakers/)
     assert.match(hint, /Apex Runner/)
     assert.match(hint, /#fxeuxgfdcoq8dzs/)
+    assert.match(hint, /payment=pending/)
+    assert.match(hint, /fulfillment=unfulfilled/)
     assert.match(hint, /Priya Shopper/)
     assert.match(hint, /orders \(from BusinessRuntimeState\)/)
     assert.match(hint, /Answer “show latest order”/)

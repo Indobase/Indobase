@@ -96,6 +96,7 @@ export function snapshotFromCommerceRows(
           orderNumber: String(o.orderNumber || o.id || ''),
           status: String(o.status || ''),
           payment_status: String(o.payment_status || o.paymentStatus || ''),
+          fulfillment_status: String(o.fulfillment_status || o.fulfillmentStatus || 'unfulfilled'),
           amount_minor: amount,
           email: String(o.email || ''),
           customer_name: String(o.customer_name || o.customerName || ''),

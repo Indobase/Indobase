@@ -26,6 +26,7 @@ export type BusinessOrder = {
   orderNumber?: string
   status?: string
   paymentStatus?: string
+  fulfillmentStatus?: string
   amountMinor?: number
   email?: string
   customerName?: string

@@ -16,6 +16,7 @@ describe('buildManagedShopAdminHtml', () => {
     assert.match(html, /INDOBASE_COLLECTION_PREFIX/)
     assert.match(html, /INDOBASE_COMMERCE_URL/)
     assert.match(html, /admin\/snapshot/)
+    assert.match(html, /Fulfillment/)
     assert.match(html, /Essential Tee/)
     assert.doesNotMatch(html, /shop_products/)
     assert.doesNotMatch(html, /\/records\?perPage=50&sort=-created_at/)

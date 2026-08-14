@@ -53,6 +53,8 @@ export function buildManagedShopAdminHtml(opts: {
   .status { font-size:12px; padding:2px 8px; border-radius:999px; background:#f3f4f6; }
   .status.test, .status.pending { background:#fef3c7; color:#92400e; }
   .status.paid, .status.completed { background:#ecfdf5; color:#047857; }
+  .status.fulfilled { background:#ecfdf5; color:#047857; }
+  .status.unfulfilled, .status.processing { background:#e0f2fe; color:#075985; }
   #status { font-size:12px; color:var(--muted); margin-top:8px; }
   .banner { background:#ecfdf5; border:1px solid #bbf7d0; color:#065f46; padding:10px 12px; border-radius:8px; font-size:13px; }
   .err { color:#b91c1c; font-size:13px; }
@@ -81,7 +83,7 @@ export function buildManagedShopAdminHtml(opts: {
     </section>
     <section>
       <h2>Orders <a href="#">Recent activity</a></h2>
-      <table id="orders"><thead><tr><th>Customer</th><th>Total</th><th>Status</th></tr></thead><tbody></tbody></table>
+      <table id="orders"><thead><tr><th>Customer</th><th>Total</th><th>Payment</th><th>Fulfillment</th></tr></thead><tbody></tbody></table>
     </section>
   </div>
   <p class="err" id="error" hidden></p>
@@ -103,7 +105,12 @@ function render(){
     ['Revenue',money(orders.reduce((s,o)=>s+orderTotal(o),0),orders[0]&&orders[0].currency||'INR'),'Recorded totals'],
   ].map(x=>'<div class="metric"><label>'+x[0]+'</label><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join('');
   document.querySelector('#products tbody').innerHTML=products.length?products.map(p=>'<tr><td><b>'+(p.name||'')+'</b><div class="muted">'+(p.slug||'')+'</div></td><td>'+money(p.price!=null?p.price:(Number(p.priceMinor||0)/100),p.currency)+'</td><td>'+Number(p.stock||0)+'</td></tr>').join(''):'<tr><td colspan="3" class="muted">No products yet.</td></tr>';
-  document.querySelector('#orders tbody').innerHTML=orders.length?orders.slice(0,20).map(o=>'<tr><td><b>'+(o.email||o.customer_name||'Guest')+'</b><div class="muted">'+(o.id||'')+'</div></td><td>'+money(orderTotal(o),o.currency)+'</td><td><span class="status '+(o.paymentStatus||o.payment_status||o.status||'')+'">'+String(o.paymentStatus||o.payment_status||o.status||'pending').replace(/_/g,' ')+'</span></td></tr>').join(''):'<tr><td colspan="3" class="muted">No orders yet.</td></tr>';
+  document.querySelector('#orders tbody').innerHTML=orders.length?orders.slice(0,20).map(o=>{
+    var pay=String(o.paymentStatus||o.payment_status||'pending');
+    var ful=String(o.fulfillmentStatus||o.fulfillment_status||'unfulfilled');
+    if(pay==='fulfilled') pay='pending';
+    return '<tr><td><b>'+(o.email||o.customer_name||'Guest')+'</b><div class="muted">'+(o.id||'')+'</div></td><td>'+money(orderTotal(o),o.currency)+'</td><td><span class="status '+pay+'">'+pay.replace(/_/g,' ')+'</span></td><td><span class="status '+ful+'">'+ful.replace(/_/g,' ')+'</span></td></tr>';
+  }).join(''):'<tr><td colspan="4" class="muted">No orders yet.</td></tr>';
 }
 async function load(){
   const err=document.querySelector('#error');

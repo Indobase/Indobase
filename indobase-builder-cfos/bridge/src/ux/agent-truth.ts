@@ -25,6 +25,7 @@ export type BusinessSnapshotSummary = {
     orderNumber?: string
     status?: string
     payment_status?: string
+    fulfillment_status?: string
     amount_minor?: number
     email?: string
     customer_name?: string
@@ -69,6 +70,7 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       orderNumber: o.orderNumber || o.id,
       status: o.status,
       paymentStatus: o.payment_status,
+      fulfillmentStatus: o.fulfillment_status,
       amountMinor: o.amount_minor,
       email: o.email,
       customerName: o.customer_name,

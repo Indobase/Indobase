@@ -346,6 +346,7 @@ export async function createOrderRecord(input: {
         customer_name: input.customerName || '',
         status: 'pending',
         payment_status: 'pending',
+        fulfillment_status: 'unfulfilled',
         total: input.amountMinor / 100,
         amount_minor: input.amountMinor,
         subtotal_minor: input.subtotalMinor,

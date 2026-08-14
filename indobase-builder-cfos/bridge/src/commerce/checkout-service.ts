@@ -28,7 +28,12 @@ import type {
   CommerceCheckoutResult,
   PricedLine,
 } from './types.js'
-import { CHECKOUT_CONNECTION_FAILURE, customerFacingCheckoutMessage } from './customer-copy.js'
+import {
+  applyFulfillmentTransition,
+  normalizeFulfillmentStatus,
+  normalizePaymentStatus,
+  type FulfillmentStatus,
+} from '@indobase/platform'
 
 const orderPaymentLocks = new Map<string, Promise<unknown>>()
 
@@ -368,4 +373,60 @@ export async function markOrderFailed(input: {
       message: err instanceof Error ? err.message : 'Mark failed',
     }
   }
+}
+
+export async function markOrderFulfillment(input: {
+  projectRef: string
+  orderId: string
+  fulfillmentStatus: FulfillmentStatus
+}): Promise<{ ok: true; paymentStatus: string; fulfillmentStatus: FulfillmentStatus } | CommerceCheckoutError> {
+  if (!isManagedBackendConfigured()) {
+    return { ok: false, code: 'backend_unavailable', message: 'Backend unavailable' }
+  }
+  try {
+    await ensureCommerceSchema(input.projectRef)
+    const order = await getOrderRecord(input.projectRef, input.orderId)
+    if (!order) {
+      return { ok: false, code: 'invalid_request', message: 'Order not found' }
+    }
+    const current = normalizeFulfillmentStatus(
+      typeof order.fulfillment_status === 'string' ? order.fulfillment_status : null,
+    )
+    const transition = applyFulfillmentTransition(current, input.fulfillmentStatus)
+    if (!transition.ok) {
+      return { ok: false, code: 'invalid_request', message: transition.message }
+    }
+    await patchOrderPayment(input.projectRef, input.orderId, {
+      fulfillment_status: input.fulfillmentStatus,
+    })
+    const paymentStatus = normalizePaymentStatus(
+      typeof order.payment_status === 'string' ? order.payment_status : String(order.status || ''),
+    )
+    return {
+      ok: true,
+      paymentStatus,
+      fulfillmentStatus: input.fulfillmentStatus,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      code: 'checkout_failed',
+      message: err instanceof Error ? err.message : 'Fulfillment update failed',
+    }
+  }
+}
+
+export async function cancelOpenOrder(input: {
+  projectRef: string
+  orderId: string
+}): Promise<{ ok: true } | CommerceCheckoutError> {
+  const failed = await markOrderFailed(input)
+  if (!failed.ok) return failed
+  const fulfillment = await markOrderFulfillment({
+    projectRef: input.projectRef,
+    orderId: input.orderId,
+    fulfillmentStatus: 'cancelled',
+  })
+  if (!fulfillment.ok) return fulfillment
+  return { ok: true }
 }

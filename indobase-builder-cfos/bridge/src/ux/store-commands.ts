@@ -5,7 +5,12 @@
 
 import { createCommand, type Command } from '@indobase/platform'
 import { authorizeControlCenterAccess } from '../commerce/control-center-auth.js'
-import { markOrderFailed, markOrderPaid } from '../commerce/checkout-service.js'
+import {
+  cancelOpenOrder,
+  markOrderFailed,
+  markOrderFulfillment,
+  markOrderPaid,
+} from '../commerce/checkout-service.js'
 import { majorToMinor } from '../commerce/money.js'
 import {
   createCommerceProduct,
@@ -21,6 +26,7 @@ export type StoreCommandKind =
   | 'product.update'
   | 'inventory.update'
   | 'order.status'
+  | 'order.fulfill'
   | 'orders.query'
   | 'catalog.query'
 
@@ -34,7 +40,8 @@ export type ClassifiedStoreCommand = {
   percent?: number
   productHint?: string
   orderHint?: string
-  orderStatus?: 'paid' | 'failed'
+  orderStatus?: 'paid' | 'failed' | 'cancelled'
+  fulfillmentStatus?: 'processing' | 'fulfilled' | 'cancelled'
   query?: 'low-stock' | 'catalog' | 'orders'
 }
 
@@ -62,8 +69,13 @@ export type StoreCommandDeps = {
   updateOrderStatus?: (
     projectRef: string,
     orderId: string,
-    status: 'paid' | 'failed',
-  ) => Promise<{ ok: boolean; message?: string }>
+    status: 'paid' | 'failed' | 'cancelled',
+  ) => Promise<{ ok: boolean; message?: string; paymentStatus?: string; fulfillmentStatus?: string }>
+  updateOrderFulfillment?: (
+    projectRef: string,
+    orderId: string,
+    fulfillmentStatus: 'processing' | 'fulfilled' | 'cancelled',
+  ) => Promise<{ ok: boolean; message?: string; paymentStatus?: string; fulfillmentStatus?: string }>
 }
 
 export type StoreCommandResult = {
@@ -156,10 +168,20 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
     return { kind: 'catalog.query', readOnly: true }
   }
 
-  if (/\bmark\b/.test(q) && /\border\b/.test(q) && /\b(paid|failed|cancelled|fulfilled|fulfill)\b/.test(q)) {
+  if (/\bmark\b/.test(q) && /\border\b/.test(q) && /\b(paid|failed|cancelled|canceled|fulfilled|fulfill|processing)\b/.test(q)) {
     let orderHint = text.match(/\b(?:order|#)\s*([a-z0-9_-]+)/i)?.[1]
     if (!orderHint || /^(as|that|the|this|my|latest)$/i.test(orderHint)) orderHint = 'latest'
-    const orderStatus: 'paid' | 'failed' = /\bfailed|cancelled\b/.test(q) ? 'failed' : 'paid'
+    if (/\b(fulfilled|fulfill|processing)\b/.test(q) && !/\b(paid|failed)\b/.test(q)) {
+      const fulfillmentStatus: 'processing' | 'fulfilled' | 'cancelled' = /\bprocessing\b/.test(q)
+        ? 'processing'
+        : 'fulfilled'
+      return { kind: 'order.fulfill', readOnly: false, orderHint, fulfillmentStatus }
+    }
+    const orderStatus: 'paid' | 'failed' | 'cancelled' = /\b(cancelled|canceled)\b/.test(q)
+      ? 'cancelled'
+      : /\bfailed\b/.test(q)
+        ? 'failed'
+        : 'paid'
     return { kind: 'order.status', readOnly: false, orderHint, orderStatus }
   }
 
@@ -275,18 +297,37 @@ export const defaultStoreCommandDeps: StoreCommandDeps = {
   updateOrderStatus: async (ref, id, status) => {
     if (status === 'paid') {
       const result = await markOrderPaid({ projectRef: ref, orderId: id })
-      return { ok: result.ok, message: result.ok ? 'paid' : result.message }
+      return { ok: result.ok, message: result.ok ? 'paid' : result.message, paymentStatus: 'paid' }
+    }
+    if (status === 'cancelled') {
+      const result = await cancelOpenOrder({ projectRef: ref, orderId: id })
+      return { ok: result.ok, message: result.ok ? 'cancelled' : result.message, paymentStatus: 'failed', fulfillmentStatus: 'cancelled' }
     }
     const result = await markOrderFailed({ projectRef: ref, orderId: id })
-    return { ok: result.ok, message: result.ok ? 'failed' : result.message }
+    return { ok: result.ok, message: result.ok ? 'failed' : result.message, paymentStatus: 'failed' }
+  },
+  updateOrderFulfillment: async (ref, id, fulfillmentStatus) => {
+    const result = await markOrderFulfillment({ projectRef: ref, orderId: id, fulfillmentStatus })
+    return {
+      ok: result.ok,
+      message: result.ok ? fulfillmentStatus : result.message,
+      paymentStatus: result.ok ? result.paymentStatus : undefined,
+      fulfillmentStatus: result.ok ? result.fulfillmentStatus : undefined,
+    }
   },
 }
 
-export function createMemoryStoreCommandDeps(seed?: Record<string, StoreProductRecord[]>): StoreCommandDeps {
+export function createMemoryStoreCommandDeps(
+  seed?: Record<string, StoreProductRecord[]>,
+  seedOrders?: Record<string, Array<Record<string, unknown>>>,
+): StoreCommandDeps {
   const catalogs = new Map<string, StoreProductRecord[]>()
   const orders = new Map<string, Array<Record<string, unknown>>>()
   for (const [ref, rows] of Object.entries(seed || {})) {
     catalogs.set(ref, rows.map((r) => ({ ...r })))
+  }
+  for (const [ref, rows] of Object.entries(seedOrders || {})) {
+    orders.set(ref, rows.map((r) => ({ ...r })))
   }
   let seq = 1
   return {
@@ -318,9 +359,27 @@ export function createMemoryStoreCommandDeps(seed?: Record<string, StoreProductR
       const list = orders.get(ref) || []
       const row = list.find((o) => String(o.id) === id)
       if (!row) return { ok: false, message: 'Order not found' }
+      if (status === 'cancelled') {
+        row.payment_status = 'failed'
+        row.fulfillment_status = 'cancelled'
+        row.status = 'failed'
+        return { ok: true, paymentStatus: 'failed', fulfillmentStatus: 'cancelled' }
+      }
       row.payment_status = status
       row.status = status
-      return { ok: true }
+      if (!row.fulfillment_status) row.fulfillment_status = 'unfulfilled'
+      return { ok: true, paymentStatus: status, fulfillmentStatus: String(row.fulfillment_status) }
+    },
+    updateOrderFulfillment: async (ref, id, fulfillmentStatus) => {
+      const list = orders.get(ref) || []
+      const row = list.find((o) => String(o.id) === id)
+      if (!row) return { ok: false, message: 'Order not found' }
+      row.fulfillment_status = fulfillmentStatus
+      return {
+        ok: true,
+        paymentStatus: String(row.payment_status || 'pending'),
+        fulfillmentStatus,
+      }
     },
   }
 }
@@ -488,7 +547,7 @@ export async function executeStoreCommand(input: {
       }
     }
 
-    if (classified.kind === 'order.status') {
+    if (classified.kind === 'order.status' || classified.kind === 'order.fulfill') {
       const orderRows = deps.listOrders ? await deps.listOrders(projectRef) : []
       const hint = (classified.orderHint || '').toLowerCase()
       const row =
@@ -496,7 +555,50 @@ export async function executeStoreCommand(input: {
         (hint === 'latest' ? orderRows[0] : null) ||
         (!hint ? orderRows[0] : null)
       const orderId = row ? String(row.id || '') : classified.orderHint || ''
-      if (!orderId || !deps.updateOrderStatus || !classified.orderStatus) {
+      if (!orderId) {
+        return {
+          ok: false,
+          status: 400,
+          code: 'invalid_request',
+          kind: classified.kind,
+          message: 'No matching order.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      if (classified.kind === 'order.fulfill') {
+        if (!deps.updateOrderFulfillment || !classified.fulfillmentStatus) {
+          return {
+            ok: false,
+            status: 400,
+            code: 'invalid_request',
+            kind: classified.kind,
+            message: 'No matching order.',
+            snapshot: await loadSnapshot(),
+            mutated: false,
+          }
+        }
+        const updated = await deps.updateOrderFulfillment(projectRef, orderId, classified.fulfillmentStatus)
+        const snapshot = await loadSnapshot()
+        const command = createCommand(
+          'order.fulfill',
+          { projectRef, orderId, fulfillmentStatus: classified.fulfillmentStatus },
+          { projectRef },
+        )
+        const payment = updated.paymentStatus || 'pending'
+        return {
+          ok: updated.ok,
+          status: updated.ok ? 200 : 400,
+          kind: 'order.fulfill',
+          command,
+          message: updated.ok
+            ? `Order ${orderId} is ${classified.fulfillmentStatus}. Payment is ${payment}.`
+            : updated.message || 'Could not update the order.',
+          snapshot,
+          mutated: updated.ok,
+        }
+      }
+      if (!deps.updateOrderStatus || !classified.orderStatus) {
         return {
           ok: false,
           status: 400,
@@ -515,7 +617,9 @@ export async function executeStoreCommand(input: {
         status: updated.ok ? 200 : 400,
         kind: 'order.status',
         command,
-        message: updated.ok ? `Order ${orderId} is ${classified.orderStatus}.` : updated.message || 'Could not update the order.',
+        message: updated.ok
+          ? `Order ${orderId} payment is ${classified.orderStatus === 'cancelled' ? 'failed' : classified.orderStatus}.`
+          : updated.message || 'Could not update the order.',
         snapshot,
         mutated: updated.ok,
       }

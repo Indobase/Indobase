@@ -39,6 +39,25 @@ describe('BusinessRuntimeState', () => {
     expect(hint).not.toMatch(/Commerce ABI|guidedBackend/)
   })
 
+  it('projects payment and fulfillment separately and never calls paid “fulfilled”', () => {
+    const state = emptyBusinessRuntimeState({
+      orders: [
+        {
+          id: 'ordpaid',
+          paymentStatus: 'paid',
+          fulfillmentStatus: 'unfulfilled',
+          amountMinor: 129900,
+        },
+      ],
+    })
+    expect(state.commerce.pendingOrderCount).toBe(0)
+    const hint = composeBusinessRuntimeStateHint(state)
+    expect(hint).toMatch(/payment=paid/)
+    expect(hint).toMatch(/fulfillment=unfulfilled/)
+    expect(hint).toMatch(/Say an order is fulfilled only when fulfillmentStatus is fulfilled/)
+    expect(hint).not.toMatch(/payment=fulfilled/)
+  })
+
   it('allows live/preview only when urls and flags agree', () => {
     const state = emptyBusinessRuntimeState({
       business: { ref: 'biz_ut', name: 'UrbanThread', kind: 'store', state: 'live' },

@@ -11,6 +11,7 @@ import type {
   BusinessOrder,
   BusinessProduct,
 } from './data'
+import { formatOrderRuntimeLine, normalizePaymentStatus } from './order-lifecycle'
 
 /** Products at or below this on-hand count are “low stock”. Not a forecast. */
 export const LOW_STOCK_THRESHOLD = 5
@@ -38,8 +39,8 @@ export function catalogFromProducts(products: BusinessProduct[]): BusinessRuntim
 
 export function commerceFromOrders(orders: BusinessOrder[]): BusinessRuntimeCommerce {
   const pendingOrderCount = orders.filter((o) => {
-    const status = String(o.paymentStatus || o.status || '').toLowerCase()
-    return !status || status === 'pending' || status === 'open' || status === 'unpaid'
+    const payment = normalizePaymentStatus(o.paymentStatus || o.status)
+    return payment === 'pending'
   }).length
   return { orderCount: orders.length, pendingOrderCount }
 }
@@ -253,14 +254,18 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
   })
   const orderLines = state.orders.slice(0, 8).map((o) => {
     const id = o.orderNumber || o.id || '?'
-    const status = o.paymentStatus || o.status || ''
     const amount =
       typeof o.amountMinor === 'number' && Number.isFinite(o.amountMinor)
         ? String(Math.round(o.amountMinor / 100))
         : ''
-    const who = o.customerName || o.email || ''
-    const items = o.itemsSummary || ''
-    return `- #${id} ${status} ${amount} ${who} ${items}`.replace(/\s+/g, ' ').trim()
+    return formatOrderRuntimeLine({
+      id,
+      paymentStatus: o.paymentStatus || o.status,
+      fulfillmentStatus: o.fulfillmentStatus,
+      amount,
+      who: o.customerName || o.email || '',
+      items: o.itemsSummary || '',
+    })
   })
   const customerLines = state.customers
     .slice(0, 8)
@@ -347,7 +352,8 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
   lines.push(
     [
       'Rules:',
-      '- Answer “show latest order” / SCREEN show-order from BusinessRuntimeState.orders only. If an order id is listed, describe it (customer, amount, items, status).',
+      '- Answer “show latest order” / SCREEN show-order from BusinessRuntimeState.orders only. If an order id is listed, describe it (customer, amount, items, paymentStatus, fulfillmentStatus).',
+      '- Say an order is fulfilled only when fulfillmentStatus is fulfilled. paymentStatus=paid is not fulfilled. Never write fulfilled onto paymentStatus.',
       '- Catalog, stock, and prices come from BusinessRuntimeState.products / catalog / inventory only. Do not invent analytics or marketing metrics.',
       '- Never invent “connection unavailable”, “commerce admin isn’t available”, or “no order data was returned” when this object lists the entity.',
       '- Never say the store is “not in this workspace” / “isn’t currently available” when preview.status is ready or live.isLive is yes.',

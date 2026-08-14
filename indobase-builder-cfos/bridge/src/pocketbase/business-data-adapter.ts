@@ -36,6 +36,7 @@ function mapOrder(row: Record<string, unknown>): BusinessOrder {
     orderNumber: asString(row.order_number) || asString(row.orderNumber) || asString(row.id),
     status: asString(row.status),
     paymentStatus: asString(row.payment_status) || asString(row.paymentStatus),
+    fulfillmentStatus: asString(row.fulfillment_status) || asString(row.fulfillmentStatus),
     amountMinor: asNumber(row.amount_minor) ?? asNumber(row.amountMinor),
     email: asString(row.email) || asString(row.customer_email),
   }

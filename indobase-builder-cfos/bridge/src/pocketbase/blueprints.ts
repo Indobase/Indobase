@@ -213,6 +213,7 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
           { name: 'customer_name', type: 'text' },
           { name: 'status', type: 'text', required: true },
           { name: 'payment_status', type: 'text' },
+          { name: 'fulfillment_status', type: 'text' },
           { name: 'total', type: 'number' },
           { name: 'amount_minor', type: 'number' },
           { name: 'subtotal_minor', type: 'number' },

@@ -44,6 +44,7 @@ describe('authoritative turn snapshot', () => {
     assert.equal(snapshot.orders[0]?.id, 'zvka8renspuyufi')
     assert.equal(snapshot.orders[0]?.customer_name, 'Priya Shopper')
     assert.equal(snapshot.orders[0]?.items, 'Thread One/Bone')
+    assert.equal(snapshot.orders[0]?.fulfillment_status, 'unfulfilled')
     const runtime = toBusinessRuntimeState({
       projectState: 'live',
       previewStatus: 'ready',

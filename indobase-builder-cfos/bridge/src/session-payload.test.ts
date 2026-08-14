@@ -167,10 +167,12 @@ describe('session-payload', () => {
       indobaseProxyPath: '/api/indobase/proxy/',
       businessSnapshot: {
         products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900 }],
-        orders: [{ id: 'fxeuxgfdcoq8dzs', status: 'pending', amount_minor: 480000 }],
+        orders: [{ id: 'fxeuxgfdcoq8dzs', status: 'pending', payment_status: 'pending', fulfillment_status: 'unfulfilled', amount_minor: 480000 }],
       },
     })
     assert.equal(payload.runtime.orders[0]?.id, 'fxeuxgfdcoq8dzs')
+    assert.equal(payload.runtime.orders[0]?.paymentStatus, 'pending')
+    assert.equal(payload.runtime.orders[0]?.fulfillmentStatus, 'unfulfilled')
     assert.equal(payload.runtime.products[0]?.name, 'Apex Runner')
     assert.equal(payload.runtime.live.isLive, false)
     assert.equal(payload.runtime.preview.status, 'absent')
