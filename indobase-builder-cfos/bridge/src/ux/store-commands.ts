@@ -27,6 +27,8 @@ import {
   type CommerceVariant,
 } from '../commerce/pb-adapter.js'
 import { snapshotFromCommerceRows, type BusinessSnapshotSummary } from './authoritative-turn.js'
+import { deriveStoreMutationKey } from './execution-plan.js'
+import { getCatalogMutation, rememberCatalogMutation } from './execution-store.js'
 import {
   parseCollectionName,
   parseProductOptions,
@@ -673,6 +675,7 @@ export async function executeStoreCommand(input: {
   requestedProjectRef?: string
   message: string
   deps?: StoreCommandDeps
+  idempotencyKey?: string
 }): Promise<StoreCommandResult> {
   const classified = classifyStoreCommand(input.message)
   const empty: BusinessSnapshotSummary = { products: [], orders: [], customers: [] }
@@ -731,6 +734,30 @@ export async function executeStoreCommand(input: {
     if (classified.kind === 'product.create') {
       const name = classified.name || 'New product'
       const slug = slugify(name)
+      const mutationKey =
+        (input.idempotencyKey || '').trim() || deriveStoreMutationKey(projectRef, classified, input.message)
+      const prior = getCatalogMutation(mutationKey)
+      if (prior?.resourceId) {
+        const listedReplay = await deps.listProducts(projectRef)
+        const replayed = listedReplay.find((p) => p.id === prior.resourceId) || matchProduct(listedReplay, name)
+        if (replayed) {
+          const snapshot = await loadSnapshot()
+          const command = createCommand(
+            'product.create',
+            { projectRef, productId: replayed.id, name: replayed.name, replayed: true },
+            { projectRef },
+          )
+          return {
+            ok: true,
+            status: 200,
+            kind: 'product.create',
+            command,
+            message: `Added ${replayed.name} to the catalog.`,
+            snapshot,
+            mutated: false,
+          }
+        }
+      }
       const listed = await deps.listProducts(projectRef)
       const existing = matchProduct(listed, name)
       const priceMinor =
@@ -763,6 +790,13 @@ export async function executeStoreCommand(input: {
           },
           { projectRef },
         )
+        rememberCatalogMutation({
+          idempotencyKey: mutationKey,
+          projectRef,
+          kind: 'product.create',
+          resourceId: existing.id,
+          createdAt: new Date().toISOString(),
+        })
         return {
           ok: true,
           status: 200,
@@ -793,6 +827,13 @@ export async function executeStoreCommand(input: {
         },
         { projectRef },
       )
+      rememberCatalogMutation({
+        idempotencyKey: mutationKey,
+        projectRef,
+        kind: 'product.create',
+        resourceId: created.id,
+        createdAt: new Date().toISOString(),
+      })
       const variantNote = created.variants?.length
         ? ` with ${created.variants.length} variants`
         : ''

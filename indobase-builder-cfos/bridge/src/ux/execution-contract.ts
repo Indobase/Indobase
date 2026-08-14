@@ -2,7 +2,8 @@
  * FTU execution contract — operator intent becomes commands + authoritative state.
  * begin-turn / auth-verify call this. The LLM does not get to skip it.
  *
- * Intent → BusinessSpec → RuntimePlan → RuntimeCommand → Runtime → artifact → preview
+ * Orchestration: classify → ExecutionPlan → validate → dispatch executor → verify → BusinessRuntimeState → reply
+ * applyOperatorIntent is the only begin-turn public entry. LLM does not execute the plan.
  * Launch / Go Live → executeProductionLaunchJob (same path as launchProductionApp).
  */
 
@@ -16,9 +17,7 @@ import type { Session } from '../auth.js'
 import { deriveAgentUsername } from '../agent-credentials.js'
 import type { LaunchStatusSnapshot } from '../launch-journey.js'
 import {
-  executeProductionLaunchJob,
   getLatestProductionLaunchJob,
-  rememberProductionLaunchJob,
   type ProductionLaunchDeps,
   type ProductionLaunchExecuteResult,
   type ProductionLaunchJob,
@@ -28,40 +27,38 @@ import {
   inferBusinessSpec,
   inferName,
   isPlaceholderBusinessName,
-  mergeBusinessSpec,
   pickBusinessName,
   rememberBusinessSpec,
   type BusinessSpec,
 } from './business-spec.js'
 import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
+import { type probePreviewHttp, readLiveFile } from '../static-launch.js'
+import { classifyStoreCommand, looksLikeStoreCommand, type StoreCommandDeps, type StoreCommandResult } from './store-commands.js'
 import {
-  extractRequestedHeadline,
-  injectStorefrontProductSnapshot,
-  materializePreview,
-  mutateHeroHeadline,
-  storefrontHasCommerceAbi,
-} from './preview-artifact.js'
-import { probePreviewHttp, readLiveFile, writeDraftPreview } from '../static-launch.js'
-import { executeLaunchBusinessTool } from '../launch-business-tool.js'
-import {
-  classifyStoreCommand,
-  executeStoreCommand,
-  looksLikeStoreCommand,
-  type StoreCommandDeps,
-  type StoreCommandResult,
-} from './store-commands.js'
-import {
-  appendRuntimeEvent,
   emptyPersistedRuntime,
   getWorkspaceRuntime,
-  issueRuntimeCommand,
-  patchWorkspaceRuntime,
   peekPendingIntent,
   rememberPendingIntentForSession,
   rememberWorkspaceRuntime,
   takePendingAcrossAuth,
   type PersistedWorkspaceRuntime,
 } from './runtime-store.js'
+import {
+  authorizeExecutionPlan,
+  buildExecutionPlan,
+  validateExecutionPlan,
+  type ExecutionPlan,
+} from './execution-plan.js'
+import { dispatchExecutionPlan, type ExecutorContext } from './executors/index.js'
+
+export {
+  PLAN_COMMAND,
+  PLAN_STEP,
+  buildExecutionPlan,
+  deriveIdempotencyKey,
+  planCommands,
+  type ExecutionPlan,
+} from './execution-plan.js'
 
 export type OperatorIntentKind =
   | 'create_business'
@@ -91,6 +88,7 @@ export type ExecutionTurnResult = {
   agentContext: string
   operatorMessage: string
   commandId?: string
+  plan?: ExecutionPlan
 }
 
 export function turnClassForIntent(
@@ -123,6 +121,7 @@ export type ApplyOperatorIntentInput = {
   launchDeps?: ProductionLaunchDeps
   catalogDeps?: StoreCommandDeps
   probe?: typeof probePreviewHttp
+  clientIdempotencyKey?: string
 }
 
 function stripRuntimeStamp(message: string): string {
@@ -583,347 +582,30 @@ function composeAgentContext(result: {
   return lines.join('\n')
 }
 
-async function ensureSpecAndPreview(
-  session: Session,
-  message: string,
-  probe?: typeof probePreviewHttp,
-): Promise<{ spec: BusinessSpec; runtime: PersistedWorkspaceRuntime; recovered: boolean; commandId: string }> {
-  const inferred = inferBusinessSpec(message)
-  const spec = rememberBusinessSpec(
-    session.projectRef,
-    mergeBusinessSpec(getBusinessSpec(session.projectRef), {
-      ...inferred,
-      businessName: pickBusinessName(inferred.businessName, inferName(message)) || inferred.businessName,
-      sourceIntent: inferred.sourceIntent || message,
-    }),
-  )
-  const existing = getWorkspaceRuntime(session.projectRef)
-  if (
-    existing?.spec &&
-    !isPlaceholderBusinessName(existing.spec.businessName) &&
-    existing.preview.status === 'ready' &&
-    existing.artifactHtml
-  ) {
-    const runtime = patchWorkspaceRuntime(session.projectRef, {
-      spec,
-      plan: planFromSpec(spec),
-    })
-    return {
-      spec,
-      runtime: getWorkspaceRuntime(session.projectRef) || runtime,
-      recovered: false,
-      commandId: existing.lastCommandId || '',
-    }
-  }
-  const createCmd = issueRuntimeCommand(session.projectRef, 'runtime.create', {
-    spec: {
-      name: spec.businessName,
-      vertical: spec.catalog.verticalId,
-      positioning: spec.visualStyle,
-    },
-  })
-  let runtime = patchWorkspaceRuntime(session.projectRef, {
-    spec,
-    plan: planFromSpec(spec),
-    lastCommandId: createCmd.id,
-  })
-  appendRuntimeEvent(session.projectRef, {
-    kind: 'runtime.spec',
-    message: `${spec.businessName} / ${spec.catalog.verticalId} / ${spec.visualStyle}`,
-    commandId: createCmd.id,
-  })
-
-  const previewCmd = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
-    businessName: spec.businessName,
-  })
-  runtime = patchWorkspaceRuntime(session.projectRef, {
-    preview: { ...runtime.preview, status: 'building' },
-    lastCommandId: previewCmd.id,
-  })
-
-  let built = await materializePreview({ projectRef: session.projectRef, spec, probe })
-  let recovered = false
-  if (!built.ok) {
-    built = await materializePreview({ projectRef: session.projectRef, spec, probe })
-    recovered = built.ok
-    appendRuntimeEvent(session.projectRef, {
-      kind: 'runtime.repair',
-      message: recovered ? 'Preview rebuilt after first failure' : built.message,
-      commandId: previewCmd.id,
-    })
-  }
-
-  runtime = patchWorkspaceRuntime(session.projectRef, {
-    spec,
-    plan: planFromSpec(spec),
-    preview: {
-      status: built.status,
-      url: built.url,
-      artifactRef: built.artifactRef,
-      contentHash: built.contentHash,
-      httpOk: built.httpOk,
-    },
-    artifactHtml: built.html,
-    artifactFiles: built.files,
-    lastCommandId: previewCmd.id,
-  })
-  appendRuntimeEvent(session.projectRef, {
-    kind: built.ok ? 'runtime.preview.ready' : 'runtime.preview.failed',
-    message: built.message,
-    commandId: previewCmd.id,
-  })
-  return { spec, runtime: getWorkspaceRuntime(session.projectRef) || runtime, recovered, commandId: previewCmd.id }
-}
-
-async function runProductionLaunch(
-  session: Session,
-  message: string,
+function executorContext(
+  input: ApplyOperatorIntentInput,
   runtime: PersistedWorkspaceRuntime,
-  launchDeps?: ProductionLaunchDeps,
-): Promise<{ launch: ProductionLaunchExecuteResult; runtime: PersistedWorkspaceRuntime; commandId: string }> {
-  const inferred = inferBusinessSpec(message)
-  const spec = rememberBusinessSpec(
-    session.projectRef,
-    mergeBusinessSpec(runtime.spec || getBusinessSpec(session.projectRef), {
-      businessName:
-        pickBusinessName(
-          runtime.spec?.businessName,
-          getBusinessSpec(session.projectRef)?.businessName,
-          inferred.businessName,
-          inferName(message),
-        ) || inferred.businessName,
-      sourceIntent: runtime.spec?.sourceIntent || inferred.sourceIntent || message,
-    }),
-  )
-  const command = issueRuntimeCommand(session.projectRef, 'runtime.launch', {
-    appType: spec.businessType,
-    vertical: spec.catalog.verticalId,
-  })
-  const launch = await executeProductionLaunchJob(
-    session,
-    {
-      intent: spec.sourceIntent || message,
-      appType: spec.businessType,
-      production: true,
-      html: runtime.artifactHtml || runtime.artifactFiles?.['index.html'] || null,
-      files: runtime.artifactFiles || null,
-      title: isPlaceholderBusinessName(spec.businessName) ? undefined : spec.businessName,
-      brand: isPlaceholderBusinessName(spec.businessName) ? undefined : spec.businessName,
-      vertical: spec.catalog.verticalId,
-    },
-    launchDeps,
-  )
-  appendRuntimeEvent(session.projectRef, {
-    kind: launch.ok ? 'runtime.launch.live' : 'runtime.launch.failed',
-    message: launch.message,
-    commandId: command.id,
-  })
-  if (!launch.ok && launch.job.status === 'blocked' && launch.job.repairAttempts < 3) {
-    const retry = await executeProductionLaunchJob(
-      session,
-      {
-        jobId: launch.job.jobId,
-        intent: spec.sourceIntent || message,
-        appType: spec.businessType,
-        production: true,
-        html: runtime.artifactHtml || null,
-        files: runtime.artifactFiles || null,
-        title: spec.businessName,
-        brand: spec.businessName,
-        vertical: spec.catalog.verticalId,
-      },
-      launchDeps,
-    )
-    appendRuntimeEvent(session.projectRef, {
-      kind: retry.ok ? 'runtime.launch.retry.live' : 'runtime.launch.retry.failed',
-      message: retry.message,
-      commandId: command.id,
-    })
-    return {
-      launch: retry,
-      runtime: getWorkspaceRuntime(session.projectRef) || runtime,
-      commandId: command.id,
-    }
-  }
+  message: string,
+  specSource: string,
+): ExecutorContext {
   return {
-    launch,
-    runtime: getWorkspaceRuntime(session.projectRef) || runtime,
-    commandId: command.id,
+    session: input.session,
+    message,
+    specSource,
+    probe: input.probe,
+    launchDeps: input.launchDeps,
+    catalogDeps: input.catalogDeps,
+    snapshot: input.snapshot,
+    runtime,
   }
 }
 
-function subdomainFromLiveUrl(url: string | null | undefined): string | undefined {
-  const raw = (url || '').trim()
-  if (!raw) return undefined
-  try {
-    const host = new URL(raw).hostname.toLowerCase()
-    const label = host.split('.')[0]
-    return label && label !== 'www' ? label : undefined
-  } catch {
-    return undefined
-  }
-}
-
-async function applyPersistedPreviewEdit(
-  session: Session,
-  message: string,
-  runtime: PersistedWorkspaceRuntime,
-  launchDeps?: ProductionLaunchDeps,
-): Promise<{ runtime: PersistedWorkspaceRuntime; commandId?: string; mutated: boolean; headline: string | null }> {
-  const headline = extractRequestedHeadline(message)
-  if (!headline) return { runtime, mutated: false, headline: null }
-
-  let html = runtime.artifactHtml || runtime.artifactFiles?.['index.html'] || ''
-  if (!html) {
-    const disk = await readLiveFile(session.projectRef, 'index.html')
-    html = disk?.body?.toString('utf8') || ''
-  }
-  const job = getLatestProductionLaunchJob(session.projectRef)
-  if (!html) html = job?.html || job?.files?.['index.html'] || ''
-  if (!html) return { runtime, mutated: false, headline }
-
-  const nextHtml = mutateHeroHeadline(html, headline)
-  if (!nextHtml || nextHtml === html) return { runtime, mutated: false, headline }
-
-  const files = { ...(runtime.artifactFiles || {}), 'index.html': nextHtml }
-  const written = await writeDraftPreview({
-    workspaceRef: session.projectRef,
-    title: runtime.spec?.businessName || session.projectName || 'Preview',
-    files,
-  })
-  const command = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
-    mutation: 'hero_headline',
-    headline,
-  })
-  runtime = patchWorkspaceRuntime(session.projectRef, {
-    preview: {
-      ...runtime.preview,
-      status: 'ready',
-      url: runtime.preview.url || written.previewUrl,
-      artifactRef: written.artifactRef,
-      contentHash: written.contentHash,
-      httpOk: true,
-    },
-    artifactHtml: nextHtml,
-    artifactFiles: files,
-    lastCommandId: command.id,
-  })
-  appendRuntimeEvent(session.projectRef, {
-    kind: 'runtime.preview.mutate',
-    message: `Hero headline → ${headline}`,
-    commandId: command.id,
-  })
-  if (job) {
-    rememberProductionLaunchJob({
-      ...job,
-      html: nextHtml,
-      files: { ...(job.files || {}), 'index.html': nextHtml },
-    })
-    if ((job.status === 'live' || job.url) && !launchDeps?.launch) {
-      try {
-        await executeLaunchBusinessTool(
-          session.projectRef,
-          {
-            title: runtime.spec?.businessName || job.title || job.brand,
-            subdomain: subdomainFromLiveUrl(job.url) || job.brand || undefined,
-            html: nextHtml,
-            files,
-            app_type: job.appType,
-            gotrueId: session.gotrueId,
-            email: session.email,
-          },
-          { title: runtime.spec?.businessName || job.title, backend: session.backend },
-        )
-      } catch {
-        /* draft + job html already persisted; live republish retries on next launch */
-      }
-    }
-  }
-  return { runtime: getWorkspaceRuntime(session.projectRef) || runtime, commandId: command.id, mutated: true, headline }
-}
-
-const STOREFRONT_VISIBLE_KINDS = new Set([
-  'product.create',
-  'product.update',
-  'inventory.update',
-  'variant.create',
-  'collection.create',
-  'collection.assign',
-])
-
-async function persistCatalogProjection(
-  session: Session,
-  runtime: PersistedWorkspaceRuntime,
-  snapshot: BusinessSnapshotSummary,
-  launchDeps?: ProductionLaunchDeps,
-): Promise<PersistedWorkspaceRuntime> {
-  let html = runtime.artifactHtml || runtime.artifactFiles?.['index.html'] || ''
-  if (!html) {
-    const disk = await readLiveFile(session.projectRef, 'index.html')
-    html = disk?.body?.toString('utf8') || ''
-  }
-  const job = getLatestProductionLaunchJob(session.projectRef)
-  if (!html) html = job?.html || job?.files?.['index.html'] || ''
-  if (!html || !storefrontHasCommerceAbi(html)) return runtime
-
-  const nextHtml = injectStorefrontProductSnapshot(html, snapshot.products || [], snapshot.collections || [])
-  if (!nextHtml || nextHtml === html) return runtime
-
-  const files = { ...(runtime.artifactFiles || {}), 'index.html': nextHtml }
-  const written = await writeDraftPreview({
-    workspaceRef: session.projectRef,
-    title: runtime.spec?.businessName || session.projectName || 'Preview',
-    files,
-  })
-  const command = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
-    mutation: 'catalog_projection',
-    productCount: snapshot.products?.length || 0,
-  })
-  runtime = patchWorkspaceRuntime(session.projectRef, {
-    preview: {
-      ...runtime.preview,
-      status: 'ready',
-      url: runtime.preview.url || written.previewUrl,
-      artifactRef: written.artifactRef,
-      contentHash: written.contentHash,
-      httpOk: true,
-    },
-    artifactHtml: nextHtml,
-    artifactFiles: files,
-    lastCommandId: command.id,
-  })
-  appendRuntimeEvent(session.projectRef, {
-    kind: 'runtime.catalog.project',
-    message: `Storefront catalog projection (${snapshot.products?.length || 0} products)`,
-    commandId: command.id,
-  })
-  if (job) {
-    rememberProductionLaunchJob({
-      ...job,
-      html: nextHtml,
-      files: { ...(job.files || {}), 'index.html': nextHtml },
-    })
-    if ((job.status === 'live' || job.url) && !launchDeps?.launch) {
-      try {
-        await executeLaunchBusinessTool(
-          session.projectRef,
-          {
-            title: runtime.spec?.businessName || job.title || job.brand,
-            subdomain: subdomainFromLiveUrl(job.url) || job.brand || undefined,
-            html: nextHtml,
-            files,
-            app_type: job.appType,
-            gotrueId: session.gotrueId,
-            email: session.email,
-          },
-          { title: runtime.spec?.businessName || job.title, backend: session.backend },
-        )
-      } catch {
-        /* draft + job html already persisted; live republish retries on next launch */
-      }
-    }
-  }
-  return getWorkspaceRuntime(session.projectRef) || runtime
+function gatedPlan(plan: ExecutionPlan, sessionProjectRef: string): ExecutionPlan | null {
+  const auth = authorizeExecutionPlan(plan, sessionProjectRef)
+  if (!auth.ok) return null
+  const valid = validateExecutionPlan(plan)
+  if (!valid.ok) return null
+  return plan
 }
 
 export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Promise<ExecutionTurnResult> {
@@ -975,11 +657,18 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       ? pending
       : [pending, message || effectiveMessage].filter(Boolean).join('\n') || effectiveMessage
   const intent = classifyOperatorIntent(effectiveMessage, runtime)
+  const classifiedStore = classifyStoreCommand(effectiveMessage || message)
 
   let launch: ProductionLaunchExecuteResult | null = null
   let recovered = false
   let commandId: string | undefined
   let spec = runtime.spec || getBusinessSpec(session.projectRef)
+  let mutatedHeadline: string | null = null
+  let store: StoreCommandResult | null = null
+  let snapshot = input.snapshot
+  let plan: ExecutionPlan | undefined
+
+  const ctxBase = () => executorContext(input, runtime, effectiveMessage || message, specSource)
 
   if (
     !spec &&
@@ -987,87 +676,57 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     (intent === 'other' || intent === 'operate') &&
     (inferName(specSource) || looksLikeCreateBusiness(specSource))
   ) {
-    const created = await ensureSpecAndPreview(session, specSource, input.probe)
-    spec = created.spec
-    runtime = created.runtime
-    recovered = created.recovered
-    commandId = created.commandId
-  }
-
-  if (
-    intent === 'create_business' ||
-    (intent === 'launch_production' && (!runtime.spec || isPlaceholderBusinessName(runtime.spec.businessName)) && specSource)
-  ) {
-    const created = await ensureSpecAndPreview(session, specSource, input.probe)
-    spec = created.spec
-    runtime = created.runtime
-    recovered = created.recovered
-    commandId = created.commandId
-  }
-
-  const shouldLaunchNow =
-    intent === 'launch_production' ||
-    (intent === 'create_business' && looksLikeExplicitStoreLaunch(effectiveMessage) && Boolean(runtime.spec || spec))
-
-  if (shouldLaunchNow && (runtime.spec || spec)) {
-    if (runtime.preview.status !== 'ready' || !runtime.artifactHtml) {
-      const created = await ensureSpecAndPreview(
-        session,
-        specSource || spec?.sourceIntent || message,
-        input.probe,
-      )
-      spec = created.spec
-      runtime = created.runtime
-      recovered = recovered || created.recovered
-    }
-    const launched = await runProductionLaunch(session, specSource || message, runtime, input.launchDeps)
-    launch = launched.launch
-    runtime = launched.runtime
-    commandId = launched.commandId
-  }
-
-  let mutatedHeadline: string | null = null
-  if (intent === 'preview_edit') {
-    const edited = await applyPersistedPreviewEdit(
-      session,
-      effectiveMessage || message,
-      runtime,
-      input.launchDeps,
+    const inferPlan = gatedPlan(
+      buildExecutionPlan({
+        projectRef: session.projectRef,
+        intent: 'create_business',
+        turnClass: 'build',
+        businessType: spec?.businessType,
+        message: specSource,
+      }),
+      session.projectRef,
     )
-    runtime = edited.runtime
-    mutatedHeadline = edited.headline
-    if (edited.commandId) commandId = edited.commandId
-    recovered = recovered || edited.mutated
+    if (inferPlan) {
+      const created = await dispatchExecutionPlan(inferPlan, ctxBase())
+      spec = created.spec || spec
+      runtime = created.runtime
+      recovered = created.recovered
+      commandId = created.commandId
+      plan = inferPlan
+    }
   }
 
-  let store: StoreCommandResult | null = null
-  let snapshot = input.snapshot
-  const classifiedStore = classifyStoreCommand(effectiveMessage || message)
-  if (intent === 'operate' && classifiedStore && (!classifiedStore.readOnly || input.catalogDeps)) {
-    store = await executeStoreCommand({
-      session,
-      guest: false,
-      requestedProjectRef: session.projectRef,
+  const primaryTurn = looksLikeExplicitStoreLaunch(effectiveMessage)
+    ? 'launch'
+    : turnClassForIntent(intent)
+  const includeBuild =
+    looksLikeExplicitStoreLaunch(effectiveMessage) ||
+    (primaryTurn === 'launch' && (runtime.preview.status !== 'ready' || !runtime.artifactHtml))
+  plan = gatedPlan(
+    buildExecutionPlan({
+      projectRef: session.projectRef,
+      intent: looksLikeExplicitStoreLaunch(effectiveMessage) ? 'launch_production' : intent,
+      turnClass: primaryTurn,
+      businessType: spec?.businessType || runtime.spec?.businessType,
+      store: classifiedStore,
       message: effectiveMessage || message,
-      deps: input.catalogDeps,
-    })
-    if (store.command) {
-      commandId = store.command.id
-    }
-    if (store.ok && store.snapshot && (store.mutated || input.catalogDeps)) {
-      snapshot = store.snapshot
-    }
-    recovered = recovered || store.mutated
-    if (store.mutated) {
-      appendRuntimeEvent(session.projectRef, {
-        kind: store.kind || 'product.create',
-        message: store.message,
-        commandId: store.command?.id,
-      })
-      if (store.ok && store.kind && STOREFRONT_VISIBLE_KINDS.has(store.kind) && store.snapshot) {
-        runtime = await persistCatalogProjection(session, runtime, store.snapshot, input.launchDeps)
-      }
-    }
+      includeBuild,
+      clientIdempotencyKey: input.clientIdempotencyKey,
+    }),
+    session.projectRef,
+  ) || plan
+
+  if (plan && (plan.turnClass === 'build' || plan.turnClass === 'modify' || plan.turnClass === 'operate' || plan.turnClass === 'launch')) {
+    const executed = await dispatchExecutionPlan(plan, ctxBase())
+    runtime = executed.runtime
+    if (executed.spec) spec = executed.spec
+    recovered = recovered || executed.recovered
+    if (executed.commandId) commandId = executed.commandId
+    if (executed.launch) launch = executed.launch
+    if (executed.mutatedHeadline !== undefined) mutatedHeadline = executed.mutatedHeadline
+    if (executed.store) store = executed.store
+    if (executed.snapshot) snapshot = executed.snapshot
+    plan = executed.plan || plan
   }
 
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
@@ -1126,6 +785,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     agentContext,
     operatorMessage,
     commandId,
+    plan,
   }
 }
 

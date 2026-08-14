@@ -9,6 +9,7 @@ import type { Session } from '../auth.ts'
 import { deriveAgentUsername } from '../agent-credentials.ts'
 import { detectFabricatedClaims, isForbiddenAgentClaim, sanitizeAgentNarration } from '@indobase/platform'
 import { clearProductionLaunchJobsForTests } from '../production-launch/index.ts'
+import { clearExecutionPlansForTests } from './execution-store.ts'
 import { readLiveFile } from '../static-launch.ts'
 import {
   applyOperatorIntent,
@@ -103,6 +104,7 @@ describe('FTU execution contract A–Q', () => {
     clearWorkspaceRuntimesForTests()
     clearBusinessSpecsForTests()
     clearProductionLaunchJobsForTests()
+    clearExecutionPlansForTests()
     server = createServer(async (req, res) => {
       const url = req.url || '/'
       const live = url.match(/^\/live\/([^/]+)\/?(.*)$/)
@@ -146,6 +148,7 @@ describe('FTU execution contract A–Q', () => {
     clearWorkspaceRuntimesForTests()
     clearBusinessSpecsForTests()
     clearProductionLaunchJobsForTests()
+    clearExecutionPlansForTests()
   })
 
   it('A: new workspace starts with no runtime', () => {
