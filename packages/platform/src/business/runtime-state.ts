@@ -7,9 +7,53 @@
 
 import type {
   BusinessCustomer,
+  BusinessInventoryItem,
   BusinessOrder,
   BusinessProduct,
 } from './data'
+
+/** Products at or below this on-hand count are “low stock”. Not a forecast. */
+export const LOW_STOCK_THRESHOLD = 5
+
+export type BusinessRuntimeCatalog = {
+  productCount: number
+  inStockCount: number
+  lowStockCount: number
+}
+
+export type BusinessRuntimeCommerce = {
+  orderCount: number
+  pendingOrderCount: number
+}
+
+export function catalogFromProducts(products: BusinessProduct[]): BusinessRuntimeCatalog {
+  const productCount = products.length
+  const inStockCount = products.filter((p) => (p.stock ?? 0) > 0).length
+  const lowStockCount = products.filter((p) => {
+    const stock = p.stock
+    return typeof stock === 'number' && stock > 0 && stock <= LOW_STOCK_THRESHOLD
+  }).length
+  return { productCount, inStockCount, lowStockCount }
+}
+
+export function commerceFromOrders(orders: BusinessOrder[]): BusinessRuntimeCommerce {
+  const pendingOrderCount = orders.filter((o) => {
+    const status = String(o.paymentStatus || o.status || '').toLowerCase()
+    return !status || status === 'pending' || status === 'open' || status === 'unpaid'
+  }).length
+  return { orderCount: orders.length, pendingOrderCount }
+}
+
+export function inventoryFromProducts(products: BusinessProduct[]): BusinessInventoryItem[] {
+  return products
+    .filter((p) => typeof p.stock === 'number')
+    .map((p) => ({
+      id: p.id,
+      productId: p.id,
+      sku: p.sku,
+      quantity: p.stock,
+    }))
+}
 
 export type BusinessRuntimeIdentity = {
   signedIn: boolean
@@ -91,6 +135,10 @@ export type BusinessRuntimeState = {
   products: BusinessProduct[]
   customers: BusinessCustomer[]
   orders: BusinessOrder[]
+  /** Counts from catalog rows only. Omit marketing/analytics — do not invent them. */
+  catalog: BusinessRuntimeCatalog
+  commerce: BusinessRuntimeCommerce
+  inventory: BusinessInventoryItem[]
   capabilities: BusinessRuntimeCapability[]
   jobs: BusinessRuntimeJob[]
   health: BusinessRuntimeHealth
@@ -130,6 +178,15 @@ export function emptyBusinessRuntimeState(
     products: overrides.products ?? [],
     customers: overrides.customers ?? [],
     orders: overrides.orders ?? [],
+    catalog: {
+      ...catalogFromProducts(overrides.products ?? []),
+      ...overrides.catalog,
+    },
+    commerce: {
+      ...commerceFromOrders(overrides.orders ?? []),
+      ...overrides.commerce,
+    },
+    inventory: overrides.inventory ?? inventoryFromProducts(overrides.products ?? []),
     capabilities: overrides.capabilities ?? [],
     jobs: overrides.jobs ?? [],
     events: overrides.events ?? [],
@@ -186,9 +243,14 @@ export function isForbiddenAgentClaim(
 }
 
 export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): string {
-  const productLines = state.products
-    .slice(0, 8)
-    .map((p) => `- ${p.name || p.id}`)
+  const productLines = state.products.slice(0, 8).map((p) => {
+    const price =
+      typeof p.priceMinor === 'number' && Number.isFinite(p.priceMinor)
+        ? ` ₹${Math.round(p.priceMinor / 100)}`
+        : ''
+    const stock = typeof p.stock === 'number' ? ` stock=${p.stock}` : ''
+    return `- ${p.name || p.id}${price}${stock}`
+  })
   const orderLines = state.orders.slice(0, 8).map((o) => {
     const id = o.orderNumber || o.id || '?'
     const status = o.paymentStatus || o.status || ''
@@ -228,6 +290,11 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
     `health.catalogReady: ${state.health.catalogReady ? 'yes' : 'no'}`,
     `health.paymentsReady: ${state.health.paymentsReady ? 'yes' : 'no'}`,
     `health.previewReady: ${state.health.previewReady ? 'yes' : 'no'}`,
+    `catalog.productCount: ${state.catalog.productCount}`,
+    `catalog.inStockCount: ${state.catalog.inStockCount}`,
+    `catalog.lowStockCount: ${state.catalog.lowStockCount}`,
+    `commerce.orderCount: ${state.commerce.orderCount}`,
+    `commerce.pendingOrderCount: ${state.commerce.pendingOrderCount}`,
   ]
   if (state.spec) {
     const spec = state.spec
@@ -261,6 +328,14 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
     lines.push('products (from BusinessRuntimeState):')
     lines.push(...productLines)
   }
+  const inventoryLines = state.inventory.slice(0, 8).map((row) => {
+    const qty = typeof row.quantity === 'number' ? String(row.quantity) : '?'
+    return `- ${row.productId || row.id}: ${qty}`
+  })
+  if (inventoryLines.length) {
+    lines.push('inventory (from BusinessRuntimeState):')
+    lines.push(...inventoryLines)
+  }
   if (customerLines.length) {
     lines.push('customers (from BusinessRuntimeState):')
     lines.push(...customerLines)
@@ -273,6 +348,7 @@ export function composeBusinessRuntimeStateHint(state: BusinessRuntimeState): st
     [
       'Rules:',
       '- Answer “show latest order” / SCREEN show-order from BusinessRuntimeState.orders only. If an order id is listed, describe it (customer, amount, items, status).',
+      '- Catalog, stock, and prices come from BusinessRuntimeState.products / catalog / inventory only. Do not invent analytics or marketing metrics.',
       '- Never invent “connection unavailable”, “commerce admin isn’t available”, or “no order data was returned” when this object lists the entity.',
       '- Never say the store is “not in this workspace” / “isn’t currently available” when preview.status is ready or live.isLive is yes.',
       '- Never describe a preview as available unless preview.status is ready and preview.url is set.',

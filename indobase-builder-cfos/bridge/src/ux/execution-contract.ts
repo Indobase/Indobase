@@ -34,9 +34,22 @@ import {
   type BusinessSpec,
 } from './business-spec.js'
 import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotSummary } from './agent-truth.js'
-import { extractRequestedHeadline, materializePreview, mutateHeroHeadline } from './preview-artifact.js'
+import {
+  extractRequestedHeadline,
+  injectStorefrontProductSnapshot,
+  materializePreview,
+  mutateHeroHeadline,
+  storefrontHasCommerceAbi,
+} from './preview-artifact.js'
 import { probePreviewHttp, readLiveFile, writeDraftPreview } from '../static-launch.js'
 import { executeLaunchBusinessTool } from '../launch-business-tool.js'
+import {
+  classifyStoreCommand,
+  executeStoreCommand,
+  looksLikeStoreCommand,
+  type StoreCommandDeps,
+  type StoreCommandResult,
+} from './store-commands.js'
 import {
   appendRuntimeEvent,
   emptyPersistedRuntime,
@@ -108,6 +121,7 @@ export type ApplyOperatorIntentInput = {
   launchStatus?: LaunchStatusSnapshot | null
   productionJob?: ProductionLaunchJob | null
   launchDeps?: ProductionLaunchDeps
+  catalogDeps?: StoreCommandDeps
   probe?: typeof probePreviewHttp
 }
 
@@ -130,6 +144,7 @@ function looksLikeAuthNoise(text: string): boolean {
 
 function looksLikeCreateBusiness(text: string): boolean {
   const q = text.toLowerCase()
+  if (looksLikeStoreCommand(text)) return false
   if (/\blaunch a\b/.test(q) || /\bbuild (?:me )?(?:a|an)\b/.test(q)) return true
   if (/\b(start building|create (?:me )?(?:a|an)|make (?:me )?(?:a|an) (?:store|shop|app|website|landing))\b/.test(q)) {
     return true
@@ -175,6 +190,7 @@ export function classifyOperatorIntent(
   }
   if (/^SCREEN\b/.test(text)) return 'operate'
   if (looksLikeGoLive(text)) return 'launch_production'
+  if (looksLikeStoreCommand(text)) return 'operate'
   if (runtime?.spec && looksLikeOperateQuestion(text) && !/\b(build|start building|create (?:me )?(?:a|an))\b/i.test(text)) {
     return 'operate'
   }
@@ -341,7 +357,26 @@ function toSessionRuntime(
   })
 }
 
-function operateReply(state: BusinessRuntimeState, named: string): string {
+function operateReply(
+  state: BusinessRuntimeState,
+  named: string,
+  store?: StoreCommandResult | null,
+): string {
+  if (store?.mutated && store.message) {
+    const count = state.catalog?.productCount ?? state.products.length
+    const tail = count ? ` Catalog now has ${count} product${count === 1 ? '' : 's'}.` : ''
+    return `${store.message}${tail}`
+  }
+  if (store?.kind === 'catalog.query' || store?.query === 'low-stock') {
+    if (store.query === 'low-stock') {
+      const lowNames = state.products
+        .filter((p) => typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5)
+        .map((p) => p.name)
+      if (lowNames.length) return `Low stock: ${lowNames.join(', ')}.`
+      return 'No low-stock products.'
+    }
+    return store.message || `${state.catalog.productCount} products in the catalog.`
+  }
   const kind = state.business.kind
   if ((kind === 'landing' || kind === 'website') && state.live.isLive) {
     const url = state.live.url
@@ -372,6 +407,7 @@ function operatorMessageForTurn(input: {
   mutatedHeadline: string | null
   mutated: boolean
   businessRuntime: BusinessRuntimeState
+  store?: StoreCommandResult | null
 }): string {
   if (input.turnClass === 'launch') {
     const live =
@@ -396,7 +432,7 @@ function operatorMessageForTurn(input: {
     return 'I applied the preview change in this workspace.'
   }
   if (input.turnClass === 'operate') {
-    return operateReply(input.businessRuntime, input.named)
+    return operateReply(input.businessRuntime, input.named, input.store)
   }
   if (input.turnClass === 'build' || input.intent === 'create_business') {
     if (input.previewStatus === 'ready') {
@@ -798,6 +834,83 @@ async function applyPersistedPreviewEdit(
   return { runtime: getWorkspaceRuntime(session.projectRef) || runtime, commandId: command.id, mutated: true, headline }
 }
 
+const STOREFRONT_VISIBLE_KINDS = new Set(['product.create', 'product.update', 'inventory.update'])
+
+async function persistCatalogProjection(
+  session: Session,
+  runtime: PersistedWorkspaceRuntime,
+  snapshot: BusinessSnapshotSummary,
+  launchDeps?: ProductionLaunchDeps,
+): Promise<PersistedWorkspaceRuntime> {
+  let html = runtime.artifactHtml || runtime.artifactFiles?.['index.html'] || ''
+  if (!html) {
+    const disk = await readLiveFile(session.projectRef, 'index.html')
+    html = disk?.body?.toString('utf8') || ''
+  }
+  const job = getLatestProductionLaunchJob(session.projectRef)
+  if (!html) html = job?.html || job?.files?.['index.html'] || ''
+  if (!html || !storefrontHasCommerceAbi(html)) return runtime
+
+  const nextHtml = injectStorefrontProductSnapshot(html, snapshot.products || [])
+  if (!nextHtml || nextHtml === html) return runtime
+
+  const files = { ...(runtime.artifactFiles || {}), 'index.html': nextHtml }
+  const written = await writeDraftPreview({
+    workspaceRef: session.projectRef,
+    title: runtime.spec?.businessName || session.projectName || 'Preview',
+    files,
+  })
+  const command = issueRuntimeCommand(session.projectRef, 'runtime.preview', {
+    mutation: 'catalog_projection',
+    productCount: snapshot.products?.length || 0,
+  })
+  runtime = patchWorkspaceRuntime(session.projectRef, {
+    preview: {
+      ...runtime.preview,
+      status: 'ready',
+      url: runtime.preview.url || written.previewUrl,
+      artifactRef: written.artifactRef,
+      contentHash: written.contentHash,
+      httpOk: true,
+    },
+    artifactHtml: nextHtml,
+    artifactFiles: files,
+    lastCommandId: command.id,
+  })
+  appendRuntimeEvent(session.projectRef, {
+    kind: 'runtime.catalog.project',
+    message: `Storefront catalog projection (${snapshot.products?.length || 0} products)`,
+    commandId: command.id,
+  })
+  if (job) {
+    rememberProductionLaunchJob({
+      ...job,
+      html: nextHtml,
+      files: { ...(job.files || {}), 'index.html': nextHtml },
+    })
+    if ((job.status === 'live' || job.url) && !launchDeps?.launch) {
+      try {
+        await executeLaunchBusinessTool(
+          session.projectRef,
+          {
+            title: runtime.spec?.businessName || job.title || job.brand,
+            subdomain: subdomainFromLiveUrl(job.url) || job.brand || undefined,
+            html: nextHtml,
+            files,
+            app_type: job.appType,
+            gotrueId: session.gotrueId,
+            email: session.email,
+          },
+          { title: runtime.spec?.businessName || job.title, backend: session.backend },
+        )
+      } catch {
+        /* draft + job html already persisted; live republish retries on next launch */
+      }
+    }
+  }
+  return getWorkspaceRuntime(session.projectRef) || runtime
+}
+
 export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Promise<ExecutionTurnResult> {
   const { session, guest } = input
   const message = stripRuntimeStamp(input.message || '').trim()
@@ -912,9 +1025,39 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     recovered = recovered || edited.mutated
   }
 
+  let store: StoreCommandResult | null = null
+  let snapshot = input.snapshot
+  const classifiedStore = classifyStoreCommand(effectiveMessage || message)
+  if (intent === 'operate' && classifiedStore && (!classifiedStore.readOnly || input.catalogDeps)) {
+    store = await executeStoreCommand({
+      session,
+      guest: false,
+      requestedProjectRef: session.projectRef,
+      message: effectiveMessage || message,
+      deps: input.catalogDeps,
+    })
+    if (store.command) {
+      commandId = store.command.id
+    }
+    if (store.ok && store.snapshot && (store.mutated || input.catalogDeps)) {
+      snapshot = store.snapshot
+    }
+    recovered = recovered || store.mutated
+    if (store.mutated) {
+      appendRuntimeEvent(session.projectRef, {
+        kind: store.kind || 'product.create',
+        message: store.message,
+        commandId: store.command?.id,
+      })
+      if (store.ok && store.kind && STOREFRONT_VISIBLE_KINDS.has(store.kind) && store.snapshot) {
+        runtime = await persistCatalogProjection(session, runtime, store.snapshot, input.launchDeps)
+      }
+    }
+  }
+
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
   spec = runtime.spec || spec
-  const businessRuntime = toSessionRuntime(session, runtime, input.snapshot, launch)
+  const businessRuntime = toSessionRuntime(session, runtime, snapshot, launch)
   const named =
     spec?.businessName && !isPlaceholderBusinessName(spec.businessName)
       ? spec.businessName
@@ -930,6 +1073,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     mutatedHeadline,
     mutated: recovered && Boolean(mutatedHeadline),
     businessRuntime,
+    store,
   })
   let agentContext = composeAgentContext({
     intent,
@@ -942,6 +1086,9 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   })
   if (mutatedHeadline && recovered) {
     agentContext += `\nMUTATION_APPLIED: hero headline is now “${mutatedHeadline}”. Persisted to the preview artifact. Do not say the store is missing.`
+  }
+  if (store?.mutated) {
+    agentContext += `\nMUTATION_APPLIED: ${store.message} Speak only from BusinessRuntimeState.products / catalog. Never name PocketBase or tell the operator to open Products.`
   }
 
   if (pending && spec && !isPlaceholderBusinessName(spec.businessName)) {

@@ -11,6 +11,8 @@ export type BusinessProduct = {
   priceMinor?: number
   sku?: string
   status?: string
+  /** On-hand units from catalog — never invented analytics. */
+  stock?: number
 }
 
 export type BusinessCustomer = {

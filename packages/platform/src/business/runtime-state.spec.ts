@@ -13,7 +13,7 @@ describe('BusinessRuntimeState', () => {
       business: { ref: 'biz_ut', name: 'UrbanThread', kind: 'store', state: 'preview_ready' },
       preview: { status: 'absent', url: null },
       live: { isLive: false, url: null },
-      products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900 }],
+      products: [{ id: '1', name: 'Apex Runner', priceMinor: 1299900, stock: 10 }],
       orders: [{ id: 'fxeuxgfdcoq8dzs', status: 'pending', amountMinor: 480000 }],
       health: { catalogReady: true, paymentsReady: false, previewReady: false },
     })
@@ -29,6 +29,9 @@ describe('BusinessRuntimeState', () => {
     const hint = composeBusinessRuntimeStateHint(state)
     expect(hint).toMatch(/BusinessRuntimeState/)
     expect(hint).toMatch(/Apex Runner/)
+    expect(hint).toMatch(/catalog\.productCount: 1/)
+    expect(hint).toMatch(/stock=10/)
+    expect(hint).not.toMatch(/conversion rate|ROAS/i)
     expect(hint).toMatch(/#fxeuxgfdcoq8dzs/)
     expect(hint).toMatch(/Never invent “connection unavailable”/)
     expect(hint).toMatch(/Never claim LIVE/)

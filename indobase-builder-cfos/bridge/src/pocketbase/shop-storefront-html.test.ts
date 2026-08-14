@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
+import { injectStorefrontProductSnapshot } from '../ux/preview-artifact.ts'
 import { buildManagedShopStorefrontHtml } from './shop-storefront-html.ts'
 
 describe('buildManagedShopStorefrontHtml', () => {
@@ -35,5 +36,21 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.doesNotMatch(html, /\/api\/collections\/.+\/orders/)
     assert.match(html, /I couldn't complete the order yet/)
     assert.doesNotMatch(html, /verified\.order\.paymentStatus|paymentStatus\|\|/)
+  })
+
+  it('catalog projection patches the baked products snapshot', () => {
+    const html = buildManagedShopStorefrontHtml({
+      brand: 'NorthPeak',
+      appId: 'np01',
+      publicUrl: 'https://backend.indobase.in',
+      products: [{ id: 'seed', name: 'Apex Runner', price: 12999, stock: 8 }],
+    })
+    const next = injectStorefrontProductSnapshot(html, [
+      { id: 'seed', name: 'Apex Runner', priceMinor: 1299900, stock: 8 },
+      { id: 'extra', name: 'Apex Runner Extra', priceMinor: 1299900, stock: 10 },
+    ])
+    assert.match(next, /Apex Runner Extra/)
+    assert.match(next, /1299900/)
+    assert.match(next, /commerce\.products\.list/)
   })
 })

@@ -51,7 +51,7 @@ function itemsSummary(
 }
 
 export function snapshotFromCommerceRows(
-  products: Array<Record<string, unknown> | { id?: string; name?: string; priceMinor?: number; slug?: string }>,
+  products: Array<Record<string, unknown> | { id?: string; name?: string; priceMinor?: number; slug?: string; stock?: number }>,
   orders: Array<Record<string, unknown>>,
 ): BusinessSnapshotSummary {
   const productRows = products.map((p) => {
@@ -66,6 +66,12 @@ export function snapshotFromCommerceRows(
           : typeof row.price_minor === 'number'
             ? row.price_minor
             : undefined,
+      stock:
+        typeof row.stock === 'number'
+          ? row.stock
+          : typeof row.quantity === 'number'
+            ? row.quantity
+            : undefined,
     }
   })
   return {
@@ -73,6 +79,7 @@ export function snapshotFromCommerceRows(
       id: p.id,
       name: p.name,
       priceMinor: p.priceMinor,
+      stock: p.stock,
     })),
     orders: orders
       .map((o) => {

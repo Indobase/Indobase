@@ -46,6 +46,88 @@ export function storefrontHasCommerceAbi(html: string | null | undefined): boole
   return /indobase\.commerce|indobase\s*=\s*\{[\s\S]{0,80}commerce|\/api\/os\/commerce/i.test(html || '')
 }
 
+export type StorefrontCatalogProduct = {
+  id: string
+  name: string
+  slug?: string
+  description?: string
+  priceMinor?: number
+  stock?: number
+  currency?: string
+}
+
+/** Baked `let products=[…]` fallback. Live grid still prefers commerce.products.list(). */
+export function serializeStorefrontCatalogSnapshot(products: StorefrontCatalogProduct[]): string {
+  return JSON.stringify(
+    products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug || '',
+      description: p.description || '',
+      priceMinor: typeof p.priceMinor === 'number' ? p.priceMinor : 0,
+      currency: p.currency || 'INR',
+      stock: Number(p.stock || 0),
+      imageUrl: '',
+      active: true,
+    })),
+  )
+}
+
+export function injectStorefrontProductSnapshot(
+  html: string,
+  products: StorefrontCatalogProduct[],
+): string {
+  if (!html) return html
+  const snapshot = serializeStorefrontCatalogSnapshot(products)
+  const needle = 'let products='
+  const start = html.indexOf(needle)
+  if (start < 0) {
+    if (!storefrontHasCommerceAbi(html)) return html
+    return html.replace(
+      /(const commerce=window\.indobase\.commerce;\s*)/,
+      `$1let products=${snapshot};\n`,
+    )
+  }
+  const jsonStart = start + needle.length
+  if (html[jsonStart] !== '[') {
+    const semi = html.indexOf(';', jsonStart)
+    if (semi < 0) return html
+    return `${html.slice(0, jsonStart)}${snapshot}${html.slice(semi)}`
+  }
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = jsonStart; i < html.length; i++) {
+    const ch = html[i]
+    if (inStr) {
+      if (esc) {
+        esc = false
+        continue
+      }
+      if (ch === '\\') {
+        esc = true
+        continue
+      }
+      if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') {
+      inStr = true
+      continue
+    }
+    if (ch === '[') depth += 1
+    else if (ch === ']') {
+      depth -= 1
+      if (depth === 0) {
+        let end = i + 1
+        if (html[end] === ';') end += 1
+        return `${html.slice(0, jsonStart)}${snapshot};${html.slice(end)}`
+      }
+    }
+  }
+  return html
+}
+
 export function saasAppHasRuntimeAbi(html: string | null | undefined): boolean {
   const text = html || ''
   return /auth-with-otp/i.test(text) && /__INDOBASE_ENV__|\/api\/collections\//i.test(text)

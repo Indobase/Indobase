@@ -25,6 +25,7 @@ import {
 } from './runtime-store.ts'
 import { clearBusinessSpecsForTests, getBusinessSpec } from './business-spec.ts'
 import { toBusinessRuntimeState } from './agent-truth.ts'
+import { createMemoryStoreCommandDeps, executeStoreCommand } from './store-commands.ts'
 
 const session: Session = {
   gotrueId: 'user-ftu',
@@ -473,6 +474,22 @@ describe('FTU execution contract A–Q', () => {
       ),
       'preview_edit',
     )
+    assert.equal(
+      classifyOperatorIntent('Add a red Nike-style running shoe at ₹8,999 with sizes 7–11.', {
+        spec: { businessName: 'UrbanThread', businessType: 'ecommerce' },
+      } as never),
+      'operate',
+    )
+    assert.equal(classifyOperatorIntent('Increase prices by 10%', null), 'operate')
+    assert.equal(classifyOperatorIntent('Which products are low stock?', null), 'operate')
+    assert.equal(
+      classifyOperatorIntent('Build a tutoring app called TutorDesk', null),
+      'create_business',
+    )
+    assert.equal(
+      classifyOperatorIntent('Launch a photography studio website called Harbor Studio', null),
+      'create_business',
+    )
   })
 
   it('Ask AI / SCREEN includes snapshot orders in begin-turn agentContext', async () => {
@@ -745,5 +762,81 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(turn.businessRuntime.orders.length, 0)
     assert.doesNotMatch(turn.agentContext, /#zvka8renspuyufi/)
     assert.equal(turn.businessRuntime.workspace.ref, 'otherwsb1')
+  })
+
+  it('Add a product mutates catalog and BusinessRuntimeState.products', async () => {
+    const catalogDeps = createMemoryStoreCommandDeps()
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+      catalogDeps,
+    })
+    const turn = await applyOperatorIntent({
+      session,
+      message: 'Add a red Nike-style running shoe at ₹8,999 with sizes 7–11.',
+      guest: false,
+      catalogDeps,
+    })
+    assert.equal(turn.intent, 'operate')
+    assert.equal(turn.turnClass, 'operate')
+    const added = turn.businessRuntime.products.find((p) => /running shoe/i.test(p.name))
+    assert.ok(added)
+    assert.equal(added?.priceMinor, 899900)
+    assert.equal(turn.businessRuntime.catalog.productCount, 1)
+    assert.match(turn.operatorMessage, /Added/)
+    assert.doesNotMatch(turn.operatorMessage, /PocketBase|Go to Products/i)
+    assert.match(turn.agentContext, /catalog\.productCount: 1/)
+    assert.match(turn.runtime.artifactHtml || '', /running shoe/i)
+    assert.match(turn.runtime.artifactHtml || '', /899900/)
+    const projected = await readLiveFile(session.projectRef, 'index.html')
+    assert.match(projected?.body.toString('utf8') || '', /running shoe/i)
+  })
+
+  it('session A cannot mutate workspace B catalog (403)', async () => {
+    const catalogDeps = createMemoryStoreCommandDeps()
+    await applyOperatorIntent({
+      session,
+      message: PROMPT,
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+      catalogDeps,
+    })
+    await applyOperatorIntent({
+      session,
+      message: 'Add a product called Apex Runner at ₹1,299',
+      guest: false,
+      catalogDeps,
+    })
+    const other: Session = {
+      ...session,
+      gotrueId: 'user-b',
+      email: 'b@indobase.in',
+      projectRef: 'otherwsb1',
+    }
+    const denied = await executeStoreCommand({
+      session,
+      requestedProjectRef: other.projectRef,
+      message: 'Add a product called Leak at ₹100',
+      deps: catalogDeps,
+    })
+    assert.equal(denied.status, 403)
+    assert.equal(denied.ok, false)
+    const bTurn = await applyOperatorIntent({
+      session: other,
+      message: 'Add a product called Leak at ₹100',
+      guest: false,
+      catalogDeps,
+    })
+    assert.equal(
+      bTurn.businessRuntime.products.some((p) => /apex/i.test(p.name)),
+      false,
+    )
+    assert.equal(
+      bTurn.businessRuntime.products.some((p) => /leak/i.test(p.name)),
+      true,
+    )
+    assert.equal(bTurn.businessRuntime.workspace.ref, 'otherwsb1')
   })
 })

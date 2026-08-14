@@ -12,7 +12,7 @@ import {
   type PbErrorPayload,
 } from '../pocketbase/managed.js'
 import { applyArchitectureBlueprint } from '../pocketbase/architecture.js'
-import { majorToMinor } from './money.js'
+import { majorToMinor, minorToMajor } from './money.js'
 import type { CommerceProduct, PricedLine } from './types.js'
 
 function newId(): string {
@@ -139,6 +139,100 @@ export async function getCommerceProduct(
     imageUrl: String(body.image_url || ''),
     active: body.active !== false,
   }
+}
+
+function productFromRecord(row: Record<string, unknown>): CommerceProduct {
+  return {
+    id: String(row.id || ''),
+    name: String(row.name || ''),
+    slug: String(row.slug || ''),
+    description: String(row.description || ''),
+    priceMinor: majorToMinor(Number(row.price || 0), String(row.currency || 'INR')),
+    currency: String(row.currency || 'INR'),
+    stock: Number(row.stock || 0),
+    imageUrl: String(row.image_url || ''),
+    active: row.active !== false,
+  }
+}
+
+export async function createCommerceProduct(
+  projectRef: string,
+  input: {
+    name: string
+    slug?: string
+    description?: string
+    priceMinor: number
+    currency?: string
+    stock?: number
+  },
+): Promise<CommerceProduct> {
+  const appId = sanitizeAppId(projectRef)
+  await ensureCommerceSchema(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'products')
+  const currency = input.currency || 'INR'
+  const slug =
+    (input.slug || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || `p-${newId().slice(0, 10)}`
+  const { ok, body } = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${col}/records`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: adminAuthHeader(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: newId(),
+        owner: appId,
+        slug,
+        name: input.name,
+        description: input.description || '',
+        price: minorToMajor(input.priceMinor, currency),
+        currency,
+        stock: typeof input.stock === 'number' ? input.stock : 10,
+        image_url: '',
+        active: true,
+      }),
+    },
+  )
+  if (!ok || !body.id) throw new Error(formatPbError(body, 'Could not create product'))
+  return productFromRecord(body)
+}
+
+export async function patchCommerceProduct(
+  projectRef: string,
+  productId: string,
+  patch: { name?: string; priceMinor?: number; stock?: number; description?: string; currency?: string },
+): Promise<CommerceProduct | null> {
+  const appId = sanitizeAppId(projectRef)
+  const { token, base } = await adminToken()
+  const col = physicalCollectionName(appId, 'products')
+  const body: Record<string, unknown> = {}
+  if (typeof patch.name === 'string') body.name = patch.name
+  if (typeof patch.description === 'string') body.description = patch.description
+  if (typeof patch.stock === 'number') body.stock = Math.max(0, Math.round(patch.stock))
+  if (typeof patch.priceMinor === 'number') {
+    const currency = patch.currency || 'INR'
+    body.price = minorToMajor(patch.priceMinor, currency)
+    if (patch.currency) body.currency = patch.currency
+  }
+  const { ok, body: row } = await pbJson<Record<string, unknown>>(
+    `${base}/api/collections/${col}/records/${encodeURIComponent(productId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: adminAuthHeader(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  )
+  if (!ok || !row.id) return null
+  return productFromRecord(row)
 }
 
 export async function sumActiveReservations(

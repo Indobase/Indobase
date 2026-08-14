@@ -19,7 +19,7 @@ export type { BusinessRuntimeState }
 export { isForbiddenAgentClaim }
 
 export type BusinessSnapshotSummary = {
-  products: Array<{ id?: string; name?: string; priceMinor?: number; slug?: string }>
+  products: Array<{ id?: string; name?: string; priceMinor?: number; slug?: string; stock?: number }>
   orders: Array<{
     id?: string
     orderNumber?: string
@@ -54,7 +54,34 @@ export type AuthoritativeTruth = {
 export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRuntimeState {
   const snap = truth.snapshot
   const live = Boolean(truth.liveUrl) && truth.projectState === 'live'
-  return emptyBusinessRuntimeState({
+  const products = (snap?.products || [])
+    .filter((p) => p.id || p.name)
+    .map((p) => ({
+      id: p.id || p.name || '',
+      name: p.name || p.id || '',
+      priceMinor: p.priceMinor,
+      stock: typeof p.stock === 'number' ? p.stock : undefined,
+    }))
+  const orders = (snap?.orders || [])
+    .filter((o) => o.id || o.orderNumber)
+    .map((o) => ({
+      id: o.id || o.orderNumber || '',
+      orderNumber: o.orderNumber || o.id,
+      status: o.status,
+      paymentStatus: o.payment_status,
+      amountMinor: o.amount_minor,
+      email: o.email,
+      customerName: o.customer_name,
+      itemsSummary: o.items,
+    }))
+  const customers = (snap?.customers || [])
+    .filter((c) => c.id || c.email)
+    .map((c) => ({
+      id: c.id || c.email || '',
+      email: c.email,
+      name: c.name,
+    }))
+  const state = emptyBusinessRuntimeState({
     identity: truth.identity,
     business: {
       ref: truth.business?.ref || truth.workspace?.ref || '',
@@ -80,32 +107,9 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
     },
     deployment: truth.deployment,
     live: { isLive: live, url: live ? truth.liveUrl : null },
-    products: (snap?.products || [])
-      .filter((p) => p.id || p.name)
-      .map((p) => ({
-        id: p.id || p.name || '',
-        name: p.name || p.id || '',
-        priceMinor: p.priceMinor,
-      })),
-    customers: (snap?.customers || [])
-      .filter((c) => c.id || c.email)
-      .map((c) => ({
-        id: c.id || c.email || '',
-        email: c.email,
-        name: c.name,
-      })),
-    orders: (snap?.orders || [])
-      .filter((o) => o.id || o.orderNumber)
-      .map((o) => ({
-        id: o.id || o.orderNumber || '',
-        orderNumber: o.orderNumber || o.id,
-        status: o.status,
-        paymentStatus: o.payment_status,
-        amountMinor: o.amount_minor,
-        email: o.email,
-        customerName: o.customer_name,
-        itemsSummary: o.items,
-      })),
+    products,
+    customers,
+    orders,
     capabilities: truth.capabilities,
     jobs: truth.jobs,
     events: truth.events,
@@ -115,14 +119,56 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl),
     },
   })
+  const inStockCount = products.filter((p) => (p.stock ?? 0) > 0).length
+  const lowStockCount = products.filter(
+    (p) => typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5,
+  ).length
+  const pendingOrderCount = orders.filter((o) => {
+    const status = String(o.paymentStatus || o.status || '').toLowerCase()
+    return !status || status === 'pending' || status === 'open' || status === 'unpaid'
+  }).length
+  return {
+    ...state,
+    catalog: {
+      productCount: products.length,
+      inStockCount,
+      lowStockCount,
+    },
+    commerce: {
+      orderCount: orders.length,
+      pendingOrderCount,
+    },
+    inventory: products
+      .filter((p) => typeof p.stock === 'number')
+      .map((p) => ({
+        id: p.id,
+        productId: p.id,
+        quantity: p.stock,
+      })),
+  }
 }
 
 export function composeAuthoritativeStateHint(truth: AuthoritativeTruth): string {
-  return composeBusinessRuntimeStateHint(toBusinessRuntimeState(truth))
+  return composeRuntimeStateHint(toBusinessRuntimeState(truth))
 }
 
 export function composeRuntimeStateHint(state: BusinessRuntimeState): string {
-  return composeBusinessRuntimeStateHint(state)
+  const hint = composeBusinessRuntimeStateHint(state)
+  if (/catalog\.productCount:/.test(hint)) return hint
+  const catalog = state.catalog
+  const commerce = state.commerce
+  if (!catalog) return hint
+  const extra = [
+    `catalog.productCount: ${catalog.productCount}`,
+    `catalog.inStockCount: ${catalog.inStockCount}`,
+    `catalog.lowStockCount: ${catalog.lowStockCount}`,
+    `commerce.orderCount: ${commerce?.orderCount ?? state.orders.length}`,
+    `commerce.pendingOrderCount: ${commerce?.pendingOrderCount ?? 0}`,
+  ].join('\n')
+  return hint.replace(
+    /health\.previewReady: [^\n]+\n/,
+    (m) => `${m}${extra}\n`,
+  )
 }
 
 export function agentMayClaimPreview(truth: AuthoritativeTruth): boolean {

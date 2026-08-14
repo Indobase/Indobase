@@ -1,0 +1,534 @@
+/**
+ * Internal store commands — MODIFY/OPERATE skills, not agent tools.
+ * Session projectRef is authority. PocketBase stays an implementation detail.
+ */
+
+import { createCommand, type Command } from '@indobase/platform'
+import { authorizeControlCenterAccess } from '../commerce/control-center-auth.js'
+import { markOrderFailed, markOrderPaid } from '../commerce/checkout-service.js'
+import { majorToMinor } from '../commerce/money.js'
+import {
+  createCommerceProduct,
+  listCommerceOrders,
+  listCommerceProducts,
+  patchCommerceProduct,
+  type CommerceProduct,
+} from '../commerce/pb-adapter.js'
+import { snapshotFromCommerceRows, type BusinessSnapshotSummary } from './authoritative-turn.js'
+
+export type StoreCommandKind =
+  | 'product.create'
+  | 'product.update'
+  | 'inventory.update'
+  | 'order.status'
+  | 'orders.query'
+  | 'catalog.query'
+
+export type ClassifiedStoreCommand = {
+  kind: StoreCommandKind
+  readOnly: boolean
+  name?: string
+  description?: string
+  priceMajor?: number
+  stock?: number
+  percent?: number
+  productHint?: string
+  orderHint?: string
+  orderStatus?: 'paid' | 'failed'
+  query?: 'low-stock' | 'catalog' | 'orders'
+}
+
+export type StoreProductRecord = {
+  id: string
+  name: string
+  slug?: string
+  priceMinor: number
+  stock: number
+  currency?: string
+}
+
+export type StoreCommandDeps = {
+  listProducts: (projectRef: string) => Promise<StoreProductRecord[]>
+  createProduct: (
+    projectRef: string,
+    input: { name: string; slug?: string; description?: string; priceMinor: number; stock: number },
+  ) => Promise<StoreProductRecord>
+  updateProduct: (
+    projectRef: string,
+    productId: string,
+    patch: { name?: string; priceMinor?: number; stock?: number },
+  ) => Promise<StoreProductRecord | null>
+  listOrders?: (projectRef: string) => Promise<Array<Record<string, unknown>>>
+  updateOrderStatus?: (
+    projectRef: string,
+    orderId: string,
+    status: 'paid' | 'failed',
+  ) => Promise<{ ok: boolean; message?: string }>
+}
+
+export type StoreCommandResult = {
+  ok: boolean
+  status: number
+  code?: string
+  kind: StoreCommandKind | null
+  command?: Command
+  message: string
+  snapshot: BusinessSnapshotSummary
+  mutated: boolean
+  query?: ClassifiedStoreCommand['query']
+}
+
+function slugify(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 48)
+  return slug || `product-${Date.now().toString(36)}`
+}
+
+function parsePriceMajor(text: string): number | undefined {
+  const rupee = text.match(/(?:₹|rs\.?\s*|inr\s*)\s*([\d,]+(?:\.\d+)?)/i)
+  const at = text.match(/\b(?:at|for|priced(?:\s+at)?)\s+(?:₹|rs\.?\s*)?([\d,]+(?:\.\d+)?)/i)
+  const raw = rupee?.[1] || at?.[1]
+  if (!raw) return undefined
+  const n = Number(raw.replace(/,/g, ''))
+  return Number.isFinite(n) ? n : undefined
+}
+
+function parseStock(text: string): number | undefined {
+  const m =
+    text.match(/\b(?:stock|qty|quantity|units?)\s*(?:to|of|=|:)?\s*(\d+)\b/i) ||
+    text.match(/\b(\d+)\s+(?:in\s+)?(?:stock|units|pcs|pieces)\b/i)
+  if (!m) return undefined
+  const n = Number(m[1])
+  return Number.isFinite(n) ? n : undefined
+}
+
+function parsePercent(text: string): number | undefined {
+  const m = text.match(/\bby\s+(\d+(?:\.\d+)?)\s*%/)
+  if (!m) return undefined
+  const n = Number(m[1])
+  return Number.isFinite(n) ? n : undefined
+}
+
+function stripAddPrefix(text: string): string {
+  return text
+    .replace(
+      /^(?:please\s+)?(?:add|create|list)\s+(?:a |an |new )?(?:product(?:\s+called|\s+named)?\s+)?/i,
+      '',
+    )
+    .trim()
+}
+
+function extractCreatedName(text: string): string {
+  const stripped = stripAddPrefix(text)
+  const cut = stripped.split(/\s+(?:at|for|priced|with|₹|rs\.?|inr|stock)\b/i)[0] || stripped
+  return cut.replace(/[.?!]+$/, '').trim() || 'New product'
+}
+
+function extractProductHint(text: string): string | undefined {
+  const named = text.match(
+    /\b(?:of|for|on)\s+(?:the\s+)?["']?([A-Za-z][\w\s-]{1,60}?)["']?(?:\s+(?:to|at|by|₹)|$)/i,
+  )
+  if (named?.[1]) return named[1].trim()
+  return undefined
+}
+
+export function classifyStoreCommand(message: string): ClassifiedStoreCommand | null {
+  const text = (message || '').replace(/<<<INDOBASE_RUNTIME>>>[\s\S]*?<<<END_INDOBASE_RUNTIME>>>/gi, '').trim()
+  if (!text || /^SCREEN\b/.test(text) || /^PREVIEW_EDIT\b/.test(text)) return null
+  const q = text.toLowerCase()
+
+  if (/\b(go live|take live|launch my|launch this|launch store|start building|build (?:me )?(?:a|an))\b/.test(q)) {
+    return null
+  }
+  if (/\b(hero headline|change the hero|headline to)\b/.test(q)) return null
+
+  if (/\b(low stock|out of stock|which products are low)\b/.test(q)) {
+    return { kind: 'catalog.query', readOnly: true, query: 'low-stock' }
+  }
+  if (/\b(show|list|today'?s|latest)\b/.test(q) && /\borders?\b/.test(q)) {
+    return { kind: 'orders.query', readOnly: true }
+  }
+  if (/\bshow (?:me )?(?:the )?(?:catalog|products|inventory)\b/.test(q)) {
+    return { kind: 'catalog.query', readOnly: true }
+  }
+
+  if (/\bmark\b/.test(q) && /\border\b/.test(q) && /\b(paid|failed|cancelled)\b/.test(q)) {
+    const orderHint = text.match(/\b(?:order|#)\s*([a-z0-9_-]+)/i)?.[1]
+    const orderStatus: 'paid' | 'failed' = /\bfailed|cancelled\b/.test(q) ? 'failed' : 'paid'
+    return { kind: 'order.status', readOnly: false, orderHint, orderStatus }
+  }
+
+  if (/\b(increase|raise|bump)\b/.test(q) && /\bprices?\b/.test(q)) {
+    return {
+      kind: 'product.update',
+      readOnly: false,
+      percent: parsePercent(text) ?? 10,
+      productHint: extractProductHint(text),
+    }
+  }
+
+  if (
+    (/\b(set|update|change|restock)\b/.test(q) && /\b(stock|inventory|qty)\b/.test(q)) ||
+    /\bincrease (?:the )?stock\b/.test(q)
+  ) {
+    return {
+      kind: 'inventory.update',
+      readOnly: false,
+      stock: parseStock(text),
+      productHint: extractProductHint(text),
+    }
+  }
+
+  if (/\b(change|update|set)\b/.test(q) && /\b(price|priced|₹|name)\b/.test(q)) {
+    return {
+      kind: 'product.update',
+      readOnly: false,
+      name: /\bname\b/.test(q) ? extractCreatedName(text) : undefined,
+      priceMajor: parsePriceMajor(text),
+      productHint: extractProductHint(text),
+    }
+  }
+
+  if (
+    /^(?:please\s+)?(?:add|create)\b/.test(q) &&
+    /\b(product|sku|item|shoe|sneaker|runner|shirt|bag)\b/.test(q)
+  ) {
+    const sizes = text.match(/\bsizes?\s+([0-9]+(?:\s*[–-]\s*[0-9]+)?)/i)?.[0]
+    return {
+      kind: 'product.create',
+      readOnly: false,
+      name: extractCreatedName(text),
+      description: sizes ? sizes : undefined,
+      priceMajor: parsePriceMajor(text) ?? 0,
+      stock: parseStock(text) ?? 10,
+    }
+  }
+
+  if (/^(?:please\s+)?add\s+(?:a|an|new)\b/.test(q) && parsePriceMajor(text) != null) {
+    const sizes = text.match(/\bsizes?\s+([0-9]+(?:\s*[–-]\s*[0-9]+)?)/i)?.[0]
+    return {
+      kind: 'product.create',
+      readOnly: false,
+      name: extractCreatedName(text),
+      description: sizes || undefined,
+      priceMajor: parsePriceMajor(text),
+      stock: parseStock(text) ?? 10,
+    }
+  }
+
+  return null
+}
+
+export function looksLikeStoreCommand(message: string): boolean {
+  return classifyStoreCommand(message) != null
+}
+
+function toSnapshot(
+  products: StoreProductRecord[],
+  orders: Array<Record<string, unknown>>,
+): BusinessSnapshotSummary {
+  return snapshotFromCommerceRows(
+    products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      priceMinor: p.priceMinor,
+      stock: p.stock,
+    })),
+    orders,
+  )
+}
+
+function fromCommerceProduct(p: CommerceProduct): StoreProductRecord {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    priceMinor: p.priceMinor,
+    stock: p.stock,
+    currency: p.currency,
+  }
+}
+
+export const defaultStoreCommandDeps: StoreCommandDeps = {
+  listProducts: async (ref) => (await listCommerceProducts(ref)).map(fromCommerceProduct),
+  createProduct: async (ref, input) =>
+    fromCommerceProduct(
+      await createCommerceProduct(ref, {
+        name: input.name,
+        slug: input.slug,
+        description: input.description,
+        priceMinor: input.priceMinor,
+        stock: input.stock,
+      }),
+    ),
+  updateProduct: async (ref, id, patch) => {
+    const row = await patchCommerceProduct(ref, id, patch)
+    return row ? fromCommerceProduct(row) : null
+  },
+  listOrders: listCommerceOrders,
+  updateOrderStatus: async (ref, id, status) => {
+    if (status === 'paid') {
+      const result = await markOrderPaid({ projectRef: ref, orderId: id })
+      return { ok: result.ok, message: result.ok ? 'paid' : result.message }
+    }
+    const result = await markOrderFailed({ projectRef: ref, orderId: id })
+    return { ok: result.ok, message: result.ok ? 'failed' : result.message }
+  },
+}
+
+export function createMemoryStoreCommandDeps(seed?: Record<string, StoreProductRecord[]>): StoreCommandDeps {
+  const catalogs = new Map<string, StoreProductRecord[]>()
+  const orders = new Map<string, Array<Record<string, unknown>>>()
+  for (const [ref, rows] of Object.entries(seed || {})) {
+    catalogs.set(ref, rows.map((r) => ({ ...r })))
+  }
+  let seq = 1
+  return {
+    listProducts: async (ref) => (catalogs.get(ref) || []).map((r) => ({ ...r })),
+    createProduct: async (ref, input) => {
+      const row: StoreProductRecord = {
+        id: `p${seq++}`,
+        name: input.name,
+        slug: input.slug || slugify(input.name),
+        priceMinor: input.priceMinor,
+        stock: input.stock,
+      }
+      const list = catalogs.get(ref) || []
+      list.push(row)
+      catalogs.set(ref, list)
+      return { ...row }
+    },
+    updateProduct: async (ref, id, patch) => {
+      const list = catalogs.get(ref) || []
+      const row = list.find((p) => p.id === id)
+      if (!row) return null
+      if (typeof patch.name === 'string') row.name = patch.name
+      if (typeof patch.priceMinor === 'number') row.priceMinor = patch.priceMinor
+      if (typeof patch.stock === 'number') row.stock = patch.stock
+      return { ...row }
+    },
+    listOrders: async (ref) => [...(orders.get(ref) || [])],
+    updateOrderStatus: async (ref, id, status) => {
+      const list = orders.get(ref) || []
+      const row = list.find((o) => String(o.id) === id)
+      if (!row) return { ok: false, message: 'Order not found' }
+      row.payment_status = status
+      row.status = status
+      return { ok: true }
+    },
+  }
+}
+
+function matchProduct(products: StoreProductRecord[], hint?: string): StoreProductRecord | undefined {
+  if (!hint) return products[0]
+  const q = hint.toLowerCase()
+  return (
+    products.find((p) => p.name.toLowerCase() === q || p.id === hint || p.slug === hint) ||
+    products.find((p) => p.name.toLowerCase().includes(q))
+  )
+}
+
+export async function executeStoreCommand(input: {
+  session: { projectRef: string }
+  guest?: boolean
+  requestedProjectRef?: string
+  message: string
+  deps?: StoreCommandDeps
+}): Promise<StoreCommandResult> {
+  const classified = classifyStoreCommand(input.message)
+  const empty: BusinessSnapshotSummary = { products: [], orders: [], customers: [] }
+  if (!classified) {
+    return { ok: true, status: 200, kind: null, message: '', snapshot: empty, mutated: false }
+  }
+
+  const auth = authorizeControlCenterAccess({
+    session: input.session,
+    guest: input.guest,
+    requestedProjectRef: input.requestedProjectRef,
+  })
+  if (!auth.ok) {
+    return {
+      ok: false,
+      status: auth.status,
+      code: auth.code,
+      kind: classified.kind,
+      message: auth.code === 'forbidden' ? 'That workspace is not this session.' : 'Sign in to operate the store.',
+      snapshot: empty,
+      mutated: false,
+    }
+  }
+
+  const projectRef = auth.projectRef
+  const deps = input.deps || defaultStoreCommandDeps
+
+  const loadSnapshot = async (): Promise<BusinessSnapshotSummary> => {
+    const [products, orderRows] = await Promise.all([
+      deps.listProducts(projectRef),
+      deps.listOrders ? deps.listOrders(projectRef) : Promise.resolve([]),
+    ])
+    return toSnapshot(products, orderRows)
+  }
+
+  try {
+    if (classified.readOnly) {
+      const snapshot = await loadSnapshot()
+      const command = createCommand(classified.kind, { projectRef }, { projectRef })
+      const message =
+        classified.kind === 'orders.query'
+          ? snapshot.orders.length
+            ? `${snapshot.orders.length} orders.`
+            : 'No orders yet.'
+          : snapshot.products.length
+            ? `${snapshot.products.length} products in the catalog.`
+            : 'Catalog is empty.'
+      return { ok: true, status: 200, kind: classified.kind, command, message, snapshot, mutated: false, query: classified.query }
+    }
+
+    if (classified.kind === 'product.create') {
+      const name = classified.name || 'New product'
+      const created = await deps.createProduct(projectRef, {
+        name,
+        slug: slugify(name),
+        description: classified.description,
+        priceMinor: majorToMinor(classified.priceMajor ?? 0, 'INR'),
+        stock: classified.stock ?? 10,
+      })
+      const snapshot = await loadSnapshot()
+      const command = createCommand('product.create', { projectRef, productId: created.id, name: created.name }, { projectRef })
+      return {
+        ok: true,
+        status: 200,
+        kind: 'product.create',
+        command,
+        message: `Added ${created.name} to the catalog.`,
+        snapshot,
+        mutated: true,
+      }
+    }
+
+    const products = await deps.listProducts(projectRef)
+    if (classified.kind === 'product.update') {
+      if (classified.percent && !classified.productHint) {
+        for (const p of products) {
+          const next = Math.round(p.priceMinor * (1 + classified.percent / 100))
+          await deps.updateProduct(projectRef, p.id, { priceMinor: next })
+        }
+        const snapshot = await loadSnapshot()
+        const command = createCommand('product.update', { projectRef, percent: classified.percent }, { projectRef })
+        return {
+          ok: true,
+          status: 200,
+          kind: 'product.update',
+          command,
+          message: `Increased catalog prices by ${classified.percent}%.`,
+          snapshot,
+          mutated: true,
+        }
+      }
+      const target = matchProduct(products, classified.productHint)
+      if (!target) {
+        return {
+          ok: false,
+          status: 404,
+          code: 'not_found',
+          kind: classified.kind,
+          message: 'No matching product in this catalog.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      const patch: { name?: string; priceMinor?: number } = {}
+      if (classified.name) patch.name = classified.name
+      if (typeof classified.priceMajor === 'number') patch.priceMinor = majorToMinor(classified.priceMajor, 'INR')
+      if (classified.percent) patch.priceMinor = Math.round(target.priceMinor * (1 + classified.percent / 100))
+      await deps.updateProduct(projectRef, target.id, patch)
+      const snapshot = await loadSnapshot()
+      const command = createCommand('product.update', { projectRef, productId: target.id }, { projectRef })
+      return {
+        ok: true,
+        status: 200,
+        kind: 'product.update',
+        command,
+        message: `Updated ${target.name}.`,
+        snapshot,
+        mutated: true,
+      }
+    }
+
+    if (classified.kind === 'inventory.update') {
+      const target = matchProduct(products, classified.productHint)
+      if (!target || typeof classified.stock !== 'number') {
+        return {
+          ok: false,
+          status: 400,
+          code: 'invalid_request',
+          kind: classified.kind,
+          message: 'Say which product and the new stock count.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      await deps.updateProduct(projectRef, target.id, { stock: classified.stock })
+      const snapshot = await loadSnapshot()
+      const command = createCommand('inventory.update', { projectRef, productId: target.id, stock: classified.stock }, { projectRef })
+      return {
+        ok: true,
+        status: 200,
+        kind: 'inventory.update',
+        command,
+        message: `Stock for ${target.name} is now ${classified.stock}.`,
+        snapshot,
+        mutated: true,
+      }
+    }
+
+    if (classified.kind === 'order.status') {
+      const orderRows = deps.listOrders ? await deps.listOrders(projectRef) : []
+      const hint = (classified.orderHint || '').toLowerCase()
+      const row =
+        (hint && orderRows.find((o) => String(o.id || o.orderNumber || '').toLowerCase() === hint)) ||
+        (hint === 'latest' ? orderRows[0] : null) ||
+        (!hint ? orderRows[0] : null)
+      const orderId = row ? String(row.id || '') : classified.orderHint || ''
+      if (!orderId || !deps.updateOrderStatus || !classified.orderStatus) {
+        return {
+          ok: false,
+          status: 400,
+          code: 'invalid_request',
+          kind: classified.kind,
+          message: 'No matching order.',
+          snapshot: await loadSnapshot(),
+          mutated: false,
+        }
+      }
+      const updated = await deps.updateOrderStatus(projectRef, orderId, classified.orderStatus)
+      const snapshot = await loadSnapshot()
+      const command = createCommand('order.status', { projectRef, orderId, status: classified.orderStatus }, { projectRef })
+      return {
+        ok: updated.ok,
+        status: updated.ok ? 200 : 400,
+        kind: 'order.status',
+        command,
+        message: updated.ok ? `Order ${orderId} is ${classified.orderStatus}.` : updated.message || 'Could not update the order.',
+        snapshot,
+        mutated: updated.ok,
+      }
+    }
+
+    return { ok: true, status: 200, kind: classified.kind, message: '', snapshot: await loadSnapshot(), mutated: false }
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: 'backend_unavailable',
+      kind: classified.kind,
+      message: 'I could not update the catalog just now.',
+      snapshot: empty,
+      mutated: false,
+    }
+  }
+}

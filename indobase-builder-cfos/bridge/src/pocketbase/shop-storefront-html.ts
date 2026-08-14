@@ -34,6 +34,7 @@ export function buildManagedShopStorefrontHtml(opts: {
     commerceBaseUrl: commerceBase,
     projectRef: opts.appId,
   })
+  // Baked snapshot is fallback; the page still refreshes via commerce.products.list().
   const snapshot = JSON.stringify(
     (opts.products || []).map((p) => ({
       id: p.id,
