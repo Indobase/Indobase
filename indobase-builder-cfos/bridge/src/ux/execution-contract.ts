@@ -362,6 +362,14 @@ function operateReply(
   named: string,
   store?: StoreCommandResult | null,
 ): string {
+  if (store?.kind && store.message && (store.mutated || !store.ok || !store.readOnly)) {
+    if (store.mutated) {
+      const count = state.catalog?.productCount ?? state.products.length
+      const tail = count ? ` Catalog now has ${count} product${count === 1 ? '' : 's'}.` : ''
+      return `${store.message}${tail}`
+    }
+    if (store.message) return store.message
+  }
   if (store?.mutated && store.message) {
     const count = state.catalog?.productCount ?? state.products.length
     const tail = count ? ` Catalog now has ${count} product${count === 1 ? '' : 's'}.` : ''

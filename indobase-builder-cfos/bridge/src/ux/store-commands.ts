@@ -98,6 +98,7 @@ function parsePriceMajor(text: string): number | undefined {
 
 function parseStock(text: string): number | undefined {
   const m =
+    text.match(/\b(?:stock|qty|quantity|units?)\s+(?:of\s+.+?\s+)?(?:to|=|:)\s*(\d+)\b/i) ||
     text.match(/\b(?:stock|qty|quantity|units?)\s*(?:to|of|=|:)?\s*(\d+)\b/i) ||
     text.match(/\b(\d+)\s+(?:in\s+)?(?:stock|units|pcs|pieces)\b/i)
   if (!m) return undefined
@@ -155,8 +156,9 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
     return { kind: 'catalog.query', readOnly: true }
   }
 
-  if (/\bmark\b/.test(q) && /\border\b/.test(q) && /\b(paid|failed|cancelled)\b/.test(q)) {
-    const orderHint = text.match(/\b(?:order|#)\s*([a-z0-9_-]+)/i)?.[1]
+  if (/\bmark\b/.test(q) && /\border\b/.test(q) && /\b(paid|failed|cancelled|fulfilled|fulfill)\b/.test(q)) {
+    let orderHint = text.match(/\b(?:order|#)\s*([a-z0-9_-]+)/i)?.[1]
+    if (!orderHint || /^(as|that|the|this|my|latest)$/i.test(orderHint)) orderHint = 'latest'
     const orderStatus: 'paid' | 'failed' = /\bfailed|cancelled\b/.test(q) ? 'failed' : 'paid'
     return { kind: 'order.status', readOnly: false, orderHint, orderStatus }
   }
