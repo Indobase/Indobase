@@ -102,6 +102,48 @@ describe('Execution Engine v2 Phase 1 — ExecutionPlan', () => {
     assert.equal(authorizeExecutionPlan(plan, 'otherws01').ok, false)
   })
 
+  it('Launch a … store first turn is BUILD only — no executeProductionLaunchJob', () => {
+    const message = 'Launch a premium outdoor gear store called CedarPeak'
+    const intent = classifyOperatorIntent(message, null)
+    const plan = buildExecutionPlan({
+      projectRef: 'wscedar01',
+      intent,
+      turnClass: turnClassForIntent(intent),
+      businessType: 'ecommerce',
+      message,
+    })
+    assert.equal(intent, 'create_business')
+    assert.equal(plan.turnClass, 'build')
+    assert.equal(planCommands(plan).includes(PLAN_COMMAND.productionLaunch), false)
+    assert.equal(validateExecutionPlan(plan).ok, true)
+  })
+
+  it('OPERATE NL catalog utterances become store command steps, not other', () => {
+    const cases: Array<[string, string]> = [
+      ['Add Ridge Pack Extra for ₹8999.', 'product.create'],
+      ['change Ridge Pack Extra price to ₹9999', 'product.update'],
+      ['set Ridge Pack Extra stock to 12', 'inventory.update'],
+      ['create collection Trail Packs', 'collection.create'],
+      ['show my products', 'catalog.query'],
+      ['mark order ORD-1 fulfilled', 'order.fulfill'],
+    ]
+    for (const [message, kind] of cases) {
+      const intent = classifyOperatorIntent(message, null)
+      const store = classifyStoreCommand(message)
+      const plan = buildExecutionPlan({
+        projectRef: 'wsoperate02',
+        intent,
+        turnClass: turnClassForIntent(intent),
+        store,
+        message,
+      })
+      assert.equal(intent, 'operate', message)
+      assert.equal(plan.turnClass, 'operate', message)
+      assert.equal(store?.kind, kind, message)
+      assert.ok(plan.steps.some((s) => s.command === kind), message)
+    }
+  })
+
   it('AGENT_FACING_TOOL_NAMES is still five tools', () => {
     assert.equal(AGENT_FACING_TOOL_NAMES.length, 5)
     assert.deepEqual([...AGENT_FACING_TOOL_NAMES], [

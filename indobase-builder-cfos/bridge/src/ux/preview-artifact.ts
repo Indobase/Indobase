@@ -5,6 +5,7 @@
 
 import { createHash } from 'node:crypto'
 import type { BackendConfig } from '../auth.js'
+import { persistCatalogProjection } from './catalog-domain.js'
 import { displayPriceMinorFromVariants } from './catalog-domain.js'
 import { buildManagedShopStorefrontHtml } from '../pocketbase/shop-storefront-html.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from '../production-launch/shells.js'
@@ -75,15 +76,33 @@ export type StorefrontCatalogCollection = {
 
 /** Baked `let products=[…]` fallback. Live grid still prefers commerce.products.list(). */
 export function serializeStorefrontCatalogSnapshot(products: StorefrontCatalogProduct[]): string {
-  return JSON.stringify(
+  const projected = persistCatalogProjection(
     products.map((p) => ({
       id: p.id,
       name: p.name,
-      slug: p.slug || '',
-      description: p.description || '',
-      priceMinor:
-        displayPriceMinorFromVariants(p.variants, typeof p.priceMinor === 'number' ? p.priceMinor : 0) ?? 0,
-      currency: p.currency || 'INR',
+      priceMinor: typeof p.priceMinor === 'number' ? p.priceMinor : 0,
+      stock: Number(p.stock || 0),
+      variants: (p.variants || [])
+        .filter((v) => v.id)
+        .map((v) => ({
+          id: v.id as string,
+          sku: v.sku,
+          title: v.title,
+          options: v.options,
+          priceMinor: v.priceMinor,
+          stock: v.stock,
+          default: v.default,
+        })),
+    })),
+  )
+  return JSON.stringify(
+    projected.map((p, i) => ({
+      id: p.id,
+      name: p.name,
+      slug: products[i]?.slug || '',
+      description: products[i]?.description || '',
+      priceMinor: displayPriceMinorFromVariants(p.variants, p.priceMinor) ?? 0,
+      currency: products[i]?.currency || 'INR',
       stock: Number(p.stock || 0),
       imageUrl: '',
       active: true,

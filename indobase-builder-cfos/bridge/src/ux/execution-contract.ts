@@ -170,11 +170,20 @@ function looksLikeGoLive(text: string): boolean {
   )
 }
 
-/** “Launch a premium sneaker store called X” — preview then the existing launchProductionApp path. */
+/** “Launch a premium sneaker store called X” — first turn is BUILD/preview, never LIVE. */
 function looksLikeExplicitStoreLaunch(text: string): boolean {
   const q = text.toLowerCase()
   if (!/\blaunch a\b/.test(q)) return false
   return /\b(store|shop|sneaker|sneakers|ecommerce|boutique)\b/.test(q)
+}
+
+function previewIsReadyForLaunch(runtime: PersistedWorkspaceRuntime): boolean {
+  return (
+    runtime.preview.status === 'ready' &&
+    Boolean(runtime.artifactHtml) &&
+    runtime.preview.httpOk !== false &&
+    Boolean(runtime.spec)
+  )
 }
 
 export function classifyOperatorIntent(
@@ -696,16 +705,20 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     }
   }
 
-  const primaryTurn = looksLikeExplicitStoreLaunch(effectiveMessage)
-    ? 'launch'
-    : turnClassForIntent(intent)
-  const includeBuild =
-    looksLikeExplicitStoreLaunch(effectiveMessage) ||
-    (primaryTurn === 'launch' && (runtime.preview.status !== 'ready' || !runtime.artifactHtml))
+  const creatingStore = looksLikeExplicitStoreLaunch(effectiveMessage) || intent === 'create_business'
+  const primaryTurn =
+    creatingStore
+      ? 'build'
+      : intent === 'launch_production' && previewIsReadyForLaunch(runtime)
+        ? 'launch'
+        : intent === 'launch_production'
+          ? 'build'
+          : turnClassForIntent(intent)
+  const includeBuild = false
   plan = gatedPlan(
     buildExecutionPlan({
       projectRef: session.projectRef,
-      intent: looksLikeExplicitStoreLaunch(effectiveMessage) ? 'launch_production' : intent,
+      intent: primaryTurn === 'launch' ? 'launch_production' : intent === 'launch_production' ? 'create_business' : intent,
       turnClass: primaryTurn,
       businessType: spec?.businessType || runtime.spec?.businessType,
       store: classifiedStore,
@@ -736,7 +749,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     spec?.businessName && !isPlaceholderBusinessName(spec.businessName)
       ? spec.businessName
       : ''
-  const turnClass = turnClassForIntent(intent, { launched: Boolean(launch) })
+  const turnClass = plan?.turnClass || turnClassForIntent(intent, { launched: Boolean(launch) })
   const operatorMessage = operatorMessageForTurn({
     turnClass,
     intent,

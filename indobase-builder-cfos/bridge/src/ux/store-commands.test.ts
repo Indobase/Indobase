@@ -29,6 +29,12 @@ describe('store commands (internal, not tools)', () => {
     assert.equal(classifyStoreCommand('Which products are low stock?')?.query, 'low-stock')
     assert.equal(classifyStoreCommand('Launch a premium sneaker store called UrbanThread'), null)
     assert.equal(classifyStoreCommand('Change the hero headline to Midnight drops'), null)
+    assert.equal(classifyStoreCommand('Add Ridge Pack Extra for ₹8999.')?.kind, 'product.create')
+    assert.equal(classifyStoreCommand('change Ridge Pack Extra price to ₹9999')?.kind, 'product.update')
+    assert.equal(classifyStoreCommand('set Ridge Pack Extra stock to 12')?.kind, 'inventory.update')
+    assert.equal(classifyStoreCommand('create collection Trail Packs')?.kind, 'collection.create')
+    assert.equal(classifyStoreCommand('show my products')?.kind, 'catalog.query')
+    assert.equal(classifyStoreCommand('mark order ORD-1 fulfilled')?.kind, 'order.fulfill')
   })
 
   it('creates a product in the session catalog only', async () => {

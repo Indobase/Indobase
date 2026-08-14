@@ -132,13 +132,24 @@ export async function executeCheckout(
       if (!product || !product.active) {
         return { ok: false, code: 'invalid_product', message: `Product not found: ${productId}` }
       }
-      const variants = product.variants || []
-      const variant =
-        (variantId && variants.find((v) => v.id === variantId)) ||
-        variants.find((v) => v.default) ||
-        variants[0]
+      const variants = product.variants?.length
+        ? product.variants
+        : [
+            {
+              id: `${product.id}__default`,
+              sku: product.slug || product.id,
+              title: 'Default',
+              options: {},
+              priceMinor: product.priceMinor,
+              stock: product.stock,
+              default: true,
+            },
+          ]
+      const variant = variantId
+        ? variants.find((v) => v.id === variantId)
+        : variants.find((v) => v.default) || variants[0]
       if (!variant?.id) {
-        return { ok: false, code: 'invalid_product', message: `No purchasable variant for ${product.name}` }
+        return { ok: false, code: 'invalid_product', message: `variantId required for ${product.name}` }
       }
       const unitPrice = purchasableUnitPriceMinor(variant)
       if (unitPrice == null) {

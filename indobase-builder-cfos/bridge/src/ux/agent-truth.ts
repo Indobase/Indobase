@@ -14,6 +14,8 @@ import {
   type BusinessRuntimeState,
 } from '@indobase/platform'
 
+import { persistCatalogProjection } from './catalog-domain.js'
+
 import type { BusinessSpec } from './business-spec.js'
 import type { PreviewStatus } from './preview-gate.js'
 
@@ -79,23 +81,25 @@ export type AuthoritativeTruth = {
 export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRuntimeState {
   const snap = truth.snapshot
   const live = Boolean(truth.liveUrl) && truth.projectState === 'live'
-  const products = (snap?.products || [])
-    .filter((p) => p.id || p.name)
-    .map((p) => ({
-      id: p.id || p.name || '',
-      name: p.name || p.id || '',
-      priceMinor: p.priceMinor,
-      stock: typeof p.stock === 'number' ? p.stock : undefined,
-      variants: (p.variants || []).map((v) => ({
-        id: v.id || '',
-        sku: v.sku,
-        title: v.title,
-        options: v.options,
-        priceMinor: v.priceMinor,
-        stock: v.stock,
-        default: v.default,
+  const products = persistCatalogProjection(
+    (snap?.products || [])
+      .filter((p) => p.id || p.name)
+      .map((p) => ({
+        id: p.id || p.name || '',
+        name: p.name || p.id || '',
+        priceMinor: p.priceMinor,
+        stock: typeof p.stock === 'number' ? p.stock : undefined,
+        variants: (p.variants || []).map((v) => ({
+          id: v.id || '',
+          sku: v.sku,
+          title: v.title,
+          options: v.options,
+          priceMinor: v.priceMinor,
+          stock: v.stock,
+          default: v.default,
+        })),
       })),
-    }))
+  )
   const orders = (snap?.orders || [])
     .filter((o) => o.id || o.orderNumber)
     .map((o) => ({

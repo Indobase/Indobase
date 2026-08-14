@@ -15,6 +15,7 @@ import {
   catalogStatsFromProducts,
   displayPriceMinorFromVariants,
   inventoryFromCatalogProducts,
+  persistCatalogProjection,
   LOW_STOCK_THRESHOLD,
   type BusinessCatalogCollection,
 } from './catalog'
@@ -185,7 +186,7 @@ export function emptyBusinessRuntimeState(
     preview: { status: 'absent', url: null, ...overrides.preview },
     deployment: { status: null, jobId: null, ...overrides.deployment },
     live: { isLive: false, url: null, ...overrides.live },
-    products: productsWithDisplayPrice(overrides.products ?? []),
+    products: productsWithDisplayPrice(persistCatalogProjection(overrides.products ?? [])),
     customers: overrides.customers ?? [],
     orders: overrides.orders ?? [],
     catalog: {
@@ -210,15 +211,16 @@ export function emptyBusinessRuntimeState(
 }
 
 export function agentMayClaimPreview(state: BusinessRuntimeState): boolean {
-  return state.preview.status === 'ready' && Boolean(state.preview.url)
+  const reachable = state.health.previewReady !== false
+  return state.preview.status === 'ready' && Boolean(state.preview.url) && reachable
 }
 
 export function agentMayClaimLive(state: BusinessRuntimeState): boolean {
-  return (
-    state.live.isLive &&
-    Boolean(state.live.url) &&
-    (state.business.state === 'live' || state.live.isLive)
-  )
+  const jobLive =
+    state.deployment.status === 'live' ||
+    state.jobs.some((job) => job.status === 'live') ||
+    (state.live.isLive && Boolean(state.live.url) && state.business.state === 'live')
+  return state.live.isLive && Boolean(state.live.url) && jobLive
 }
 
 /** True when the agent must NOT invent “connection unavailable” for this entity. */

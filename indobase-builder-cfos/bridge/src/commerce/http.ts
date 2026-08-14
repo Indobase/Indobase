@@ -24,7 +24,7 @@ import {
 } from './pb-adapter.js'
 import { buildCommerceRuntimeJs } from './runtime.js'
 import { minorToMajor } from './money.js'
-import { customerFacingCheckoutMessage } from './customer-copy.js'
+import { persistCatalogProjection } from '../ux/catalog-domain.js'
 
 export type ControlCenterSnapshotLoaders = {
   listProducts: (projectRef: string) => Promise<unknown>
@@ -152,7 +152,7 @@ export async function handleCommerceProductsList(
     return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
   }
   try {
-    const products = await listFn(bound.projectRef)
+    const products = persistCatalogProjection(await listFn(bound.projectRef))
     return c.json({ ok: true, products }, 200, commerceCorsHeaders())
   } catch (err) {
     return c.json(
@@ -196,7 +196,7 @@ export async function handleCommerceProductGet(
     return c.json({ ok: false, code: 'invalid_request', message: 'projectRef and id required' }, 400, commerceCorsHeaders())
   }
   try {
-    const product = await getCommerceProduct(bound.projectRef, id)
+    const product = persistCatalogProjection([await getCommerceProduct(bound.projectRef, id)])[0]
     if (!product) {
       return c.json({ ok: false, code: 'invalid_product', message: 'Not found' }, 404, commerceCorsHeaders())
     }

@@ -65,6 +65,14 @@ export function defaultVariantForProduct(product: BusinessProduct): NonNullable<
   }
 }
 
+/** Runtime/catalog projection: every purchasable Product has ≥1 Variant. */
+export function persistCatalogProjection<T extends BusinessProduct>(products: T[]): T[] {
+  return products.map((product) => {
+    const variants = product.variants?.length ? product.variants : [defaultVariantForProduct(product)]
+    return withDerivedProductDisplayPrice({ ...product, variants })
+  })
+}
+
 /**
  * Purchasable price is Variant.price only.
  * Product.priceMinor is derived display metadata (min variant price).

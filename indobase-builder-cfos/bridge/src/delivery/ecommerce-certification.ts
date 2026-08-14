@@ -16,6 +16,8 @@ import { buildManagedShopAdminHtml } from '../pocketbase/shop-admin-html.js'
 import { runEcommerceStaticVerifiers } from './ecommerce-verifiers.js'
 import { ECOMMERCE_CERT_CORPUS, type EcommerceCertStore } from './ecommerce-cert-corpus.js'
 import type { Session } from '../auth.js'
+import { inferBusinessSpec, rememberBusinessSpec } from '../ux/business-spec.js'
+import { emptyPersistedRuntime, rememberWorkspaceRuntime } from '../ux/runtime-store.js'
 
 export const ECOMMERCE_CERT_VERSION = 'ecommerce-cert/v1' as const
 
@@ -170,6 +172,19 @@ export async function certifyProductionJob(store: EcommerceCertStore): Promise<{
     publicUrl: BACKEND.api_url,
     commerceBaseUrl: 'https://builder.indobase.in',
     products,
+  })
+  const spec = rememberBusinessSpec(session.projectRef, inferBusinessSpec(store.prompt))
+  rememberWorkspaceRuntime({
+    ...emptyPersistedRuntime(session.projectRef),
+    spec,
+    artifactHtml: html,
+    preview: {
+      status: 'ready',
+      url: `/live/${session.projectRef}/`,
+      artifactRef: 'preview',
+      contentHash: 'cert',
+      httpOk: true,
+    },
   })
   const job = await executeProductionLaunchJob(
     session,

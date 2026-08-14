@@ -195,6 +195,34 @@ export function defaultVariantForProduct(product: {
   }
 }
 
+export function persistCatalogProjection<
+  T extends {
+    id: string
+    name?: string
+    priceMinor?: number
+    stock?: number
+    sku?: string
+    variants?: Array<{
+      id: string
+      sku?: string
+      title?: string
+      options?: Record<string, string>
+      priceMinor?: number
+      stock?: number
+      default?: boolean
+    }>
+  },
+>(products: T[]): T[] {
+  return products.map((product) => {
+    const variants = product.variants?.length ? product.variants : [defaultVariantForProduct(product)]
+    return {
+      ...product,
+      variants,
+      priceMinor: displayPriceMinorFromVariants(variants, product.priceMinor) ?? product.priceMinor,
+    }
+  })
+}
+
 export function parseCollectionName(text: string): string | undefined {
   const named = text.match(
     /\b(?:collection|category)\s+(?:called|named)\s+["']?([A-Za-z][\w\s-]{1,48})["']?/i,

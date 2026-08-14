@@ -62,6 +62,8 @@ describe('BusinessRuntimeState', () => {
       business: { ref: 'biz_ut', name: 'UrbanThread', kind: 'store', state: 'live' },
       preview: { status: 'ready', url: 'https://urbanthread.sites.indobase.in' },
       live: { isLive: true, url: 'https://urbanthread.sites.indobase.in' },
+      deployment: { status: 'live', jobId: 'job_live' },
+      jobs: [{ id: 'job_live', status: 'live' }],
       health: { catalogReady: true, paymentsReady: false, previewReady: true },
     })
     expect(agentMayClaimPreview(state)).toBe(true)

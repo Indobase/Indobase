@@ -5,7 +5,8 @@ import path from 'node:path'
 import { describe, it, beforeEach } from 'node:test'
 
 import type { Session } from '../auth.ts'
-import { clearBusinessSpecsForTests } from '../ux/business-spec.ts'
+import { clearBusinessSpecsForTests, inferBusinessSpec, rememberBusinessSpec } from '../ux/business-spec.ts'
+import { clearWorkspaceRuntimesForTests, emptyPersistedRuntime, rememberWorkspaceRuntime } from '../ux/runtime-store.ts'
 import { assertLaunchWireReady } from '../wire-proof.ts'
 import {
   clearProductionLaunchJobsForTests,
@@ -105,10 +106,43 @@ describe('production contracts + shells', () => {
 })
 
 describe('production launch job pipeline', () => {
+  function seedPreviewReady() {
+    const spec = rememberBusinessSpec(
+      session.projectRef,
+      inferBusinessSpec('Build a website called Demo Site'),
+    )
+    rememberWorkspaceRuntime({
+      ...emptyPersistedRuntime(session.projectRef),
+      spec,
+      artifactHtml: '<html><body><h1>Demo Shop</h1></body></html>',
+      preview: {
+        status: 'ready',
+        url: `/live/${session.projectRef}/`,
+        artifactRef: 'preview',
+        contentHash: 'hash',
+        httpOk: true,
+      },
+    })
+  }
+
   beforeEach(() => {
     process.env.INDOBASE_PRODUCTION_JOB_DIR = mkdtempSync(path.join(tmpdir(), 'plj-'))
     clearProductionLaunchJobsForTests()
     clearBusinessSpecsForTests()
+    clearWorkspaceRuntimesForTests()
+    seedPreviewReady()
+  })
+
+  it('blocks production when preview is not READY', async () => {
+    clearBusinessSpecsForTests()
+    clearWorkspaceRuntimesForTests()
+    const result = await executeProductionLaunchJob(session, {
+      intent: 'Launch a premium outdoor gear store called CedarPeak',
+      appType: 'ecommerce',
+    })
+    assert.equal(result.ok, false)
+    assert.equal(result.claim_live, false)
+    assert.equal(result.code, 'preview_required')
   })
 
   it('catalog points at the platform job, not ensure tools', () => {

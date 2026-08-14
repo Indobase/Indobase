@@ -6,6 +6,7 @@ import {
   displayPriceMinorFromVariants,
   expandVariantMatrix,
   inventoryFromCatalogProducts,
+  persistCatalogProjection,
   purchasableUnitPriceMinor,
   resolveProductVariant,
 } from './catalog'
@@ -52,6 +53,17 @@ describe('catalog domain', () => {
     expect(state.catalog.collections?.[0]?.name).toBe('Running')
     expect(resolveProductVariant(products[0], { productId: 'p1' })?.id).toBe('v0')
     expect(resolveProductVariant(products[0], { variantId: 'v3' })?.options?.Size).toBe('10')
+  })
+
+  it('projected catalog products always have at least one variant; checkout uses variantId', () => {
+    const projected = persistCatalogProjection([
+      { id: 'p1', name: 'Ridge Pack Extra', priceMinor: 899900, stock: 4 },
+    ])
+    expect(projected[0]?.variants?.length).toBeGreaterThanOrEqual(1)
+    const variantId = projected[0]!.variants![0]!.id
+    expect(variantId).not.toBe('p1')
+    expect(checkoutAmountMinor(projected[0]!, { variantId, quantity: 1 })).toBe(899900)
+    expect(resolveProductVariant(projected[0]!, { variantId })?.id).toBe(variantId)
   })
 
   it('gives optionless products a default variant whose id is not the product id', () => {

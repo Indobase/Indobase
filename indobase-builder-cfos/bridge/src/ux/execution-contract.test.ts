@@ -225,9 +225,13 @@ describe('FTU execution contract A–Q', () => {
     assert.doesNotMatch(sanitized, /store is ready/i)
     assert.equal(detectFabricatedClaims('Preview is ready for UrbanThread.', turn.businessRuntime).length, 0)
 
-    // Original “Launch a … store” intent invokes the existing launchProductionApp path.
-    assert.equal(reached.launchProductionApp, true)
-    assert.equal(turn.launch?.ok, true)
+    // First “Launch a … store” is BUILD/preview only — never production LIVE.
+    assert.equal(reached.launchProductionApp, false)
+    assert.equal(turn.turnClass, 'build')
+    assert.equal(turn.intent, 'create_business')
+    assert.equal(turn.businessRuntime.live.isLive, false)
+    assert.equal(Boolean(turn.launch?.claim_live), false)
+    assert.ok(!turn.plan?.steps.some((s) => s.command === 'executeProductionLaunchJob'))
     assert.notEqual(turn.spec?.businessName, 'your business')
   })
 
@@ -443,6 +447,15 @@ describe('FTU execution contract A–Q', () => {
 
   it('Go Live after pending create keeps UrbanThread, not the workspace placeholder', async () => {
     await applyOperatorIntent({ session, message: PROMPT, guest: true })
+    const preview = await applyOperatorIntent({
+      session,
+      message: 'Go Live',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(preview.spec?.businessName, 'UrbanThread')
+    assert.equal(preview.turnClass, 'build')
+    assert.equal(preview.runtime.preview.status, 'ready')
     const live = await applyOperatorIntent({
       session,
       message: 'Go Live',
@@ -493,6 +506,16 @@ describe('FTU execution contract A–Q', () => {
       classifyOperatorIntent('Launch a photography studio website called Harbor Studio', null),
       'create_business',
     )
+    assert.equal(
+      classifyOperatorIntent('Launch a premium outdoor gear store called CedarPeak', null),
+      'create_business',
+    )
+    assert.equal(classifyOperatorIntent('Add Ridge Pack Extra for ₹8999.', null), 'operate')
+    assert.equal(classifyOperatorIntent('change Ridge Pack Extra price to ₹9999', null), 'operate')
+    assert.equal(classifyOperatorIntent('set Ridge Pack Extra stock to 12', null), 'operate')
+    assert.equal(classifyOperatorIntent('create collection Trail Packs', null), 'operate')
+    assert.equal(classifyOperatorIntent('show my products', null), 'operate')
+    assert.equal(classifyOperatorIntent('mark order ORD-1 fulfilled', null), 'operate')
   })
 
   it('Ask AI / SCREEN includes snapshot orders in begin-turn agentContext', async () => {

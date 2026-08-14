@@ -229,7 +229,7 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
   if (/\b(show|list|today'?s|latest)\b/.test(q) && /\borders?\b/.test(q)) {
     return { kind: 'orders.query', readOnly: true }
   }
-  if (/\bshow (?:me )?(?:the )?(?:catalog|products|inventory)\b/.test(q)) {
+  if (/\b(show|list)\b/.test(q) && /\b(my\s+|the\s+)?(catalog|products|inventory)\b/.test(q)) {
     return { kind: 'catalog.query', readOnly: true }
   }
 
@@ -326,7 +326,7 @@ export function classifyStoreCommand(message: string): ClassifiedStoreCommand | 
 
   if (
     /^(?:please\s+)?(?:add|create)\b/.test(q) &&
-    /\b(product|sku|item|shoe|sneaker|runner|shirt|bag)\b/.test(q)
+    (/\b(product|sku|item|shoe|sneaker|runner|shirt|bag|pack)\b/.test(q) || parsePriceMajor(text) != null)
   ) {
     const options = parseProductOptions(text)
     const sizes = parseSizeValues(text)
@@ -394,7 +394,7 @@ function fromVariant(v: CommerceVariant): StoreVariantRecord {
 }
 
 function fromCommerceProduct(p: CommerceProduct): StoreProductRecord {
-  const variants = (p.variants || []).map(fromVariant)
+  const variants = (p.variants?.length ? p.variants : [defaultVariantForProduct(p)]).map(fromVariant)
   return {
     id: p.id,
     name: p.name,
@@ -736,8 +736,23 @@ export async function executeStoreCommand(input: {
       const slug = slugify(name)
       const mutationKey =
         (input.idempotencyKey || '').trim() || deriveStoreMutationKey(projectRef, classified, input.message)
+      const listed = await deps.listProducts(projectRef)
+      const existing = matchProduct(listed, name)
+      const priceMinor =
+        classified.priceMajor && classified.priceMajor > 0
+          ? majorToMinor(classified.priceMajor, 'INR')
+          : existing?.priceMinor && existing.priceMinor > 0
+            ? existing.priceMinor
+            : majorToMinor(classified.priceMajor ?? 0, 'INR')
+      const stockEach = classified.stock ?? 10
+      const variants = classified.options
+        ? variantRowsFromOptions(slug, classified.options, priceMinor, stockEach)
+        : []
       const prior = getCatalogMutation(mutationKey)
-      if (prior?.resourceId) {
+      const needsAttach =
+        Boolean(existing && variants.length && deps.createVariant) &&
+        !(existing.variants || []).some((v) => Object.keys(v.options || {}).length)
+      if (prior?.resourceId && !needsAttach) {
         const listedReplay = await deps.listProducts(projectRef)
         const replayed = listedReplay.find((p) => p.id === prior.resourceId) || matchProduct(listedReplay, name)
         if (replayed) {
@@ -758,18 +773,6 @@ export async function executeStoreCommand(input: {
           }
         }
       }
-      const listed = await deps.listProducts(projectRef)
-      const existing = matchProduct(listed, name)
-      const priceMinor =
-        classified.priceMajor && classified.priceMajor > 0
-          ? majorToMinor(classified.priceMajor, 'INR')
-          : existing?.priceMinor && existing.priceMinor > 0
-            ? existing.priceMinor
-            : majorToMinor(classified.priceMajor ?? 0, 'INR')
-      const stockEach = classified.stock ?? 10
-      const variants = classified.options
-        ? variantRowsFromOptions(slug, classified.options, priceMinor, stockEach)
-        : []
       if (existing && variants.length && deps.createVariant) {
         const had = (existing.variants || []).filter((v) => Object.keys(v.options || {}).length).length
         for (let i = 0; i < variants.length; i++) {

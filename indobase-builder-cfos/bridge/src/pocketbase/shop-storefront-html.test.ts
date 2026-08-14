@@ -55,5 +55,10 @@ describe('buildManagedShopStorefrontHtml', () => {
     assert.match(next, /Apex Runner Extra/)
     assert.match(next, /1299900/)
     assert.match(next, /commerce\.products\.list/)
+    assert.match(next, /__default/)
+    const baked = JSON.parse((next.match(/let products=(\[[\s\S]*?\]);/) || [])[1] || '[]') as Array<{
+      variants?: unknown[]
+    }>
+    assert.ok(baked.every((p) => Array.isArray(p.variants) && p.variants.length >= 1))
   })
 })

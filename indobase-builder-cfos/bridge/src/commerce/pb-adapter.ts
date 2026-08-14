@@ -228,9 +228,23 @@ function attachVariants(
   return products.map((p) => {
     const variants = byProduct.get(p.id) || []
     const attached = variants.map((v, i) => ({ ...v, default: v.default || i === 0 }))
-    const stock = attached.length ? attached.reduce((s, v) => s + v.stock, 0) : p.stock
-    const priceMinor = displayPriceMinorFromVariants(attached, p.priceMinor) ?? p.priceMinor
-    return { ...p, variants: attached, stock, priceMinor }
+    const projected =
+      attached.length > 0
+        ? attached
+        : [
+            {
+              id: `${p.id}__default`,
+              sku: p.slug || p.id,
+              title: 'Default',
+              options: {},
+              priceMinor: p.priceMinor,
+              stock: p.stock,
+              default: true,
+            },
+          ]
+    const stock = projected.reduce((s, v) => s + v.stock, 0)
+    const priceMinor = displayPriceMinorFromVariants(projected, p.priceMinor) ?? p.priceMinor
+    return { ...p, variants: projected, stock, priceMinor }
   })
 }
 

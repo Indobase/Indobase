@@ -259,9 +259,36 @@ export async function executeProductionLaunchJob(
   const launchFn = deps.launch || executeLaunchBusinessTool
   const guidedFn = deps.guided || executeGuidedBackend
   const smokeFn = deps.smoke || smokeLiveUrl
+  const sessionRef = (session.projectRef || '').trim()
+  const specBefore = getBusinessSpec(sessionRef)
+  const runtimeBefore = getWorkspaceRuntime(sessionRef)
+  const previewReady =
+    runtimeBefore?.preview.status === 'ready' &&
+    Boolean(runtimeBefore.artifactHtml) &&
+    runtimeBefore.preview.httpOk !== false
+
   let job =
     (input.jobId ? getProductionLaunchJob(input.jobId) : null) ||
     newJob(session, input)
+
+  if (sessionRef !== job.projectRef || !specBefore || !previewReady) {
+    job = failStage(job, 'classify', {
+      code: 'preview_required',
+      severity: 'critical',
+      stage: 'classify',
+      message:
+        'Production launch requires a ready preview, a BusinessSpec, and the session workspace. Build a preview first.',
+      repairable: true,
+      repair_hint: 'Finish BUILD/preview, then Go Live.',
+    })
+    return {
+      ok: false,
+      job,
+      message: job.failures.at(-1)?.message || 'Preview is required before production launch.',
+      claim_live: false,
+      code: 'preview_required',
+    }
+  }
 
   if (input.html) job = rememberProductionLaunchJob({ ...job, html: input.html })
   if (input.files) job = rememberProductionLaunchJob({ ...job, files: input.files })

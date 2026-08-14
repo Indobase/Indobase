@@ -58,7 +58,48 @@ describe('five-tool physical boundary', () => {
     assert.equal(((await allowed.json()) as { tool?: string }).tool, 'launch')
   })
 
-  it('allows in-process / cookie callers without the agent username header', async () => {
+  it('rejects signed-in cookie/session HTTP on primitives (403), not only agent header', async () => {
+    const app = new Hono()
+    app.use('/api/os/tools/*', async (c, next) => {
+      const denied = rejectAgentPrimitiveIfNeeded(c)
+      if (denied) return denied
+      return next()
+    })
+    for (const path of [
+      '/api/os/tools/setupShopCatalog',
+      '/api/os/tools/guidedBackend',
+      '/api/os/tools/applySchema',
+      '/api/os/tools/ensureDatabase',
+      '/api/os/tools/placeTestShopOrder',
+      '/api/os/tools/wireCheckout',
+    ]) {
+      app.post(path, (c) => c.json({ ok: true, leaked: true }))
+    }
+    app.post('/api/os/tools/connectGateway', (c) => c.json({ ok: true, tool: 'connect' }))
+
+    for (const path of [
+      '/api/os/tools/setupShopCatalog',
+      '/api/os/tools/guidedBackend',
+      '/api/os/tools/applySchema',
+      '/api/os/tools/ensureDatabase',
+      '/api/os/tools/placeTestShopOrder',
+    ]) {
+      const res = await app.request(path, {
+        method: 'POST',
+        headers: { cookie: 'ib_os_session=valid-signed-in-token' },
+      })
+      assert.equal(res.status, 403, path)
+      assert.equal(((await res.json()) as { code?: string }).code, AGENT_PRIMITIVE_REJECTED_CODE)
+    }
+
+    const publicOk = await app.request('/api/os/tools/connectGateway', {
+      method: 'POST',
+      headers: { cookie: 'ib_os_session=valid-signed-in-token' },
+    })
+    assert.equal(publicOk.status, 200)
+  })
+
+  it('does not allow cookie callers to invoke primitives over HTTP', async () => {
     const app = new Hono()
     app.use('/api/os/tools/*', async (c, next) => {
       const denied = rejectAgentPrimitiveIfNeeded(c)
@@ -67,8 +108,8 @@ describe('five-tool physical boundary', () => {
     })
     app.post('/api/os/tools/guidedBackend', (c) => c.json({ ok: true, job: true }))
     const res = await app.request('/api/os/tools/guidedBackend', { method: 'POST' })
-    assert.equal(res.status, 200)
-    assert.equal(((await res.json()) as { job?: boolean }).job, true)
+    assert.equal(res.status, 403)
+    assert.equal(((await res.json()) as { code?: string }).code, AGENT_PRIMITIVE_REJECTED_CODE)
   })
 
   it('rejected body never names internals', () => {
