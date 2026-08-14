@@ -2,6 +2,7 @@
  * One BusinessRuntimeState per workspace for cookie session AND agent principal.
  * /api/session and begin-turn must load this the same way.
  */
+import { displayPriceMinorFromVariants } from './catalog-domain.js'
 import type { Session } from '../auth.js'
 import { isGuestSession } from '../auth.js'
 import { listCatalogCollections, listCommerceOrders, listCommerceProducts } from '../commerce/pb-adapter.js'
@@ -63,11 +64,18 @@ export function snapshotFromCommerceRows(
       name: String(row.name || row.id || ''),
       slug: String(row.slug || ''),
       priceMinor:
-        typeof row.priceMinor === 'number'
-          ? row.priceMinor
-          : typeof row.price_minor === 'number'
-            ? row.price_minor
-            : undefined,
+        displayPriceMinorFromVariants(
+          variantsRaw
+            .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+            .map((v) => ({
+              priceMinor: typeof v.priceMinor === 'number' ? v.priceMinor : undefined,
+            })),
+          typeof row.priceMinor === 'number'
+            ? row.priceMinor
+            : typeof row.price_minor === 'number'
+              ? row.price_minor
+              : undefined,
+        ),
       stock:
         typeof row.stock === 'number'
           ? row.stock

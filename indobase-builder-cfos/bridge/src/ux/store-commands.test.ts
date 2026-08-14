@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
+import { checkoutAmountMinor } from './catalog-domain.ts'
+
 import { AGENT_FACING_TOOL_NAMES } from '../production-launch/agent-surface.ts'
 import {
   classifyStoreCommand,
@@ -218,6 +220,46 @@ describe('store commands (internal, not tools)', () => {
     const catalog = await deps.listProducts('storeaaaa01')
     const eight = catalog[0]?.variants?.find((v) => v.options?.Size === '8')
     assert.equal(eight?.stock, 3)
+  })
+
+  it('product price update fans out to inheriting variants; checkout charges variant price', async () => {
+    const deps = createMemoryStoreCommandDeps()
+    const session = { projectRef: 'storeaaaa01' }
+    await executeStoreCommand({
+      session,
+      message: 'Add the black Apex Runner at ₹12,999 in sizes 7, 8, 9, 10, and 11.',
+      deps,
+    })
+    const before = await deps.listProducts('storeaaaa01')
+    assert.equal(before[0]?.priceMinor, 1299900)
+    assert.ok(before[0]?.variants?.every((v) => v.priceMinor === 1299900))
+    const updated = await executeStoreCommand({
+      session,
+      message: 'Change the price of Apex Runner to ₹13,499',
+      deps,
+    })
+    assert.equal(updated.ok, true)
+    assert.equal(updated.kind, 'product.update')
+    const catalog = await deps.listProducts('storeaaaa01')
+    const product = catalog[0]
+    assert.equal(product?.priceMinor, 1349900)
+    assert.ok(product?.variants?.length)
+    assert.ok(product?.variants?.every((v) => v.priceMinor === 1349900))
+    const sizeNine = product?.variants?.find((v) => v.options?.Size === '9')
+    const charged = checkoutAmountMinor(
+      {
+        id: product!.id,
+        name: product!.name,
+        priceMinor: product!.priceMinor,
+        variants: product!.variants,
+      },
+      { variantId: sizeNine!.id, quantity: 1 },
+    )
+    assert.equal(charged, 1349900)
+    assert.equal(charged, sizeNine?.priceMinor)
+    assert.notEqual(charged, 1299900)
+    const other = await deps.listProducts('storebbbb01')
+    assert.equal(other.length, 0)
   })
 
   it('creates and assigns a collection without mutating another workspace', async () => {

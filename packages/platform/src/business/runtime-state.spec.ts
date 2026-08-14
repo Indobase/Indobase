@@ -27,7 +27,6 @@ describe('BusinessRuntimeState', () => {
     expect(isForbiddenAgentClaim(state, 'catalog-unavailable')).toBe(true)
 
     const hint = composeBusinessRuntimeStateHint(state)
-    expect(hint).toMatch(/BusinessRuntimeState/)
     expect(hint).toMatch(/Apex Runner/)
     expect(hint).toMatch(/catalog\.productCount: 1/)
     expect(hint).toMatch(/stock=10/)
@@ -70,5 +69,23 @@ describe('BusinessRuntimeState', () => {
     expect(isForbiddenAgentClaim(state, 'preview')).toBe(false)
     expect(isForbiddenAgentClaim(state, 'live')).toBe(false)
     expect(isForbiddenAgentClaim(state, 'orders-unavailable')).toBe(false)
+  })
+
+  it('displays product price derived from variants, not a stale product field', () => {
+    const state = emptyBusinessRuntimeState({
+      products: [
+        {
+          id: '1',
+          name: 'Apex Runner',
+          priceMinor: 1299900,
+          variants: [
+            { id: 'v0', priceMinor: 1349900, default: true },
+            { id: 'v1', priceMinor: 1349900 },
+          ],
+        },
+      ],
+    })
+    expect(state.products[0]?.priceMinor).toBe(1349900)
+    expect(composeBusinessRuntimeStateHint(state)).toMatch(/₹13499/)
   })
 })

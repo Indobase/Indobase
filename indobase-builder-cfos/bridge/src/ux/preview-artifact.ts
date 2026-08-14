@@ -5,6 +5,7 @@
 
 import { createHash } from 'node:crypto'
 import type { BackendConfig } from '../auth.js'
+import { displayPriceMinorFromVariants } from './catalog-domain.js'
 import { buildManagedShopStorefrontHtml } from '../pocketbase/shop-storefront-html.js'
 import { buildProductionLandingHtml, buildProductionSaasHtml } from '../production-launch/shells.js'
 import {
@@ -80,7 +81,8 @@ export function serializeStorefrontCatalogSnapshot(products: StorefrontCatalogPr
       name: p.name,
       slug: p.slug || '',
       description: p.description || '',
-      priceMinor: typeof p.priceMinor === 'number' ? p.priceMinor : 0,
+      priceMinor:
+        displayPriceMinorFromVariants(p.variants, typeof p.priceMinor === 'number' ? p.priceMinor : 0) ?? 0,
       currency: p.currency || 'INR',
       stock: Number(p.stock || 0),
       imageUrl: '',

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyProductPriceToInheritedVariants,
   catalogStatsFromProducts,
+  checkoutAmountMinor,
+  displayPriceMinorFromVariants,
   expandVariantMatrix,
   inventoryFromCatalogProducts,
+  purchasableUnitPriceMinor,
   resolveProductVariant,
 } from './catalog'
 import { catalogFromProducts, emptyBusinessRuntimeState } from './runtime-state'
@@ -60,5 +64,31 @@ describe('catalog domain', () => {
     expect(inventory).toHaveLength(1)
     expect(inventory[0]?.variantId).toBe(variant?.id)
     expect(inventory[0]?.variantId).not.toBe(product.id)
+  })
+
+  it('product price mutation updates inheriting variants; checkout charges variant only', () => {
+    const variants = ['7', '8', '9'].map((size, i) => ({
+      id: `v${i}`,
+      options: { Size: size },
+      priceMinor: 1299900,
+      stock: 4,
+      default: i === 0,
+    }))
+    const product = {
+      id: 'p1',
+      name: 'Apex Runner',
+      priceMinor: 1299900,
+      stock: 12,
+      variants: [...variants, { id: 'v-sale', options: { Size: '12' }, priceMinor: 999900, stock: 1 }],
+    }
+    const next = applyProductPriceToInheritedVariants(product, 1349900)
+    expect(next.variants?.filter((v) => v.id !== 'v-sale').every((v) => v.priceMinor === 1349900)).toBe(true)
+    expect(next.variants?.find((v) => v.id === 'v-sale')?.priceMinor).toBe(999900)
+    expect(next.priceMinor).toBe(displayPriceMinorFromVariants(next.variants))
+    expect(next.priceMinor).toBe(999900)
+    const charged = checkoutAmountMinor(next, { variantId: 'v1', quantity: 1 })
+    expect(charged).toBe(1349900)
+    expect(purchasableUnitPriceMinor(next.variants?.find((v) => v.id === 'v1'))).toBe(1349900)
+    expect(charged).not.toBe(1299900)
   })
 })

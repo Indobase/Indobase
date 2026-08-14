@@ -20,7 +20,7 @@ This document is an engineering snapshot of **Indobase Builder/OS**, not Studio,
 
 | Layer | Status |
 | --- | --- |
-| Genuinely implemented | OTP identity (PocketBase-backed, hidden), BusinessSpec, conductor BUILD, PREVIEW_EDIT, frozen artifacts, production job (classify→provision→generate→wire→verify→deploy→smoke→LIVE), ecommerce Commerce ABI + checkout, SaaS auth/records shell, session projectRef 403 isolation, five-tool catalog + HTTP primitive reject, BusinessRuntimeState injection, **store commands + storefront projection** (product.create/update, **variant.create**, inventory.update, **collection.create/assign**, order.status paid/failed, **order.fulfill**). Payment and fulfillment are separate. **Phase 2B catalog is live on `09179082d`:** variant is the purchasable unit (optionless products persist a distinct default variant). |
+| Genuinely implemented | OTP identity (PocketBase-backed, hidden), BusinessSpec, conductor BUILD, PREVIEW_EDIT, frozen artifacts, production job (classify→provision→generate→wire→verify→deploy→smoke→LIVE), ecommerce Commerce ABI + checkout, SaaS auth/records shell, session projectRef 403 isolation, five-tool catalog + HTTP primitive reject, BusinessRuntimeState injection, **store commands + storefront projection** (product.create/update, **variant.create**, inventory.update, **collection.create/assign**, order.status paid/failed, **order.fulfill**). Payment and fulfillment are separate. **Phase 2B catalog is live on `09179082d`:** variant is the purchasable unit (optionless products persist a distinct default variant). **Price authority (LOCAL):** purchasable price = `Variant.price`; `Product.price` is derived display (min variant / inherit fan-out on product.update). Checkout charges `variant.priceMinor` only. |
 | Partially implemented | SaaS (OTP + organizations CRUD shell, not a domain product), payments (`connectGateway` exists; not in this live FTU), Control Center, claim-integrity (library + tests; not a live speech interceptor). Discounts/SEO not this slice. Refunds not implemented (`paid → refunded` rejected). Shopify-class catalog **partially live** (variants + collections + guest checkout by variantId); not a full Shopify product. |
 | Stubbed | IMPROVE / workforce, `packages/adapters/pocketbase` physical move (ADR 0008), dedicated `/api/os/v1/business/launch` (still aliases) |
 | Fake/mocked | LOCAL 20-store ecommerce-cert loop (mocked guided/launch; now PASS). Live cert OTP uses a **.248 sqlite password patch** — not the customer email path |
@@ -32,7 +32,7 @@ This document is an engineering snapshot of **Indobase Builder/OS**, not Studio,
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Shopify-class commerce | ❌ | Live C6 proves variants + collections + variantId checkout. Discounts, SEO, refunds still out. Apex/NorthPeak are **fixtures**, not a product bar. |
+| Shopify-class commerce | ❌ | Live C6 proves variants + collections + variantId checkout. **Price authority is LOCAL-only on this commit** (not recertified live). Discounts, SEO, refunds still out. Apex/NorthPeak are **fixtures**, not a product bar. |
 | Fresh C6 catalog | 21/21 | SHA `09179082d`, fixture `rosha0793de702`, live `https://apex-793de702.sites.indobase.in`, Apex Runner **1 product / 5 variants**, guest checkout variant `izywrs7jtp3vxe5` (size 9), order `ub5bjqll14oco6o` |
 | Fresh C5 commerce operate | 21/21 | SHA `09179082d`, fixture `rosh2c7f35d547`, live `https://northpeak-7f35d547.sites.indobase.in`, order `cliz2kb5pgwzzay` **fulfillmentStatus=fulfilled** and **paymentStatus=paid** |
 | Fresh C5 (prior) | 21/21 | SHA `82c44213b` — superseded by `09179082d` |
@@ -41,8 +41,8 @@ This document is an engineering snapshot of **Indobase Builder/OS**, not Studio,
 | Fresh SaaS FTU | 15/15 | SHA `980b75bbb`, fixture `rosh207367bc64` |
 | Fresh website/landing FTU | 20/20 | SHA `980b75bbb`, fixture `rosh49f1cc69bc` |
 | Security | 12/12 + C5 403 | prior pack + forged `urbanthread` 403 on C5 |
-| LOCAL bridge suite | 217/217 | `indobase-builder-cfos/bridge` `pnpm test` |
-| LOCAL platform | 80/80 | `packages/platform` `pnpm test` |
+| LOCAL bridge suite | 218/218 | `indobase-builder-cfos/bridge` `pnpm test` |
+| LOCAL platform | 82/82 | `packages/platform` `pnpm test` |
 
 **Biggest blocker to the 10-minute arbitrary-business goal:** execution profiles only exist for **ecommerce**, **thin SaaS**, and **landing**. A non-store, non-SaaS, non-landing idea does not get a real capability graph. Secondary: `main` is behind live.
 
@@ -115,6 +115,7 @@ Browser ── CFOS SPA (/os/app) ── chat + gadgets + preview iframe
 | Production job | `job-store.ts` | `executeProductionLaunchJob` | statuses queued/running/blocked/live |
 | Live | job.url + Traefik | deploy stage | `claim_live` only if smoke OK |
 | Orders/catalog | PocketBase + commerce HTTP | checkout, admin | anonymous catalog requires **live job** for that ref |
+| **Purchasable price** | `Variant.price` / `variant.priceMinor` | `product.update` fans out to inheriting variants (those matching previous product price, else default); `variant.update` for SKU-level; display `Product.price` = min variant | Checkout **must not** charge `Product.price`. Live CFOS still `09179082d` until a later deploy. |
 | Identity | IdentityAdapter façade; PB OTP impl | `/auth/start` `/auth/verify` | session code must not call PB HTTP (ADR 0008; façade in bridge) |
 
 **Can job overwrite BusinessSpec?** Spec type wins via `resolveAuthoritativeAppType`. `newJob` still *infers* a spec if none exists. `specFromProductionJob` can fill type from `job.appType` during rehydrate — dangerous if spec missing; identity tests cover the overwrite case when spec exists.
@@ -280,7 +281,7 @@ Never mark secure from unit tests alone. Live 12/12 is the current verified isol
 
 | AREA | TEST | PASS/FAIL | LOCAL/LIVE | SHA | EVIDENCE | BLOCKER |
 | --- | --- | --- | --- | --- | --- | --- |
-| LOCAL suite | `pnpm test` bridge | 217/217 PASS | LOCAL | `09179082d` | Phase 2B | — |
+| LOCAL suite | `pnpm test` bridge | 218/218 PASS | LOCAL | staging (price authority; live CFOS still `09179082d`) | Commerce Runtime v1 item 1 | — |
 | C6 catalog | `/tmp/p01-c6-catalog-cert.py` | 21/21 | LIVE | `09179082d` | `rosha0793de702` 1 product 5 variants | disposable; Apex fixture |
 | C5 commerce operate | `/tmp/p01-c5-commerce-cert.py` | 21/21 | LIVE | `09179082d` | `rosh2c7f35d547` fulfill≠paid | disposable; NorthPeak fixture |
 | Five-tool | `agent-primitive-guard.test.ts` | PASS | LOCAL | same | physical reject | — |
@@ -361,7 +362,7 @@ Still requires: account OTP; optional click-to-edit; cert/debug still used inter
 
 - SaaS shell ≠ domain SaaS (records/orgs only)
 - Payments / `connectGateway` not in FTU
-- **Phase 2B commerce:** variants + collections **live on `09179082d`**. Discounts, SEO, refunds still out. Shopify-class remains ❌.
+- **Phase 2B commerce:** variants + collections **live on `09179082d`**. Price authority is **LOCAL** (this staging commit; live SHA unchanged). **Remaining Commerce Runtime v1:** discounts, SEO, refunds, shipping, payments FTU. IMPROVE / sixth agent tool still out. Shopify-class remains ❌.
 - IMPROVE / workforce frozen on purpose
 - PocketBase env in SaaS HTML; adapters not extracted
 - Studio still on OTP/billing/quota critical path

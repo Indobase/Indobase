@@ -13,6 +13,7 @@ import type {
 } from './data'
 import {
   catalogStatsFromProducts,
+  displayPriceMinorFromVariants,
   inventoryFromCatalogProducts,
   LOW_STOCK_THRESHOLD,
   type BusinessCatalogCollection,
@@ -155,6 +156,13 @@ export type AgentRuntimeClaim =
   | 'catalog-unavailable'
   | 'customers-unavailable'
 
+function productsWithDisplayPrice(products: BusinessProduct[]): BusinessProduct[] {
+  return products.map((p) => {
+    const derived = displayPriceMinorFromVariants(p.variants, p.priceMinor)
+    return derived === p.priceMinor ? p : { ...p, priceMinor: derived }
+  })
+}
+
 export function emptyBusinessRuntimeState(
   overrides: Partial<BusinessRuntimeState> = {},
 ): BusinessRuntimeState {
@@ -177,7 +185,7 @@ export function emptyBusinessRuntimeState(
     preview: { status: 'absent', url: null, ...overrides.preview },
     deployment: { status: null, jobId: null, ...overrides.deployment },
     live: { isLive: false, url: null, ...overrides.live },
-    products: overrides.products ?? [],
+    products: productsWithDisplayPrice(overrides.products ?? []),
     customers: overrides.customers ?? [],
     orders: overrides.orders ?? [],
     catalog: {

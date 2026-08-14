@@ -10,6 +10,7 @@ export type BusinessProductVariant = {
   sku?: string
   title?: string
   options?: Record<string, string>
+  /** Purchasable unit price in minor units. Checkout charges this only. */
   priceMinor?: number
   stock?: number
   default?: boolean
@@ -18,6 +19,7 @@ export type BusinessProductVariant = {
 export type BusinessProduct = {
   id: string
   name: string
+  /** Derived display metadata (min variant price). Not independently mutable vs variants. */
   priceMinor?: number
   sku?: string
   status?: string

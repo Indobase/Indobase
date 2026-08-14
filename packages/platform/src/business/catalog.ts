@@ -14,6 +14,7 @@ export type CatalogVariantSpec = {
   sku?: string
   title?: string
   options: Record<string, string>
+  /** Purchasable unit price. Product-level price is display-only. */
   priceMinor?: number
   stock?: number
 }
@@ -62,6 +63,77 @@ export function defaultVariantForProduct(product: BusinessProduct): NonNullable<
     stock: product.stock,
     default: true,
   }
+}
+
+/**
+ * Purchasable price is Variant.price only.
+ * Product.priceMinor is derived display metadata (min variant price).
+ */
+export function purchasableUnitPriceMinor(variant: { priceMinor?: number } | null | undefined): number | null {
+  if (!variant || typeof variant.priceMinor !== 'number' || !Number.isFinite(variant.priceMinor)) return null
+  return variant.priceMinor
+}
+
+export function displayPriceMinorFromVariants(
+  variants: Array<{ priceMinor?: number }> | undefined,
+  fallback?: number,
+): number | undefined {
+  const prices = (variants || [])
+    .map((v) => v.priceMinor)
+    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+  if (!prices.length) return fallback
+  return Math.min(...prices)
+}
+
+export function withDerivedProductDisplayPrice<T extends { priceMinor?: number; variants?: Array<{ priceMinor?: number }> }>(
+  product: T,
+): T {
+  const derived = displayPriceMinorFromVariants(product.variants, product.priceMinor)
+  return derived === product.priceMinor ? product : { ...product, priceMinor: derived }
+}
+
+/** Variants that still share Product.price (inherit) — plus default if none match. */
+export function variantIdsInheritingProductPrice(product: {
+  priceMinor?: number
+  variants?: Array<{ id: string; priceMinor?: number; default?: boolean }>
+}): string[] {
+  const variants = product.variants?.length ? product.variants : []
+  if (!variants.length) return []
+  const previous = product.priceMinor
+  const matching =
+    typeof previous === 'number'
+      ? variants.filter((v) => v.priceMinor === previous)
+      : []
+  if (matching.length) return matching.map((v) => v.id)
+  const def = variants.find((v) => v.default) || variants[0]
+  return def ? [def.id] : []
+}
+
+/** Product-level price mutation updates inheriting variants, then re-derives display price. */
+export function applyProductPriceToInheritedVariants<
+  T extends { priceMinor?: number; variants?: Array<{ id: string; priceMinor?: number; default?: boolean }> },
+>(product: T, nextPriceMinor: number): T {
+  const ids = new Set(variantIdsInheritingProductPrice(product))
+  const variants = (product.variants || []).map((v) =>
+    ids.has(v.id) ? { ...v, priceMinor: nextPriceMinor } : v,
+  )
+  return {
+    ...product,
+    variants,
+    priceMinor: displayPriceMinorFromVariants(variants, nextPriceMinor),
+  }
+}
+
+export function checkoutAmountMinor(
+  product: BusinessProduct,
+  input: { variantId?: string; productId?: string; quantity: number },
+): number | null {
+  const variant = resolveProductVariant(product, input)
+  const unit = purchasableUnitPriceMinor(variant)
+  if (unit == null) return null
+  const qty = Math.floor(Number(input.quantity || 0))
+  if (qty < 1) return null
+  return unit * qty
 }
 
 export function resolveProductVariant(

@@ -115,6 +115,86 @@ export function variantRowsFromOptions(
   })
 }
 
+export function purchasableUnitPriceMinor(variant: { priceMinor?: number } | null | undefined): number | null {
+  if (!variant || typeof variant.priceMinor !== 'number' || !Number.isFinite(variant.priceMinor)) return null
+  return variant.priceMinor
+}
+
+export function displayPriceMinorFromVariants(
+  variants: Array<{ priceMinor?: number }> | undefined,
+  fallback?: number,
+): number | undefined {
+  const prices = (variants || [])
+    .map((v) => v.priceMinor)
+    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+  if (!prices.length) return fallback
+  return Math.min(...prices)
+}
+
+export function variantIdsInheritingProductPrice(product: {
+  priceMinor?: number
+  variants?: Array<{ id: string; priceMinor?: number; default?: boolean }>
+}): string[] {
+  const variants = product.variants?.length ? product.variants : []
+  if (!variants.length) return []
+  const previous = product.priceMinor
+  const matching =
+    typeof previous === 'number' ? variants.filter((v) => v.priceMinor === previous) : []
+  if (matching.length) return matching.map((v) => v.id)
+  const def = variants.find((v) => v.default) || variants[0]
+  return def ? [def.id] : []
+}
+
+export function applyProductPriceToInheritedVariants<
+  T extends { priceMinor?: number; variants?: Array<{ id: string; priceMinor?: number; default?: boolean }> },
+>(product: T, nextPriceMinor: number): T {
+  const ids = new Set(variantIdsInheritingProductPrice(product))
+  const variants = (product.variants || []).map((v) =>
+    ids.has(v.id) ? { ...v, priceMinor: nextPriceMinor } : v,
+  )
+  return {
+    ...product,
+    variants,
+    priceMinor: displayPriceMinorFromVariants(variants, nextPriceMinor),
+  }
+}
+
+export function checkoutAmountMinor(
+  product: { id: string; name?: string; priceMinor?: number; variants?: Array<{ id?: string; priceMinor?: number; default?: boolean }> },
+  input: { variantId?: string; quantity: number },
+): number | null {
+  const variants = product.variants?.length ? product.variants : []
+  const variant =
+    (input.variantId && variants.find((v) => v.id === input.variantId)) ||
+    variants.find((v) => v.default) ||
+    variants[0]
+  const unit = purchasableUnitPriceMinor(variant)
+  if (unit == null) return null
+  const qty = Math.floor(Number(input.quantity || 0))
+  if (qty < 1) return null
+  return unit * qty
+}
+
+export function defaultVariantForProduct(product: {
+  id: string
+  sku?: string
+  priceMinor?: number
+  stock?: number
+  variants?: Array<{ id: string; priceMinor?: number; default?: boolean; sku?: string; title?: string; options?: Record<string, string>; stock?: number }>
+}): NonNullable<(typeof product)['variants']>[number] {
+  const existing = product.variants?.find((v) => v.default) || product.variants?.[0]
+  if (existing) return existing
+  return {
+    id: `${product.id}__default`,
+    sku: product.sku || product.id,
+    title: 'Default',
+    options: {},
+    priceMinor: product.priceMinor,
+    stock: product.stock,
+    default: true,
+  }
+}
+
 export function parseCollectionName(text: string): string | undefined {
   const named = text.match(
     /\b(?:collection|category)\s+(?:called|named)\s+["']?([A-Za-z][\w\s-]{1,48})["']?/i,

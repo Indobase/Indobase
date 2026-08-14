@@ -12,6 +12,11 @@ import {
   type PbErrorPayload,
 } from '../pocketbase/managed.js'
 import { applyArchitectureBlueprint } from '../pocketbase/architecture.js'
+import {
+  applyProductPriceToInheritedVariants,
+  displayPriceMinorFromVariants,
+  variantIdsInheritingProductPrice,
+} from '../ux/catalog-domain.js'
 import { majorToMinor, minorToMajor } from './money.js'
 import type { CommerceCollection, CommerceProduct, CommerceVariant, PricedLine } from './types.js'
 
@@ -224,7 +229,8 @@ function attachVariants(
     const variants = byProduct.get(p.id) || []
     const attached = variants.map((v, i) => ({ ...v, default: v.default || i === 0 }))
     const stock = attached.length ? attached.reduce((s, v) => s + v.stock, 0) : p.stock
-    return { ...p, variants: attached, stock }
+    const priceMinor = displayPriceMinorFromVariants(attached, p.priceMinor) ?? p.priceMinor
+    return { ...p, variants: attached, stock, priceMinor }
   })
 }
 
@@ -319,6 +325,24 @@ export async function patchCommerceProduct(
   const appId = sanitizeAppId(projectRef)
   const { token, base } = await adminToken()
   const col = physicalCollectionName(appId, 'products')
+  const current = typeof patch.priceMinor === 'number' ? await getCommerceProduct(projectRef, productId) : null
+  if (typeof patch.priceMinor === 'number' && current?.variants?.length) {
+    const next = applyProductPriceToInheritedVariants(
+      {
+        priceMinor: current.priceMinor,
+        variants: current.variants.map((v) => ({
+          id: v.id,
+          priceMinor: v.priceMinor,
+          default: v.default,
+        })),
+      },
+      patch.priceMinor,
+    )
+    for (const id of variantIdsInheritingProductPrice(current)) {
+      await patchCommerceVariant(projectRef, id, { priceMinor: patch.priceMinor, currency: patch.currency })
+    }
+    patch = { ...patch, priceMinor: next.priceMinor ?? patch.priceMinor }
+  }
   const body: Record<string, unknown> = {}
   if (typeof patch.name === 'string') body.name = patch.name
   if (typeof patch.description === 'string') body.description = patch.description

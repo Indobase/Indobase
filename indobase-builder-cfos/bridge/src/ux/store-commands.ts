@@ -33,6 +33,9 @@ import {
   parseSizeValues,
   productNameFromCreateIntent,
   variantRowsFromOptions,
+  applyProductPriceToInheritedVariants,
+  defaultVariantForProduct,
+  displayPriceMinorFromVariants,
 } from './catalog-domain.js'
 
 export type StoreCommandKind =
@@ -389,15 +392,16 @@ function fromVariant(v: CommerceVariant): StoreVariantRecord {
 }
 
 function fromCommerceProduct(p: CommerceProduct): StoreProductRecord {
+  const variants = (p.variants || []).map(fromVariant)
   return {
     id: p.id,
     name: p.name,
     slug: p.slug,
-    priceMinor: p.priceMinor,
+    priceMinor: displayPriceMinorFromVariants(variants, p.priceMinor) ?? p.priceMinor,
     stock: p.stock,
     currency: p.currency,
     category: p.category,
-    variants: (p.variants || []).map(fromVariant),
+    variants,
   }
 }
 
@@ -485,7 +489,12 @@ export function createMemoryStoreCommandDeps(
   }
   let seq = 1
   return {
-    listProducts: async (ref) => (catalogs.get(ref) || []).map((r) => ({ ...r, variants: (r.variants || []).map((v) => ({ ...v })) })),
+    listProducts: async (ref) =>
+      (catalogs.get(ref) || []).map((r) => ({
+        ...r,
+        priceMinor: displayPriceMinorFromVariants(r.variants, r.priceMinor) ?? r.priceMinor,
+        variants: (r.variants || []).map((v) => ({ ...v })),
+      })),
     createProduct: async (ref, input) => {
       const variants: StoreVariantRecord[] = (input.variants || []).map((v, i) => ({
         id: `v${seq++}`,
@@ -512,7 +521,7 @@ export function createMemoryStoreCommandDeps(
         id: `p${seq++}`,
         name: input.name,
         slug: input.slug || slugify(input.name),
-        priceMinor: input.priceMinor,
+        priceMinor: displayPriceMinorFromVariants(variants, input.priceMinor) ?? input.priceMinor,
         stock,
         variants,
       }
@@ -526,9 +535,32 @@ export function createMemoryStoreCommandDeps(
       const row = list.find((p) => p.id === id)
       if (!row) return null
       if (typeof patch.name === 'string') row.name = patch.name
-      if (typeof patch.priceMinor === 'number') row.priceMinor = patch.priceMinor
       if (typeof patch.stock === 'number') row.stock = patch.stock
-      return { ...row }
+      if (typeof patch.priceMinor === 'number') {
+        if (!row.variants?.length) {
+          const def = defaultVariantForProduct({
+            id: row.id,
+            name: row.name,
+            priceMinor: row.priceMinor,
+            stock: row.stock,
+          })
+          row.variants = [
+            {
+              id: def.id,
+              sku: def.sku,
+              title: def.title,
+              options: def.options,
+              priceMinor: def.priceMinor,
+              stock: def.stock,
+              default: true,
+            },
+          ]
+        }
+        const next = applyProductPriceToInheritedVariants(row, patch.priceMinor)
+        row.priceMinor = next.priceMinor ?? patch.priceMinor
+        row.variants = next.variants
+      }
+      return { ...row, variants: (row.variants || []).map((v) => ({ ...v })) }
     },
     createVariant: async (ref, productId, input) => {
       const list = catalogs.get(ref) || []
@@ -545,6 +577,7 @@ export function createMemoryStoreCommandDeps(
       }
       product.variants = [...(product.variants || []), variant]
       product.stock = product.variants.reduce((s, v) => s + (v.stock || 0), 0)
+      product.priceMinor = displayPriceMinorFromVariants(product.variants, product.priceMinor) ?? product.priceMinor
       return { ...variant }
     },
     updateVariant: async (ref, variantId, patch) => {
@@ -555,6 +588,7 @@ export function createMemoryStoreCommandDeps(
         if (typeof patch.stock === 'number') variant.stock = patch.stock
         if (typeof patch.priceMinor === 'number') variant.priceMinor = patch.priceMinor
         product.stock = (product.variants || []).reduce((s, v) => s + (v.stock || 0), 0)
+        product.priceMinor = displayPriceMinorFromVariants(product.variants, product.priceMinor) ?? product.priceMinor
         return { ...variant }
       }
       return null

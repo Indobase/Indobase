@@ -28,6 +28,7 @@ import type {
   CommerceCheckoutResult,
   PricedLine,
 } from './types.js'
+import { purchasableUnitPriceMinor } from '../ux/catalog-domain.js'
 import {
   applyFulfillmentTransition,
   normalizeFulfillmentStatus,
@@ -139,7 +140,10 @@ export async function executeCheckout(
       if (!variant?.id) {
         return { ok: false, code: 'invalid_product', message: `No purchasable variant for ${product.name}` }
       }
-      const unitPrice = variant.priceMinor
+      const unitPrice = purchasableUnitPriceMinor(variant)
+      if (unitPrice == null) {
+        return { ok: false, code: 'invalid_product', message: `No purchasable price for ${product.name}` }
+      }
       const onHand = typeof variant.stock === 'number' ? variant.stock : 0
       currency = product.currency || currency
       const reserved = await sumActiveReservations(projectRef, product.id, variant.id)
