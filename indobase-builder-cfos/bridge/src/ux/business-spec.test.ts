@@ -114,6 +114,14 @@ describe('BusinessSpec', () => {
     assert.match(spec.businessName, /robotics/i)
   })
 
+  it('treats a food ordering website as grocery ecommerce, not a landing page', () => {
+    const spec = inferBusinessSpec('build a food ordering website')
+    assert.equal(spec.businessType, 'ecommerce')
+    assert.equal(spec.catalog.verticalId, 'food-grocery')
+    assert.equal(intentReadyToBuild('build a food ordering website'), true)
+    assert.equal(inferBusinessSpec('Build a website for my robotics company').businessType, 'landing')
+  })
+
   it('intentReadyToBuild waits for a named vertical or brand, not vague ordering-site asks', () => {
     assert.equal(intentReadyToBuild('Launch a premium sneaker store called UrbanThread'), true)
     assert.equal(intentReadyToBuild('Build me a complete online shop for apparel'), true)

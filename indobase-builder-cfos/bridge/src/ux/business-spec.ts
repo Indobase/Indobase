@@ -161,7 +161,13 @@ export function pickBusinessName(...candidates: Array<string | null | undefined>
 
 function inferBusinessType(intent: string): BusinessSpec['businessType'] {
   const q = intent.toLowerCase()
-  if (/\b(store|shop|sneaker|sneakers|ecommerce|boutique)\b/.test(q)) return 'ecommerce'
+  if (
+    /\b(store|shop|sneaker|sneakers|ecommerce|boutique|order(?:ing)?|food|grocery|restaurant|cafe|bakery|menu|cart|checkout)\b/.test(
+      q,
+    )
+  ) {
+    return 'ecommerce'
+  }
   if (
     /\b(saas|software as a service|web app|webapp|dashboard|client portal|customer portal|b2b|crm)\b/.test(q)
   ) {
