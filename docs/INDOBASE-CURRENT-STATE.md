@@ -3,8 +3,8 @@
 **Regenerate this file after any major architecture or certification change.**  
 **Do not treat chat history as source of truth.**  
 **Generated:** 2026-08-14  
-**Inspected branch:** `staging` (Phase 2 commerce core in progress, **uncertified live**)  
-**Last LIVE cert SHA:** `980b75bbb50f432cd4a1b627f26569700347d84d` — still the only certified Builder on `.249` / `builder.indobase.in`  
+**Inspected branch:** `staging` (Phase 2 commerce core **C5 live-certified**)  
+**Last LIVE cert SHA:** `2c80c45b0fa7d32d1f0a1ca497da101ed30f0846` — Builder CFOS on `.249` / `builder.indobase.in`  
 **Live CFOS health:** `https://builder.indobase.in/sso/health` `version` = same SHA  
 **`origin/main`:** `da5a1c6c05bc7ab22af2717f60c83436254f3c95` (CFOS landing slice is on `staging` only; **not** promoted)
 
@@ -20,23 +20,24 @@ This document is an engineering snapshot of **Indobase Builder/OS**, not Studio,
 
 | Layer | Status |
 | --- | --- |
-| Genuinely implemented | OTP identity (PocketBase-backed, hidden), BusinessSpec, conductor BUILD, PREVIEW_EDIT, frozen artifacts, production job (classify→provision→generate→wire→verify→deploy→smoke→LIVE), ecommerce Commerce ABI + checkout, SaaS auth/records shell, session projectRef 403 isolation, five-tool catalog + HTTP primitive reject, BusinessRuntimeState injection |
-| Partially implemented | **Phase 2 store commands + storefront projection** (LOCAL: product.create / product.update / inventory.update persist runtime + baked catalog snapshot; live C5 pending), SaaS (OTP + organizations CRUD shell, not a domain product), website/landing (live FTU on SHA `980b75bbb`), payments (`connectGateway` exists; not in this live FTU), Control Center, claim-integrity (library + tests; not a live speech interceptor) |
+| Genuinely implemented | OTP identity (PocketBase-backed, hidden), BusinessSpec, conductor BUILD, PREVIEW_EDIT, frozen artifacts, production job (classify→provision→generate→wire→verify→deploy→smoke→LIVE), ecommerce Commerce ABI + checkout, SaaS auth/records shell, session projectRef 403 isolation, five-tool catalog + HTTP primitive reject, BusinessRuntimeState injection, **store commands + storefront projection** (product.create/update, inventory.update, order.status paid/failed) |
+| Partially implemented | SaaS (OTP + organizations CRUD shell, not a domain product), payments (`connectGateway` exists; not in this live FTU), Control Center, claim-integrity (library + tests; not a live speech interceptor). **Fulfillment is paid/failed only** (operator “fulfilled” maps to paid). No variants/collections/discounts/SEO. |
 | Stubbed | IMPROVE / workforce, `packages/adapters/pocketbase` physical move (ADR 0008), dedicated `/api/os/v1/business/launch` (still aliases) |
 | Fake/mocked | LOCAL 20-store ecommerce-cert loop (mocked guided/launch; now PASS). Live cert OTP uses a **.248 sqlite password patch** — not the customer email path |
 | Broken / red | `builder.indobase.fun` CFOS health **timed out** (classic Remix staging; not this OS). |
-| Production-ready | **No as a product.** On SHA `980b75bbb` the three Builder execution profiles (ecommerce, SaaS, landing) completed fresh live FTU + security 12/12. That is not “arbitrary business in 10 minutes, certified, on `main`.” |
+| Production-ready | **No as a product.** SHA `2c80c45b0` certified C5 catalog operate + projection. Prior `980b75bbb` certified ecommerce/SaaS/landing FTU. That is not “arbitrary business in 10 minutes, certified, on `main`.” |
 | NOT production-ready | Payments FTU, `main` promotion, IMPROVE, arbitrary verticals beyond ecommerce/saas/landing, SaaS beyond a thin app shell |
 
-**Certification (live, 2026-08-14, SHA `980b75bbb50f432cd4a1b627f26569700347d84d` only — older SHAs do not inherit this):**
+**Certification (live, 2026-08-14):**
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Fresh ecommerce FTU | 15/15 | fixture `rosh505593bb90`, live `https://northpeak-5593bb90.sites.indobase.in` |
-| Fresh SaaS FTU | 15/15 | fixture `rosh207367bc64`, live `https://tutordesk-7367bc64.sites.indobase.in`, H1 “Midnight tutoring” |
-| Fresh website/landing FTU | 20/20 | fixture `rosh49f1cc69bc`, live `https://harbor-studio-f1cc69bc.sites.indobase.in`, H1 “Harbor at midnight”, kind=landing, operate from runtime |
-| Security | 12/12 | same store session + SaaS A+B 403 |
-| LOCAL bridge suite | 208/208 (Phase 2 projection LOCAL; **uncertified live**) | `indobase-builder-cfos/bridge` `pnpm test` |
+| Fresh C5 commerce operate | 21/21 | SHA `2c80c45b0fa7d32d1f0a1ca497da101ed30f0846`, fixture `roshd84a016c89`, live `https://northpeak-4a016c89.sites.indobase.in`, Apex Runner Extra ₹13499 stock 20, order `uk0zhd6u9wwe143` |
+| Fresh ecommerce FTU | 15/15 | SHA `980b75bbb`, fixture `rosh505593bb90` |
+| Fresh SaaS FTU | 15/15 | SHA `980b75bbb`, fixture `rosh207367bc64` |
+| Fresh website/landing FTU | 20/20 | SHA `980b75bbb`, fixture `rosh49f1cc69bc` |
+| Security | 12/12 + C5 403 | prior pack + forged `urbanthread` 403 on C5 |
+| LOCAL bridge suite | 208/208 | `indobase-builder-cfos/bridge` `pnpm test` |
 
 **Biggest blocker to the 10-minute arbitrary-business goal:** execution profiles only exist for **ecommerce**, **thin SaaS**, and **landing**. A non-store, non-SaaS, non-landing idea does not get a real capability graph. Secondary: `main` is behind live.
 
@@ -83,7 +84,7 @@ Browser ── CFOS SPA (/os/app) ── chat + gadgets + preview iframe
 | Modify | PREVIEW_EDIT | `applyPersistedPreviewEdit` | headline request | new hash | draft `index.html` | `mutateHeroHeadline` | live |
 | Launch | production job | `executeProductionLaunchJob` | frozen html, spec | `*.sites.indobase.in` | job store | guided + `launchStaticBusiness` | live ecom+saas |
 | Operate | quote state | agent + `composeRuntimeStateHint` | runtime | chat | orders/products from snapshot | Ask AI SCREEN | live ecom |
-| Catalog projection | persist after product/inventory mutate | `persistCatalogProjection` + `injectStorefrontProductSnapshot` | store command snapshot | preview + live `index.html` | disk artifact + `GET /api/os/commerce/products` | session projectRef | LOCAL; C5 pending |
+| Catalog projection | persist after product/inventory mutate | `persistCatalogProjection` + `injectStorefrontProductSnapshot` | store command snapshot | preview + live `index.html` | disk artifact + `GET /api/os/commerce/products` | session projectRef | LIVE C5 |
 | PocketBase | identity + records + shop | managed backend `.248` | appId = projectRef | collections | PB sqlite | never customer-named | live engine |
 | Preview | `/live/{ref}/` | `static-launch.ts` `writeDraftPreview` | files | HTTP 200 | disk artifact | Traefik sites | live |
 | Production jobs | stage machine | `production-launch/pipeline.ts` | session | LIVE or blocked | `job-store.ts` | smoke fetch live URL | live |
@@ -274,7 +275,8 @@ Never mark secure from unit tests alone. Live 12/12 is the current verified isol
 
 | AREA | TEST | PASS/FAIL | LOCAL/LIVE | SHA | EVIDENCE | BLOCKER |
 | --- | --- | --- | --- | --- | --- | --- |
-| LOCAL suite | `pnpm test` bridge | 208/208 PASS | LOCAL | Phase 2 projection uncertified | last LIVE cert still `980b75bbb` | recertify C5 |
+| LOCAL suite | `pnpm test` bridge | 208/208 PASS | LOCAL | `2c80c45b0` | C5 live | — |
+| C5 commerce operate | `/tmp/p01-c5-commerce-cert.py` | 21/21 | LIVE | `2c80c45b0` | `roshd84a016c89` Apex Runner Extra | disposable |
 | Five-tool | `agent-primitive-guard.test.ts` | PASS | LOCAL | same | physical reject | — |
 | FTU logic | `ftu-journey.test.ts` | PASS | LOCAL | same | 16-step ecom path | — |
 | Execution A–Q | `execution-contract.test.ts` | PASS | LOCAL | same | BUILD/MODIFY/LAUNCH/OPERATE | — |
