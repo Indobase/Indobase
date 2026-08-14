@@ -1,38 +1,24 @@
 ---
-description: Git branch rules — staging for Studio/Builder; main only for prod promotion.
+description: Git branch rules — Studio/Builder/control-plane work on main (prod). Do not use staging.
 alwaysApply: true
 ---
 
-# Git: staging vs main
-
-## Temporary override (2026-07-28 through 2026-07-30 inclusive)
-
-**Prod-only window:** for Studio / Builder / platform control-plane, default working branch is **`main`** (not `staging`).
-
-- When asked to commit/push/deploy these changes: commit on `main`, `git fetch` + integrate if behind, then `git push origin main`.
-- Treat “deploy” as Vyom / `indobase.in` unless the user explicitly asks for staging/`indobase.fun`.
-- Do not force-push. Production rollout still uses SHA tags on `.249` (see `indobase-prod-redeploy.mdc`).
-
-From **2026-07-31**, ignore this override and follow the permanent rules below.
-
----
+# Git: main only
 
 ## Studio / Builder / platform control-plane
 
-- Default working branch: **`staging`**.
-- When asked to commit/push these changes: commit on `staging`, then `git push origin staging` (after `git fetch` + rebase onto `origin/staging` if it exists).
-- Do **not** commit or push these to `main` unless the user explicitly asks to **promote to prod**.
+- Default working branch: **`main`**.
+- When asked to commit/push/deploy these changes: commit on `main`, `git fetch` + integrate if behind, then `git push origin main`.
+- Treat “deploy” as Vyom / `indobase.in`.
+- Do not commit, push, or deploy via **`staging`** / `indobase.fun` unless the user names that host explicitly.
 
-## Production promotion
+## Production
 
-- Only when the user asks to promote, ship to prod, deploy to Vyom, or merge to `main`:
-  1. Ensure staging smoke on `*.indobase.fun` is OK (or they explicitly skip).
-  2. Merge/rebase `staging` into `main` (or cherry-pick as directed).
-  3. `git push origin main`.
 - Before pushing `main`: `git fetch origin` and integrate if behind (`git pull --rebase origin main`).
-- Do not force-push `main` or `staging` unless explicitly requested.
+- Do not force-push `main` unless explicitly requested.
+- Production rollout uses SHA tags on `.249` (see `indobase-prod-redeploy.mdc`).
 
 ## Other work
 
 - Unrelated one-off branches only if the user names one.
-- Marketing (`apps/www`) and infra-only docs may follow the user’s explicit branch choice; if unclear and it touches Studio/Builder deploy paths, prefer `staging`.
+- Marketing (`apps/www`) and infra-only docs follow `main` unless the user names another branch.
