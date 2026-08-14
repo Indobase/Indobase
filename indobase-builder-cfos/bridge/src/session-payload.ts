@@ -211,7 +211,9 @@ function buildAuthoritativeProject(
   job?: ProductionLaunchJob | null,
   launch?: LaunchStatusSnapshot | null,
 ) {
-  const appType = job?.appType || null
+  const persisted = getWorkspaceRuntime(session.projectRef)
+  const spec = persisted?.spec || getBusinessSpec(session.projectRef)
+  const appType = job?.appType || spec?.businessType || null
   const kind = appTypeToKind(appType)
   const catalogReady = Boolean(
     job?.evidence?.catalog_seeded || job?.evidence?.backend_ready || launch?.catalogReady || journey.flags.is_backend_ready,
@@ -219,7 +221,6 @@ function buildAuthoritativeProject(
   const paymentsReady = Boolean(journey.flags.is_payments_ready || sessionLooksPaymentsReady(session))
   const live = job?.status === 'live' || journey.flags.is_live
   const liveUrl = live ? job?.url || journey.live_url || null : null
-  const persisted = getWorkspaceRuntime(session.projectRef)
   const preview = resolvePreviewGate({
     jobStatus: job?.status || null,
     artifactExists: Boolean(launch?.previewReady || persisted?.preview.artifactRef),

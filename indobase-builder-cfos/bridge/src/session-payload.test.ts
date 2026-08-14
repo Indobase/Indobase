@@ -8,6 +8,11 @@ import {
   buildSessionApiPayload,
   composeAgentHintForSession,
 } from './session-payload.ts'
+import {
+  clearBusinessSpecsForTests,
+  inferBusinessSpec,
+  rememberBusinessSpec,
+} from './ux/business-spec.ts'
 
 const signedIn: Session = {
   gotrueId: 'user-1',
@@ -241,5 +246,22 @@ describe('session-payload', () => {
     assert.match(hint, /Priya Shopper/)
     assert.match(hint, /Thread One\/Bone/)
     assert.match(hint, /commerce admin isn’t available|Never invent/)
+  })
+
+  it('SaaS BusinessSpec sets project.kind to app before any production job', () => {
+    clearBusinessSpecsForTests()
+    rememberBusinessSpec('proj_abc', inferBusinessSpec('Build a SaaS called TutorDesk'))
+    const payload = buildSessionApiPayload({
+      session: signedIn,
+      agentHint: 'hint',
+      generation: { schemaVersion: 1 },
+      agentRuntimeConfigured: true,
+      agentRuntimeUrl: 'http://127.0.0.1:8787',
+      osProxyPath: '/os/app/',
+      indobaseProxyPath: '/api/indobase/proxy/',
+    })
+    assert.equal(payload.project.kind, 'app')
+    assert.equal(payload.runtime.business.kind, 'app')
+    clearBusinessSpecsForTests()
   })
 })
