@@ -3,8 +3,8 @@
 **Regenerate this file after any major architecture or certification change.**  
 **Do not treat chat history as source of truth.**  
 **Generated:** 2026-08-14  
-**Inspected branch:** `staging` (Phase 2 commerce core **C5 live-certified**)  
-**Last LIVE cert SHA:** `2c80c45b0fa7d32d1f0a1ca497da101ed30f0846` — Builder CFOS on `.249` / `builder.indobase.in`  
+**Inspected branch:** `staging` (Phase 2A commerce fulfillment **C5 live-certified**)  
+**Last LIVE cert SHA:** `82c44213b2b84f3213127390cd49b5d04f9633ad` — Builder CFOS on `.249` / `builder.indobase.in`  
 **Live CFOS health:** `https://builder.indobase.in/sso/health` `version` = same SHA  
 **`origin/main`:** `da5a1c6c05bc7ab22af2717f60c83436254f3c95` (CFOS landing slice is on `staging` only; **not** promoted)
 
@@ -20,24 +20,27 @@ This document is an engineering snapshot of **Indobase Builder/OS**, not Studio,
 
 | Layer | Status |
 | --- | --- |
-| Genuinely implemented | OTP identity (PocketBase-backed, hidden), BusinessSpec, conductor BUILD, PREVIEW_EDIT, frozen artifacts, production job (classify→provision→generate→wire→verify→deploy→smoke→LIVE), ecommerce Commerce ABI + checkout, SaaS auth/records shell, session projectRef 403 isolation, five-tool catalog + HTTP primitive reject, BusinessRuntimeState injection, **store commands + storefront projection** (product.create/update, inventory.update, order.status paid/failed) |
-| Partially implemented | SaaS (OTP + organizations CRUD shell, not a domain product), payments (`connectGateway` exists; not in this live FTU), Control Center, claim-integrity (library + tests; not a live speech interceptor). **Fulfillment is paid/failed only** (operator “fulfilled” maps to paid). No variants/collections/discounts/SEO. |
+| Genuinely implemented | OTP identity (PocketBase-backed, hidden), BusinessSpec, conductor BUILD, PREVIEW_EDIT, frozen artifacts, production job (classify→provision→generate→wire→verify→deploy→smoke→LIVE), ecommerce Commerce ABI + checkout, SaaS auth/records shell, session projectRef 403 isolation, five-tool catalog + HTTP primitive reject, BusinessRuntimeState injection, **store commands + storefront projection** (product.create/update, inventory.update, order.status paid/failed, **order.fulfill**). Payment and fulfillment are separate. |
+| Partially implemented | SaaS (OTP + organizations CRUD shell, not a domain product), payments (`connectGateway` exists; not in this live FTU), Control Center, claim-integrity (library + tests; not a live speech interceptor). No variants/collections/discounts/SEO. Refunds not implemented (`paid → refunded` rejected). |
 | Stubbed | IMPROVE / workforce, `packages/adapters/pocketbase` physical move (ADR 0008), dedicated `/api/os/v1/business/launch` (still aliases) |
 | Fake/mocked | LOCAL 20-store ecommerce-cert loop (mocked guided/launch; now PASS). Live cert OTP uses a **.248 sqlite password patch** — not the customer email path |
 | Broken / red | `builder.indobase.fun` CFOS health **timed out** (classic Remix staging; not this OS). |
-| Production-ready | **No as a product.** SHA `2c80c45b0` certified C5 catalog operate + projection. Prior `980b75bbb` certified ecommerce/SaaS/landing FTU. That is not “arbitrary business in 10 minutes, certified, on `main`.” |
-| NOT production-ready | Payments FTU, `main` promotion, IMPROVE, arbitrary verticals beyond ecommerce/saas/landing, SaaS beyond a thin app shell |
+| Production-ready | **No as a product.** SHA `82c44213b` certified C5 catalog operate + **fulfillment ≠ payment**. Prior `2c80c45b0` had the bug that “mark fulfilled” wrote paymentStatus=paid. NorthPeak is a disposable fixture. |
+| NOT production-ready | Payments FTU, `main` promotion, IMPROVE, arbitrary verticals beyond ecommerce/saas/landing, SaaS beyond a thin app shell, **Shopify-class catalog** |
 
 **Certification (live, 2026-08-14):**
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Fresh C5 commerce operate | 21/21 | SHA `2c80c45b0fa7d32d1f0a1ca497da101ed30f0846`, fixture `roshd84a016c89`, live `https://northpeak-4a016c89.sites.indobase.in`, Apex Runner Extra ₹13499 stock 20, order `uk0zhd6u9wwe143` |
+| Shopify-class commerce | ❌ | No variants, collections, discounts, or SEO. NorthPeak is a **fixture**, not a product bar. |
+| Fresh C5 commerce operate | 21/21 | SHA `82c44213b2b84f3213127390cd49b5d04f9633ad`, fixture `roshfd03e610f2`, live `https://northpeak-03e610f2.sites.indobase.in`, order `8szn52esqkne77j` **fulfillmentStatus=fulfilled** and **paymentStatus=paid** (not `fulfilled`) |
+| Fresh C5 (prior, fulfillment bug) | 21/21 | SHA `2c80c45b0` — “mark fulfilled” overloaded payment as paid; superseded |
 | Fresh ecommerce FTU | 15/15 | SHA `980b75bbb`, fixture `rosh505593bb90` |
 | Fresh SaaS FTU | 15/15 | SHA `980b75bbb`, fixture `rosh207367bc64` |
 | Fresh website/landing FTU | 20/20 | SHA `980b75bbb`, fixture `rosh49f1cc69bc` |
 | Security | 12/12 + C5 403 | prior pack + forged `urbanthread` 403 on C5 |
-| LOCAL bridge suite | 208/208 | `indobase-builder-cfos/bridge` `pnpm test` |
+| LOCAL bridge suite | 211/211 | `indobase-builder-cfos/bridge` `pnpm test` |
+| LOCAL platform | 77/77 | `packages/platform` `pnpm test` |
 
 **Biggest blocker to the 10-minute arbitrary-business goal:** execution profiles only exist for **ecommerce**, **thin SaaS**, and **landing**. A non-store, non-SaaS, non-landing idea does not get a real capability graph. Secondary: `main` is behind live.
 
@@ -64,7 +67,7 @@ Browser ── CFOS SPA (/os/app) ── chat + gadgets + preview iframe
     ├── MODIFY mutateHeroHeadline + writeDraftPreview
     ├── LAUNCH executeProductionLaunchJob
     └── OPERATE BusinessRuntimeState snapshot
-         └── store commands (internal): product.create/update, inventory.update, order.status
+         └── store commands (internal): product.create/update, inventory.update, order.status, order.fulfill
                 └── storefront projection: bake catalog snapshot into index.html; live grid still prefers commerce.products.list()
                 │
                 ├── guidedBackend (in-process, not agent)
@@ -275,8 +278,8 @@ Never mark secure from unit tests alone. Live 12/12 is the current verified isol
 
 | AREA | TEST | PASS/FAIL | LOCAL/LIVE | SHA | EVIDENCE | BLOCKER |
 | --- | --- | --- | --- | --- | --- | --- |
-| LOCAL suite | `pnpm test` bridge | 208/208 PASS | LOCAL | `2c80c45b0` | C5 live | — |
-| C5 commerce operate | `/tmp/p01-c5-commerce-cert.py` | 21/21 | LIVE | `2c80c45b0` | `roshd84a016c89` Apex Runner Extra | disposable |
+| LOCAL suite | `pnpm test` bridge | 211/211 PASS | LOCAL | `82c44213b` | Phase 2A | — |
+| C5 commerce operate | `/tmp/p01-c5-commerce-cert.py` | 21/21 | LIVE | `82c44213b` | `roshfd03e610f2` fulfill≠paid | disposable; NorthPeak fixture |
 | Five-tool | `agent-primitive-guard.test.ts` | PASS | LOCAL | same | physical reject | — |
 | FTU logic | `ftu-journey.test.ts` | PASS | LOCAL | same | 16-step ecom path | — |
 | Execution A–Q | `execution-contract.test.ts` | PASS | LOCAL | same | BUILD/MODIFY/LAUNCH/OPERATE | — |
@@ -297,15 +300,13 @@ Never mark secure from unit tests alone. Live 12/12 is the current verified isol
 
 ## 12. Current live certification state
 
-**Verifiable now:** health JSON version `980b75bbb50f432cd4a1b627f26569700347d84d` = `staging` HEAD.
+**Verifiable now:** health JSON version `82c44213b2b84f3213127390cd49b5d04f9633ad` = `staging` HEAD.
 
 **Latest live fixtures on this SHA (disposable, do not polish):**
 
-- Store: `rosh505593bb90` / NorthPeak / `https://northpeak-5593bb90.sites.indobase.in` / job `plj_mssaxvrg_9e5a25c3`
-- SaaS: `rosh207367bc64` / TutorDesk / `https://tutordesk-7367bc64.sites.indobase.in` / job `plj_mssayd90_31f52fb9`
-- Website: `rosh49f1cc69bc` / Harbor Studio / `https://harbor-studio-f1cc69bc.sites.indobase.in` / job `plj_mssaykxv_1ddddc21` / kind landing / H1 Harbor at midnight
+- C5 store: `roshfd03e610f2` / NorthPeak / `https://northpeak-03e610f2.sites.indobase.in` / order `8szn52esqkne77j` payment=paid fulfillment=fulfilled
 
-**Do not use:** `ecc931ddb` fixtures (`roshff8c059caa`, `rosh3148d75498`), `rosh76e90375b6`, `urbanthread.sites`, `rosh030e691864` (pre-operate-fix landing), older TutorDesk 409 jobs.
+**Do not use:** `2c80c45b0` fixture `roshd84a016c89`, `980b75bbb` fixtures, `ecc931ddb` fixtures (`roshff8c059caa`, `rosh3148d75498`), `rosh76e90375b6`, `urbanthread.sites`, `rosh030e691864`.
 
 **Website live:** VERIFIED on SHA `980b75bbb` only.
 
@@ -356,6 +357,7 @@ Still requires: account OTP; optional click-to-edit; cert/debug still used inter
 
 - SaaS shell ≠ domain SaaS (records/orgs only)
 - Payments / `connectGateway` not in FTU
+- **Phase 2B commerce:** variants, collections, discounts, SEO — not started. Refunds skipped (documented). Shopify-class remains ❌
 - IMPROVE / workforce frozen on purpose
 - PocketBase env in SaaS HTML; adapters not extracted
 - Studio still on OTP/billing/quota critical path
