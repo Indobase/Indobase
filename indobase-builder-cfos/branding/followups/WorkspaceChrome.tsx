@@ -142,9 +142,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   } | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const view = useMemo(() => workspaceViewModel(snap), [snap])
-  const gadgetPreview = useGadgetPreviewPane(view, snap)
-  const showControl = view.showControlCenter && pane === 'control'
-  const showChromeAside = showControl || (!gadgetPreview && view.state === 'needs_attention')
+  const showChromeAside = false
 
   const refresh = useCallback(() => {
     setSnap(readSnapshot())
@@ -287,11 +285,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     }
   }, [])
 
-  const previewSrc = withEditQuery(
-    gadgetPreview || !showChromeAside
-      ? null
-      : embedPreviewSrc(readProjectRef(), view.previewUrl, view.liveUrl),
-  )
+  const previewSrc = withEditQuery(null)
 
   useEffect(() => {
     if (previewBoot !== 'waiting' || !previewSrc) return
