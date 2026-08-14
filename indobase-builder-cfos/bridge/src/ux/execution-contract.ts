@@ -131,15 +131,26 @@ function looksLikeAuthNoise(text: string): boolean {
 function looksLikeCreateBusiness(text: string): boolean {
   const q = text.toLowerCase()
   if (/\blaunch a\b/.test(q) || /\bbuild (?:me )?(?:a|an)\b/.test(q)) return true
-  if (/\bcalled\s+[a-z]/i.test(text)) return true
-  return /\b(store|shop|sneaker|ecommerce|landing|website|saas)\b/.test(q)
+  if (/\b(start building|create (?:me )?(?:a|an)|make (?:me )?(?:a|an) (?:store|shop|app|website|landing))\b/.test(q)) {
+    return true
+  }
+  if (/\bcalled\s+[a-z]/i.test(text) && /\b(build|launch|create|make)\b/i.test(text)) return true
+  return false
+}
+
+function looksLikeOperateQuestion(text: string): boolean {
+  const q = text.toLowerCase()
+  if (/\?/.test(text)) return true
+  if (/\b(what can|how (?:do|can)|show me|tell me)\b/.test(q)) return true
+  if (/\b(visitors?|customers?|orders?|this (?:website|site|app|store|business))\b/.test(q)) return true
+  return false
 }
 
 function looksLikeGoLive(text: string): boolean {
   const q = text.toLowerCase()
   if (/\blaunch a\b/.test(q)) return false
   return (
-    /\b(go live|take live|publish (?:this|it|my)|launch my (?:store|shop|site|business|app)|launch store|launch this|launchproductionapp|\/api\/os\/apps\/launch)\b/.test(
+    /\b(go live|take live|publish (?:this|it|my)|launch my (?:store|shop|site|website|landing|business|app)|launch store|launch this|launchproductionapp|\/api\/os\/apps\/launch)\b/.test(
       q,
     ) || /\bproduction:\s*true\b/.test(q)
   )
@@ -164,8 +175,11 @@ export function classifyOperatorIntent(
   }
   if (/^SCREEN\b/.test(text)) return 'operate'
   if (looksLikeGoLive(text)) return 'launch_production'
+  if (runtime?.spec && looksLikeOperateQuestion(text) && !/\b(build|start building|create (?:me )?(?:a|an))\b/i.test(text)) {
+    return 'operate'
+  }
   if (looksLikeCreateBusiness(text)) return 'create_business'
-  if (/\b(orders?|products?|customers?|inventory|sales)\b/i.test(text)) return 'operate'
+  if (/\b(orders?|products?|customers?|inventory|sales|visitors?)\b/i.test(text)) return 'operate'
   return 'other'
 }
 
@@ -328,6 +342,13 @@ function toSessionRuntime(
 }
 
 function operateReply(state: BusinessRuntimeState, named: string): string {
+  const kind = state.business.kind
+  if ((kind === 'landing' || kind === 'website') && state.live.isLive) {
+    const url = state.live.url
+    if (named && url) return `${named} is live — ${url}`
+    if (named) return `${named} is live.`
+    return url ? `Your website is live — ${url}` : 'Your website is live.'
+  }
   const count = state.orders.length
   if (!count) return named ? `${named} has no orders yet.` : 'No orders yet.'
   const latest = state.orders[0]

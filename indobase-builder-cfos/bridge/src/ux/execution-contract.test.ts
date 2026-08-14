@@ -454,6 +454,13 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(classifyOperatorIntent(PROMPT, null), 'create_business')
     assert.equal(classifyOperatorIntent(BUILD_PROMPT, null), 'create_business')
     assert.equal(classifyOperatorIntent('Show my orders', null), 'operate')
+    assert.equal(
+      classifyOperatorIntent('What can visitors do on this website?', {
+        spec: { businessName: 'Harbor Studio', businessType: 'landing' },
+      } as never),
+      'operate',
+    )
+    assert.equal(classifyOperatorIntent('Launch my website on Indobase now.', null), 'launch_production')
     assert.equal(classifyOperatorIntent('Change the hero headline to Midnight drops', null), 'preview_edit')
     assert.equal(
       classifyOperatorIntent('Go Live — call launchProductionApp for UrbanThread', null),
