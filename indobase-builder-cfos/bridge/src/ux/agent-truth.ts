@@ -7,6 +7,8 @@ import {
   agentMayClaimLive as runtimeMayClaimLive,
   agentMayClaimPreview as runtimeMayClaimPreview,
   composeBusinessRuntimeStateHint,
+  catalogFromProducts,
+  inventoryFromProducts,
   emptyBusinessRuntimeState,
   isForbiddenAgentClaim,
   type BusinessRuntimeState,
@@ -163,32 +165,22 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl),
     },
   })
-  const inStockCount = products.filter((p) => (p.stock ?? 0) > 0).length
-  const lowStockCount = products.filter(
-    (p) => typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5,
-  ).length
   const pendingOrderCount = orders.filter((o) => {
     const status = String(o.paymentStatus || o.status || '').toLowerCase()
     return !status || status === 'pending' || status === 'open' || status === 'unpaid'
   }).length
+  const catalogStats = catalogFromProducts(products)
   return {
     ...state,
     catalog: {
-      productCount: products.length,
-      inStockCount,
-      lowStockCount,
+      ...catalogStats,
+      collections: state.catalog.collections || [],
     },
     commerce: {
       orderCount: orders.length,
       pendingOrderCount,
     },
-    inventory: products
-      .filter((p) => typeof p.stock === 'number')
-      .map((p) => ({
-        id: p.id,
-        productId: p.id,
-        quantity: p.stock,
-      })),
+    inventory: inventoryFromProducts(products),
   }
 }
 

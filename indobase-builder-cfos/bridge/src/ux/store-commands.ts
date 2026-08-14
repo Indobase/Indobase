@@ -615,7 +615,8 @@ function matchProduct(products: StoreProductRecord[], hint?: string): StoreProdu
   const q = hint.toLowerCase()
   return (
     products.find((p) => p.name.toLowerCase() === q || p.id === hint || p.slug === hint) ||
-    products.find((p) => p.name.toLowerCase().includes(q))
+    products.find((p) => p.name.toLowerCase().includes(q)) ||
+    products.find((p) => q.includes(p.name.toLowerCase()) && p.name.length >= 4)
   )
 }
 
@@ -701,6 +702,36 @@ export async function executeStoreCommand(input: {
       const variants = classified.options
         ? variantRowsFromOptions(slug, classified.options, priceMinor, stockEach)
         : []
+      const existing = matchProduct(await deps.listProducts(projectRef), name)
+      if (existing && variants.length && deps.createVariant) {
+        const had = existing.variants?.length || 0
+        for (let i = 0; i < variants.length; i++) {
+          await deps.createVariant(projectRef, existing.id, {
+            ...variants[i],
+            default: had === 0 && i === 0,
+          })
+        }
+        const snapshot = await loadSnapshot()
+        const command = createCommand(
+          'product.create',
+          {
+            projectRef,
+            productId: existing.id,
+            name: existing.name,
+            variantCount: snapshot.products.find((p) => p.id === existing.id)?.variants?.length || variants.length,
+          },
+          { projectRef },
+        )
+        return {
+          ok: true,
+          status: 200,
+          kind: 'product.create',
+          command,
+          message: `Added ${variants.length} variants to ${existing.name}.`,
+          snapshot,
+          mutated: true,
+        }
+      }
       const created = await deps.createProduct(projectRef, {
         name,
         slug,
@@ -1017,7 +1048,8 @@ export async function executeStoreCommand(input: {
     }
 
     return { ok: true, status: 200, kind: classified.kind, message: '', snapshot: await loadSnapshot(), mutated: false }
-  } catch {
+  } catch (err) {
+    console.error('store-command failed', classified?.kind, err)
     return {
       ok: false,
       status: 502,

@@ -168,6 +168,22 @@ describe('store commands (internal, not tools)', () => {
     assert.equal(after[0]?.fulfillment_status, 'fulfilled')
   })
 
+  it('attaches size variants onto an existing product instead of minting a second product', async () => {
+    const deps = createMemoryStoreCommandDeps({
+      storeaaaa01: [{ id: 'p1', name: 'Apex Runner', slug: 'apex-runner', priceMinor: 1299900, stock: 28 }],
+    })
+    const result = await executeStoreCommand({
+      session: { projectRef: 'storeaaaa01' },
+      message: 'Add the black Apex Runner in sizes 7, 8, 9, 10, and 11.',
+      deps,
+    })
+    assert.equal(result.ok, true)
+    const catalog = await deps.listProducts('storeaaaa01')
+    assert.equal(catalog.length, 1)
+    assert.equal(catalog[0]?.variants?.length, 5)
+    assert.ok(catalog[0]?.variants?.every((v) => v.id !== catalog[0]?.id))
+  })
+
   it('sizes 7-11 create one product with variants, not five products', async () => {
     const deps = createMemoryStoreCommandDeps()
     const result = await executeStoreCommand({
