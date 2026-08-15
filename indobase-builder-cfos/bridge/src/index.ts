@@ -97,7 +97,7 @@ import {
 } from './session-payload.js'
 import { accountRequiredBody } from './guest-gates.js'
 import { authErrorJsonBody, normalizeAuthRouteError } from './auth-errors.js'
-import { renderLandingHtml, renderOfflineDesktopHtml, renderWorkspaceSignInRequiredHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
+import { renderLandingHtml, renderOfflineDesktopHtml, injectIndobaseContextBootstrap } from './workspace-html.js'
 import {
   BRIDGE_AGENT_BEGIN_TURN_PATH,
   interpretBeginTurnResult,
@@ -444,16 +444,16 @@ async function serveAgentDesktop(
   },
 ): Promise<Response> {
   const preservePath = Boolean(opts?.preservePath)
-  // Deep links must not mint/open as guest — wrong CFOS principal → access denied.
-  const { session, setCookie } = ensureSessionForWorkspace(c, { mintGuest: !preservePath })
+  // Guests open `/workspace/<id>` too — sign-up/sign-in is in-chat (auth chrome),
+  // not a separate gate page. Mint a guest when missing so Store/home prompts
+  // that navigate into a gadget deep-link keep working.
+  const { session, setCookie } = ensureSessionForWorkspace(c, { mintGuest: true })
   if (!session) {
+    // Opaque/unreadable cookie we refuse to overwrite, or handoff secret missing.
     if (preservePath) {
-      return c.html(renderWorkspaceSignInRequiredHtml())
+      return c.redirect('/')
     }
     return c.html(renderLandingHtml())
-  }
-  if (preservePath && isGuestSession(session)) {
-    return c.html(renderWorkspaceSignInRequiredHtml())
   }
   const upstream = resolveCloudflareOsBase()
   if (!upstream) {
@@ -2425,8 +2425,8 @@ app.all('/workspace/*', (c) => serveAgentDesktop(c, { preservePath: true }))
  * CFOS client-router shell routes (plural). Hard refresh / bookmarks must serve the
  * SPA index — upstream workerd already SPA-fallbacks these; the bridge must route
  * them (otherwise Hono returns plain "404 Not Found").
- * Serve like `/` (mint guest + index) so guests can open the shell; keep
- * `/workspace/<id>` on preservePath for principal safety.
+ * Serve like `/` (mint guest + index). `/workspace/<id>` preserves path so the
+ * CFOS SPA deep-link works; guests stay on chat auth (no sign-in gate page).
  */
 for (const prefix of CFOS_SPA_SHELL_PREFIXES) {
   app.get(prefix, (c) => serveAgentDesktop(c))

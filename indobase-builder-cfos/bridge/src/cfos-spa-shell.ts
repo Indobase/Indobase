@@ -1,6 +1,7 @@
 /**
  * CFOS client-router shell paths that must be served as the SPA index on hard refresh.
- * Singular `/workspace/<id>` stays on a separate preservePath route for principal safety.
+ * Singular `/workspace/<id>` stays on a preservePath route so the CFOS SPA
+ * deep-link loads; guests use in-chat auth (no separate sign-in gate).
  */
 export const CFOS_SPA_SHELL_PREFIXES = [
   '/workspaces',

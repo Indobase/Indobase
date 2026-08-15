@@ -293,36 +293,27 @@ export function renderLandingHtml(): string {
 }
 
 /**
- * Deep-linked /workspace/:id while unsigned-in or guest — do not open as the wrong CFOS principal.
+ * @deprecated Account is in-chat. Deep links mint/use guest and open CFOS;
+ * bridge redirects home instead of this page. Kept for old imports/tests.
  */
 export function renderWorkspaceSignInRequiredHtml(): string {
-  const html = `<!doctype html>
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign in — Indobase Builder</title>
+  <title>Indobase Builder</title>
+  <meta http-equiv="refresh" content="0;url=/" />
   <style>${SHELL_CSS}</style>
 </head>
 <body class="landing">
-  <div class="hero">
-    <div class="card">
-      <h1>Sign in to open this workspace</h1>
-      <p>This workspace belongs to your Indobase account. Guests cannot open it — sign in with email so we load your Builder session, then retry this link.</p>
-      <div class="cta-row">
-        <a class="btn" href="/?open_auth=1">Sign in with email</a>
-        <a class="btn secondary" href="/">Start a new workspace</a>
-      </div>
-    </div>
-  </div>
-  <script>
-    try {
-      window.dispatchEvent(new CustomEvent('indobase:open-auth'));
-    } catch (_) {}
-  </script>
+  <div class="hero"><div class="card">
+    <h1>Opening Indobase Builder…</h1>
+    <p>Create your account in chat when you’re ready.</p>
+    <div class="cta-row"><a class="btn" href="/">Continue</a></div>
+  </div></div>
 </body>
 </html>`
-  return injectAuthChrome(html)
 }
 
 /**

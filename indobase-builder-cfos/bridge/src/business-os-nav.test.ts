@@ -14,6 +14,7 @@ import {
   renderOfflineDesktopHtml,
   renderStartHtml,
   renderWorkspaceHtml,
+  renderWorkspaceSignInRequiredHtml,
 } from './workspace-html.ts'
 import type { Session } from './auth.ts'
 
@@ -95,6 +96,15 @@ describe('core workspace chrome', () => {
     assert.match(html, /Opening Indobase OS|url=\//)
     assert.doesNotMatch(html, /id="name"/)
     assert.doesNotMatch(html, /Send code/)
+  })
+
+  it('workspace deep-link gate is gone (account in chat, bounce home)', () => {
+    const html = renderWorkspaceSignInRequiredHtml()
+    assert.doesNotMatch(html, /Sign in to open this workspace/)
+    assert.doesNotMatch(html, /Guests cannot open/)
+    assert.doesNotMatch(html, /open_auth=1/)
+    assert.match(html, /url=\/|href="\/"/)
+    assert.match(html, /in chat/i)
   })
 
   it('desktop has no iframe shell / outer ibar (direct CFOS document)', () => {
