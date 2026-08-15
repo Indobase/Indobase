@@ -29,6 +29,12 @@ scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/scripts/install-indobase-formats.sh" \
   "${SSH_HOST}:/opt/indobase-builder-cfos/scripts/"
 scp "${SSH_OPTS[@]}" \
+  "${REPO_ROOT}/docker/scripts/lib/patch-cfos-run-dev-server.py" \
+  "${REPO_ROOT}/docker/scripts/lib/indobase-cfos-watchdog.sh" \
+  "${SSH_HOST}:/usr/local/sbin/"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" \
+  "chmod 755 /usr/local/sbin/patch-cfos-run-dev-server.py /usr/local/sbin/indobase-cfos-watchdog.sh"
+scp "${SSH_OPTS[@]}" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/favicon.svg" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/IndobaseMark.tsx" \
   "${REPO_ROOT}/indobase-builder-cfos/branding/NOTICE" \
@@ -261,12 +267,16 @@ Environment=VITE_DEV_USERNAME=dev
 Environment=VITE_DEV_PASSWORD=devpassword
 Environment=VITE_BACKEND_HOST=localhost:8787
 Environment=INDOBASE_WRANGLER_IP=0.0.0.0
+Environment=INDOBASE_WRANGLER_RESTART_MS=2000
 Environment=FORMAT_BLUEPRINTS_DIR=/opt/indobase-builder-cfos/formats
 # Re-seed Indobase bridge vars into workshop-backend before start (wrangler regen can wipe them).
 ExecStartPre=/usr/local/sbin/indobase-cfos-seed-indobase-vars.sh
 ExecStart=${PNPM_BIN} run-local
-Restart=on-failure
-RestartSec=8
+# Always restart on crash/OOM. StartLimitIntervalSec=0 disables the default burst limit
+# so agent-run wrangler flaps cannot permanently stop the unit.
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=0
 MemoryMax=7G
 LimitNOFILE=65535
 
@@ -369,26 +379,37 @@ else
 fi
 rm -f "$UNIT_NEW"
 
-# Bind wrangler on 0.0.0.0 so Docker host-gateway can reach :8787
-python3 - <<'PY'
-from pathlib import Path
-p = Path("/opt/indobase-cfos-runtime/cloudflare-os/run-dev-server.js")
-text = p.read_text()
-if "INDOBASE_WRANGLER_IP" in text:
-    print("run-dev-server.js already patched")
-else:
-    marker = 'console.log(`\\nStarting: wrangler dev ${args.join(" ")}\\n`);'
-    insert = (
-        'if (process.env.INDOBASE_WRANGLER_IP) {\n'
-        '  args.push("--ip", process.env.INDOBASE_WRANGLER_IP);\n'
-        '}\n'
-        + marker
-    )
-    if marker not in text:
-        raise SystemExit("run-dev-server.js: wrangler start log line not found")
-    p.write_text(text.replace(marker, insert, 1))
-    print("Patched run-dev-server.js for INDOBASE_WRANGLER_IP")
-PY
+# Bind wrangler on 0.0.0.0 + in-process wrangler restart loop (agent.run must not
+# take down :8787 for a multi-minute cold start). Patch script is scp'd above.
+python3 /usr/local/sbin/patch-cfos-run-dev-server.py \
+  /opt/indobase-cfos-runtime/cloudflare-os/run-dev-server.js
+
+# Watchdog: hung/down :8787 → bounce wrangler (or full restart) without waiting for humans.
+install -m 644 /dev/stdin /etc/systemd/system/indobase-cfos-watchdog.service <<'WATCH_SVC'
+[Unit]
+Description=Indobase CFOS :8787 health watchdog
+After=indobase-cfos-runtime.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/indobase-cfos-watchdog.sh
+WATCH_SVC
+install -m 644 /dev/stdin /etc/systemd/system/indobase-cfos-watchdog.timer <<'WATCH_TMR'
+[Unit]
+Description=Run Indobase CFOS watchdog every 30s
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Unit=indobase-cfos-watchdog.service
+
+[Install]
+WantedBy=timers.target
+WATCH_TMR
+systemctl daemon-reload
+systemctl enable --now indobase-cfos-watchdog.timer
+
 
 ensure_docker_host_8787
 
