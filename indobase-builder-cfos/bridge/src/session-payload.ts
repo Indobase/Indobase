@@ -34,6 +34,7 @@ import {
   AGENT_SURFACE_HARD_RULES,
   LAUNCH_PRODUCTION_APP_AGENT_HARD_RULES,
   launchProductionAppToolCatalog,
+  productionJobMatchesSpec,
   resolveAuthoritativeAppType,
   summarizeProductionLaunchJob,
   composeGenerateSkillsHint,
@@ -46,6 +47,7 @@ import {
   appTypeToKind,
   composeScreenHint,
   controlCenterNav,
+  isStoreJourneyKind,
   projectCapabilities,
   resolveWorkspaceState,
 } from './ux-conductor.js'
@@ -239,26 +241,31 @@ function buildAuthoritativeProject(
 ) {
   const persisted = getWorkspaceRuntime(session.projectRef)
   const spec = persisted?.spec || getBusinessSpec(session.projectRef)
+  const matchedJob = spec && job && productionJobMatchesSpec(job, spec) ? job : spec ? null : job || null
   const appType =
-    resolveAuthoritativeAppType({ specType: spec?.businessType, jobType: job?.appType }) ||
+    resolveAuthoritativeAppType({ specType: spec?.businessType, jobType: matchedJob?.appType }) ||
     spec?.businessType ||
-    job?.appType ||
+    matchedJob?.appType ||
     null
   const kind = appTypeToKind(appType)
-  const catalogReady = Boolean(
-    job?.evidence?.catalog_seeded || job?.evidence?.backend_ready || launch?.catalogReady || journey.flags.is_backend_ready,
-  )
   const paymentsReady = Boolean(journey.flags.is_payments_ready || sessionLooksPaymentsReady(session))
-  const live = job?.status === 'live' || journey.flags.is_live
-  const liveUrl = live ? job?.url || journey.live_url || null : null
+  const live = matchedJob?.status === 'live' || (Boolean(spec) ? false : journey.flags.is_live)
+  const liveUrl = live ? matchedJob?.url || journey.live_url || null : null
   const preview = resolvePreviewGate({
-    jobStatus: job?.status || null,
+    jobStatus: matchedJob?.status || null,
     artifactExists: Boolean(launch?.previewReady || persisted?.preview.artifactRef),
     published: Boolean(launch?.subdomain || launch?.customDomain),
     previewUrl: persisted?.preview.url || launch?.previewUrl || null,
     liveUrl,
     httpOk: persisted?.preview.httpOk ?? null,
   })
+  const catalogReady = Boolean(
+    matchedJob?.evidence?.catalog_seeded ||
+      matchedJob?.evidence?.backend_ready ||
+      launch?.catalogReady ||
+      journey.flags.is_backend_ready ||
+      (isStoreJourneyKind(kind) && preview.status === 'ready'),
+  )
   const state = resolveWorkspaceState({
     live,
     liveUrl,
@@ -267,16 +274,16 @@ function buildAuthoritativeProject(
     previewStatus: preview.status,
     backendReady: catalogReady,
     paymentsReady,
-    jobStatus: job?.status || null,
+    jobStatus: matchedJob?.status || null,
     appType,
-    failureCode: job?.status === 'blocked' ? job.failures.at(-1)?.code : null,
+    failureCode: matchedJob?.status === 'blocked' ? matchedJob.failures.at(-1)?.code : null,
   })
   const capabilities = projectCapabilities({
     appType,
     kind,
     backendReady: catalogReady,
     paymentsReady,
-    contractCapabilityIds: job?.contract?.capabilities?.map((c) => c.id) || null,
+    contractCapabilityIds: matchedJob?.contract?.capabilities?.map((c) => c.id) || null,
   })
   return {
     state,
@@ -313,24 +320,33 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     guest ? null : input.promptQuota ?? null,
   )
   const actions = discoverableActionsForSession({ guest })
+  const persistedRuntime = getWorkspaceRuntime(session.projectRef)
+  const spec = persistedRuntime?.spec || getBusinessSpec(session.projectRef)
+  const matchedProductionJob =
+    input.productionJob && spec && !productionJobMatchesSpec(input.productionJob, spec)
+      ? null
+      : input.productionJob
   const catalogReady = Boolean(
-    input.productionJob?.evidence?.catalog_seeded ||
-      input.productionJob?.evidence?.backend_ready ||
-      input.launchStatus?.catalogReady,
+    matchedProductionJob?.evidence?.catalog_seeded ||
+      matchedProductionJob?.evidence?.backend_ready ||
+      input.launchStatus?.catalogReady ||
+      (isStoreJourneyKind(appTypeToKind(spec?.businessType)) &&
+        Boolean(input.launchStatus?.previewReady || persistedRuntime?.preview.status === 'ready')),
   )
   const journey = buildLaunchJourneyState(session, {
     ...input.launchStatus,
     catalogReady: catalogReady || input.launchStatus?.catalogReady,
+    ...(spec && input.productionJob && !matchedProductionJob
+      ? { url: undefined, subdomain: undefined, customDomain: undefined }
+      : {}),
   })
-  const authority = buildAuthoritativeProject(session, journey, input.productionJob, input.launchStatus)
-  const persistedRuntime = getWorkspaceRuntime(session.projectRef)
-  const spec = persistedRuntime?.spec || getBusinessSpec(session.projectRef)
-  const productionJob = input.productionJob
+  const authority = buildAuthoritativeProject(session, journey, matchedProductionJob, input.launchStatus)
+  const productionJob = matchedProductionJob
     ? {
-        ...summarizeProductionLaunchJob(input.productionJob),
-        stages: input.productionJob.stages,
-        contract: input.productionJob.contract,
-        intent: input.productionJob.intent,
+        ...summarizeProductionLaunchJob(matchedProductionJob),
+        stages: matchedProductionJob.stages,
+        contract: matchedProductionJob.contract,
+        intent: matchedProductionJob.intent,
       }
     : null
   const runtime = toBusinessRuntimeState({
@@ -363,8 +379,8 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
     },
     workspace: { ref: session.projectRef, slug: session.orgSlug },
     deployment: {
-      status: input.productionJob?.status || null,
-      jobId: input.productionJob?.jobId || null,
+      status: matchedProductionJob?.status || null,
+      jobId: matchedProductionJob?.jobId || null,
     },
     capabilities: [
       ...authority.capabilities.map((id) => ({
@@ -380,13 +396,13 @@ export function buildSessionApiPayload(input: BuildSessionApiPayloadInput) {
           status,
         })),
     ],
-    jobs: input.productionJob
-      ? [{ id: input.productionJob.jobId, status: input.productionJob.status }]
+    jobs: matchedProductionJob
+      ? [{ id: matchedProductionJob.jobId, status: matchedProductionJob.status }]
       : [],
   })
   const latestPlan = getLatestExecutionPlan(session.projectRef)
   const ux = composePresentation(runtime, {
-    ...executionHintFromPersistedPlan(latestPlan, input.productionJob || null),
+    ...executionHintFromPersistedPlan(latestPlan, matchedProductionJob || null),
     guest,
   })
 

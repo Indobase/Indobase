@@ -2,10 +2,12 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  CATALOG_UNAVAILABLE,
   CHECKOUT_CONNECTION_FAILURE,
   CHECKOUT_ORDER_RECEIVED,
   customerFacingCheckoutMessage,
   isInternalCheckoutCopy,
+  publicApiMessage,
 } from './customer-copy.ts'
 
 describe('customer checkout copy', () => {
@@ -21,6 +23,14 @@ describe('customer checkout copy', () => {
       CHECKOUT_CONNECTION_FAILURE,
     )
     assert.doesNotMatch(CHECKOUT_CONNECTION_FAILURE, /fetch failed|paymentStatus|backend/i)
+  })
+
+  it('never forwards engine exceptions to customers', () => {
+    assert.equal(isInternalCheckoutCopy('persistCatalogProjection is not defined'), true)
+    assert.equal(isInternalCheckoutCopy('Uncaught TypeError: persistCatalogProjection is not defined'), true)
+    assert.match(publicApiMessage('persistCatalogProjection is not defined'), /try again/i)
+    assert.doesNotMatch(publicApiMessage('persistCatalogProjection is not defined'), /persistCatalog|is not defined/)
+    assert.doesNotMatch(CATALOG_UNAVAILABLE, /is not defined|http\.ts|ReferenceError/)
   })
 
   it('treats successful pending payment as order received', () => {

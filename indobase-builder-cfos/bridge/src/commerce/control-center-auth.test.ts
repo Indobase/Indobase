@@ -240,29 +240,29 @@ describe('Commerce products list session authority', () => {
     else process.env.BUILDER_HANDOFF_SECRET = prev.builder
   })
 
-  it('signed-in NorthPeak + UrbanThread projectRef → 403 and no lookup', async () => {
+  it('signed-in operator can still read a published storefront catalog', async () => {
     const queried: string[] = []
     const hono = new Hono()
     hono.get('/api/os/commerce/products', (c) =>
-      handleCommerceProductsList(c, async (ref) => {
-        queried.push(ref)
-        return [{ id: 'UT-01' }]
-      }),
+      handleCommerceProductsList(
+        c,
+        async (ref) => {
+          queried.push(ref)
+          return [{ id: 'UT-01' }]
+        },
+        (ref) => ref === 'urbanthread',
+      ),
     )
     const token = createSessionToken(member('northpeak'), SECRET)
     const res = await hono.request('/api/os/commerce/products?projectRef=urbanthread', {
       headers: { cookie: `${SESSION_COOKIE}=${token}` },
     })
-    assert.equal(res.status, 403)
-    assert.deepEqual(queried, [])
-    const forged = await hono.request('/api/os/commerce/products', {
-      headers: {
-        cookie: `${SESSION_COOKIE}=${token}`,
-        'X-Indobase-Project-Ref': 'urbanthread',
-      },
+    assert.equal(res.status, 200)
+    assert.deepEqual(queried, ['urbanthread'])
+    const unpublished = await hono.request('/api/os/commerce/products?projectRef=ghost', {
+      headers: { cookie: `${SESSION_COOKIE}=${token}` },
     })
-    assert.equal(forged.status, 403)
-    assert.deepEqual(queried, [])
+    assert.equal(unpublished.status, 404)
   })
 
   it('anonymous published storefront catalog returns that business only', async () => {

@@ -7,6 +7,7 @@ import { getBusinessSpec } from './ux/business-spec.js'
 import {
   appTypeToKind,
   businessJourneyStageLabel,
+  isStoreJourneyKind,
   isWebsiteJourneyKind,
   uxContextualActions,
   uxHeadline,
@@ -99,10 +100,11 @@ export function buildLaunchJourneyState(
   const specKind = appTypeToKind(getBusinessSpec(session.projectRef)?.businessType)
   const kind = appKind || specKind
   const website = isWebsiteJourneyKind(kind)
+  const store = isStoreJourneyKind(kind)
   const accountDone = !guest
-  const backendDone = website ? true : catalogReady
   const liveDone = published
   const previewDone = Boolean(launch?.previewReady) || liveDone
+  const backendDone = website ? true : catalogReady || (store && Boolean(launch?.previewReady))
   const paymentsDone = website ? true : paymentsReady
 
   const productionDone = liveDone && backendDone && (website || paymentsDone)

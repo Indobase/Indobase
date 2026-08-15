@@ -764,6 +764,8 @@ describe('generate blueprint + skills', () => {
     assert.ok(bp.mustProduce.some((x) => /checkout/i.test(x)))
     assert.ok(bp.forbidden.join(' ').match(/Next|gadget/i))
     assert.match(composeGenerateSkillsHint('ecommerce'), /Do not clone a starter/)
+    assert.match(composeGenerateSkillsHint('ecommerce'), /indobase\.commerce/)
+    assert.ok(bp.skills.some((s) => s.id === 'ecommerce-commerce'))
     assert.equal(
       isViteReactProject({
         'package.json': '{"scripts":{"build":"vite build"},"dependencies":{"react":"1","vite":"1"}}',
@@ -774,5 +776,16 @@ describe('generate blueprint + skills', () => {
     )
     assert.equal(isViteReactProject({ 'index.html': '<h1>no</h1>' }), false)
   })
-})
 
+  it('landing blueprint requires the leads enquiry skill', () => {
+    const bp = blueprintForAppType('landing')
+    assert.ok(bp.skills.some((s) => s.id === 'landing-leads'))
+    assert.match(composeGenerateSkillsHint('landing'), /indobase\.leads/)
+  })
+
+  it('saas blueprint requires the auth skill', () => {
+    const bp = blueprintForAppType('saas')
+    assert.ok(bp.skills.some((s) => s.id === 'saas-auth'))
+    assert.match(composeGenerateSkillsHint('saas'), /indobase\.auth/)
+  })
+})

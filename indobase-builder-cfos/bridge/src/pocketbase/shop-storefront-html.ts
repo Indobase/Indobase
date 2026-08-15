@@ -1,5 +1,6 @@
 import { buildManagedPublicEnv } from './managed.js'
 import { buildCommerceRuntimeJs } from '../commerce/runtime.js'
+import { injectCustomerSafePage } from '../ux/preview-boot.js'
 
 export type ManagedShopStorefrontRow = Record<string, unknown>
 
@@ -50,7 +51,7 @@ export function buildManagedShopStorefrontHtml(opts: {
     })),
   )
 
-  return `<!DOCTYPE html>
+  return injectCustomerSafePage(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -297,8 +298,7 @@ async function loadProducts(){
     document.querySelector('#status').textContent=products.length+' products';
   }catch(e){
     render();
-    document.querySelector('#status').textContent='Showing snapshot — catalog refresh failed';
-    setError(e&&e.message?e.message:'Could not load catalog');
+    document.querySelector('#status').textContent=products.length+' products';
   }
   renderCart();
 }
@@ -369,8 +369,6 @@ document.querySelector('#checkoutForm').addEventListener('submit', async functio
     document.querySelector('#confirmDlg').showModal();
   }catch(e){
     var fail="I couldn't complete the order yet. I'll fix the checkout connection.";
-    var raw=e&&e.message?String(e.message):'';
-    if(raw && !/fetch failed|paymentStatus|ECONNREFUSED|backend|checkout_failed|HTTP /i.test(raw) && raw.length<120) fail=raw;
     setError(fail);
     document.querySelector('#checkoutNote').textContent=fail;
   }finally{ btn.disabled=false; }
@@ -424,7 +422,7 @@ async function renderOrders(){
       return '<li><span>'+(o.id||'')+'</span><span>'+moneyMinor(o.amountMinor,o.currency)+'</span></li>';
     }).join(''):'';
   }catch(e){
-    note.textContent=e&&e.message?e.message:'Could not load orders';
+    note.textContent='Could not load orders right now.';
     list.innerHTML='';
   }
 }
@@ -460,7 +458,7 @@ document.querySelector('#accountForm').addEventListener('submit', async function
     await refreshAccountChrome();
     status.textContent='Signed in. Your guest orders for this email are now in My Orders.';
   }catch(e){
-    status.textContent=e&&e.message?e.message:'Could not verify';
+    status.textContent='Could not verify that code. Try again.';
   }
 });
 document.querySelector('#openOrders').addEventListener('click', async function(){
@@ -479,5 +477,5 @@ refreshAccountChrome().catch(function(){});
 render(); renderCart(); loadProducts();
 </script>
 </body>
-</html>`
+</html>`)
 }

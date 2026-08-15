@@ -146,6 +146,19 @@ function readJobFile(jobId: string): ProductionLaunchJob | null {
   }
 }
 
+export function productionJobMatchesSpec(
+  job: Pick<ProductionLaunchJob, 'brand' | 'title' | 'vertical' | 'appType'> | null | undefined,
+  spec: { businessName?: string; businessType?: string; catalog?: { verticalId?: string } } | null | undefined,
+): boolean {
+  if (!job || !spec) return false
+  if (job.vertical && spec.catalog?.verticalId && job.vertical !== spec.catalog.verticalId) return false
+  if (job.appType && spec.businessType && job.appType !== spec.businessType) return false
+  const jobName = String(job.brand || job.title || '').trim().toLowerCase()
+  const specName = String(spec.businessName || '').trim().toLowerCase()
+  if (jobName && specName && jobName !== specName) return false
+  return true
+}
+
 export function rememberLivePublishJob(input: {
   projectRef: string
   url: string

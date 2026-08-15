@@ -88,7 +88,7 @@ async function api(path, init){
   if(init&&init.headers) Object.assign(headers, init.headers);
   var res;
   try{
-    res=await fetch(BASE+path, Object.assign({}, init||{}, { headers: headers }));
+    res=await fetch(BASE+path, Object.assign({}, init||{}, { headers: headers, credentials: "omit" }));
   }catch(e){
     var net=new Error("I couldn't complete the order yet. I'll fix the checkout connection.");
     net.code="checkout_failed"; net.status=0; throw net;
@@ -96,9 +96,10 @@ async function api(path, init){
   var json=await res.json().catch(function(){return {}});
   if(!res.ok){
     var raw=(json&&json.message)||"";
-    var safe=/fetch failed|paymentStatus|ECONNREFUSED|backend_unavailable|checkout_failed|HTTP /i.test(raw)
+    var leak=/fetch failed|paymentStatus|ECONNREFUSED|backend_unavailable|checkout_failed|HTTP |is not defined|ReferenceError|TypeError|persistCatalog|http\.ts/i.test(raw);
+    var safe=leak||!raw
       ? "I couldn't complete the order yet. I'll fix the checkout connection."
-      : (raw||"I couldn't complete the order yet. I'll fix the checkout connection.");
+      : raw;
     var err=new Error(safe);
     err.code=json&&json.code; err.status=res.status; err.body=json;
     throw err;

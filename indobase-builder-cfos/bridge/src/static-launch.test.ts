@@ -146,6 +146,42 @@ describe('static launch lane', () => {
     assert.equal(typeof adapter.rollback, 'function')
   })
 
+  it('re-deploy drops the superseded bundle but keeps assets an html-only deploy still needs', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'indobase-prune-'))
+    process.env.INDOBASE_LAUNCH_ROOT = dir
+    try {
+      const adapter = createDiskStaticDeploymentAdapter()
+      await adapter.deploy({
+        workspaceRef: 'ws_prune',
+        files: {
+          'index.html': '<script src="./assets/index-AAAAAAAA.js"></script>',
+          'assets/index-AAAAAAAA.js': 'old',
+          'assets/logo.png': 'png',
+        },
+      })
+      await adapter.deploy({
+        workspaceRef: 'ws_prune',
+        files: {
+          'index.html': '<script src="./assets/index-BBBBBBBB.js"></script>',
+          'assets/index-BBBBBBBB.js': 'new',
+        },
+      })
+
+      assert.equal(await readLiveFile('ws_prune', 'assets/index-AAAAAAAA.js'), null)
+      assert.ok(await readLiveFile('ws_prune', 'assets/index-BBBBBBBB.js'))
+      assert.ok(await readLiveFile('ws_prune', 'assets/logo.png'))
+
+      await adapter.deploy({
+        workspaceRef: 'ws_prune',
+        files: { 'index.html': '<script src="./assets/index-BBBBBBBB.js"></script>' },
+      })
+      assert.ok(await readLiveFile('ws_prune', 'assets/index-BBBBBBBB.js'))
+    } finally {
+      delete process.env.INDOBASE_LAUNCH_ROOT
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   it('agent hard rules forbid inventing live URLs', () => {
     assert.match(LAUNCH_AGENT_HARD_RULES, /HARD PATH/i)
     assert.match(LAUNCH_AGENT_HARD_RULES, /launchBusiness/)

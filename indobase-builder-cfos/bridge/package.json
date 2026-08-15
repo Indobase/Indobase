@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
+    "@indobase/builder-agent": "file:../../packages/builder-agent",
     "@indobase/cloudflare-adapter": "file:../../packages/cloudflare-adapter",
     "@indobase/platform": "file:../../packages/platform",
     "@indobase/platform-api": "file:../../packages/platform-api",

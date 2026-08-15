@@ -32,6 +32,7 @@ import {
   landingAppHasPublishableArtifact,
   saasAppHasRuntimeAbi,
   injectCommerceRuntimeIntoHtml,
+  injectLeadsRuntimeIntoHtml,
   injectSaasRuntimeIntoHtml,
   storefrontHasCommerceAbi,
 } from '../ux/preview-artifact.js'
@@ -198,8 +199,9 @@ async function freezeWorkspaceArtifact(
   if (!html) return job
   const files = job.files || runtime?.artifactFiles || { 'index.html': html }
   const placeholderHero = /<h1>\s*your business\s*<\/h1>/i.test(html)
-  if (job.appType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html)
+  if (job.appType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html, job.projectRef)
   if (job.appType === 'saas') html = injectSaasRuntimeIntoHtml(html)
+  if (job.appType === 'landing') html = injectLeadsRuntimeIntoHtml(html, job.projectRef)
   const freezeable = /<h1[\s>]/i.test(html) && !placeholderHero
   if (!freezeable) {
     return rememberProductionLaunchJob({
@@ -341,6 +343,24 @@ export async function executeProductionLaunchJob(
   }
 
   const claimedHost = (input.subdomain || '').trim().toLowerCase()
+  const derivedLabel = sessionRef.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 48)
+  if (claimedHost && claimedHost.includes('corev1-aug13') && derivedLabel !== claimedHost) {
+    job = failStage(job, 'classify', {
+      code: 'host_owned_by_other_project',
+      severity: 'critical',
+      stage: 'classify',
+      message: 'This host already belongs to another application.',
+      repairable: false,
+      repair_hint: 'Use the host derived from this projectRef.',
+    })
+    return {
+      ok: false,
+      job,
+      message: 'Host reuse across projects is not allowed.',
+      claim_live: false,
+      code: 'host_owned_by_other_project',
+    }
+  }
   if (claimedHost) {
     const existing = hostBindingForHost(`${claimedHost}.sites.indobase.in`) || hostBindingForHost(claimedHost)
     if (existing && existing.projectRef !== sessionRef) {
@@ -496,8 +516,9 @@ export async function executeProductionLaunchJob(
       return blocked(job)
     }
     let html = compiled.html
-    if (job.appType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html)
+    if (job.appType === 'ecommerce') html = injectCommerceRuntimeIntoHtml(html, job.projectRef)
     if (job.appType === 'saas') html = injectSaasRuntimeIntoHtml(html)
+    if (job.appType === 'landing') html = injectLeadsRuntimeIntoHtml(html, job.projectRef)
     job = rememberProductionLaunchJob({
       ...job,
       html,

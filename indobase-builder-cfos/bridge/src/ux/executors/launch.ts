@@ -6,6 +6,7 @@ import {
 import {
   executeProductionLaunchJob,
   getLatestProductionLaunchJob,
+  productionJobMatchesSpec,
   type ProductionLaunchExecuteResult,
 } from '../../production-launch/index.js'
 import { appendRuntimeEvent, getWorkspaceRuntime, issueRuntimeCommand } from '../runtime-store.js'
@@ -32,7 +33,13 @@ export async function runLaunch(plan: ExecutionPlan, ctx: ExecutorContext): Prom
   let livePlan = currentPlan(plan)
 
   const alreadyLive = getLatestProductionLaunchJob(session.projectRef)
-  if (alreadyLive?.status === 'live' && alreadyLive.url && alreadyLive.claim_live) {
+  const specNow = runtime.spec || getBusinessSpec(session.projectRef)
+  if (
+    alreadyLive?.status === 'live' &&
+    alreadyLive.url &&
+    alreadyLive.claim_live &&
+    productionJobMatchesSpec(alreadyLive, specNow)
+  ) {
     if (!stepSucceeded(livePlan, PLAN_STEP.productionLaunch)) {
       markStepStatus(livePlan, PLAN_STEP.productionLaunch, 'succeeded', { resultRef: alreadyLive.jobId })
     }

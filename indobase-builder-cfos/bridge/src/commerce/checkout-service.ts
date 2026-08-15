@@ -36,6 +36,7 @@ import {
   normalizePaymentStatus,
   type FulfillmentStatus,
 } from '@indobase/platform'
+import { notifyOwnerOfOrder } from './notify.js'
 
 const orderPaymentLocks = new Map<string, Promise<unknown>>()
 
@@ -260,6 +261,17 @@ export async function executeCheckout(
       message =
         'Order reserved (pending payment). Payment provider not configured on this environment.'
     }
+
+    // Owner ping is best-effort — never delay or fail the customer checkout.
+    void notifyOwnerOfOrder({
+      projectRef,
+      orderId,
+      customerName: input.customer.name,
+      customerEmail: email,
+      amountMinor,
+      currency,
+      lines: lines.map((l) => ({ name: l.name, quantity: l.quantity })),
+    })
 
     return {
       ok: true,

@@ -213,6 +213,7 @@ export function persistCatalogProjection<
     }>
   },
 >(products: T[]): T[] {
+  if (!Array.isArray(products)) return []
   return products.map((product) => {
     const variants = product.variants?.length ? product.variants : [defaultVariantForProduct(product)]
     return {

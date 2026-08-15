@@ -7,9 +7,12 @@ import type { Session } from '../auth.js'
 import { isGuestSession } from '../auth.js'
 import { listCatalogCollections, listCommerceOrders, listCommerceProducts } from '../commerce/pb-adapter.js'
 import type { LaunchStatusSnapshot } from '../launch-journey.js'
+import { listLeads } from '../leads/service.js'
 import { getLatestProductionLaunchJob, type ProductionLaunchJob } from '../production-launch/index.js'
 import { getLaunchStatus } from '../static-launch.js'
+import { appTypeToKind, isWebsiteJourneyKind } from '../ux-conductor.js'
 import type { BusinessSnapshotSummary } from './agent-truth.js'
+import { getBusinessSpec } from './business-spec.js'
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -160,15 +163,21 @@ export async function loadBusinessSnapshot(
   const ref = (projectRef || '').trim()
   if (!ref || ref.startsWith('draft_')) return null
   try {
-    const [products, orders, collections] = await Promise.all([
+    const [products, orders, collections, leads] = await Promise.all([
       listCommerceProducts(ref),
       listCommerceOrders(ref),
       listCatalogCollections(ref).catch(() => []),
+      websiteKind(ref) ? listLeads(ref).catch(() => []) : Promise.resolve([]),
     ])
-    return snapshotFromCommerceRows(products, orders, collections)
+    return { ...snapshotFromCommerceRows(products, orders, collections), leads }
   } catch {
     return { products: [], orders: [], customers: [] }
   }
+}
+
+/** Only a website project has an enquiry inbox; a store must not pay for the read. */
+function websiteKind(projectRef: string): boolean {
+  return isWebsiteJourneyKind(appTypeToKind(getBusinessSpec(projectRef)?.businessType))
 }
 
 export type AuthoritativeLaunchFacts = {

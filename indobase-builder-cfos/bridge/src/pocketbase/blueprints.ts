@@ -3,7 +3,7 @@
  * Agents should seed a blueprint, then customize with applySchema tables for the customer's product.
  */
 
-export type BlueprintId = 'saas' | 'ecommerce' | 'booking' | 'blog' | 'dashboard'
+export type BlueprintId = 'saas' | 'ecommerce' | 'booking' | 'blog' | 'dashboard' | 'landing'
 
 export type RuleProfile =
   | 'owner'
@@ -425,6 +425,30 @@ export const BACKEND_BLUEPRINTS: Record<BlueprintId, BackendBlueprint> = {
       },
     ],
   },
+  landing: {
+    id: 'landing',
+    label: 'Landing / enquiries',
+    /**
+     * Enquiries are written by the bridge with an admin token, never by the
+     * visitor's browser: a public createRule would let anyone spam or read the
+     * owner's lead list.
+     */
+    collections: [
+      {
+        name: 'leads',
+        fields: [
+          { name: 'name', type: 'text', required: true },
+          { name: 'email', type: 'text' },
+          { name: 'phone', type: 'text' },
+          { name: 'message', type: 'text' },
+          { name: 'source', type: 'text' },
+          { name: 'status', type: 'text' },
+          CREATED,
+        ],
+        rules: 'admin_only',
+      },
+    ],
+  },
 }
 
 export function resolveBlueprintId(raw: string | null | undefined): BlueprintId {
@@ -433,6 +457,7 @@ export function resolveBlueprintId(raw: string | null | undefined): BlueprintId 
   if (t === 'booking' || t === 'appointments' || t === 'scheduling') return 'booking'
   if (t === 'blog' || t === 'content' || t === 'cms') return 'blog'
   if (t === 'dashboard' || t === 'admin' || t === 'internal') return 'dashboard'
+  if (t === 'landing' || t === 'marketing' || t === 'website' || t === 'leads') return 'landing'
   if (t === 'saas' || t === 'software' || t === 'b2b' || t === 'generic') return 'saas'
   return 'saas'
 }
@@ -451,5 +476,6 @@ export function inferBlueprintFromTables(tables: Array<Record<string, unknown>> 
   if (names.some((n) => n.includes('booking') || n.includes('slot'))) return 'booking'
   if (names.some((n) => n.includes('post') || n.includes('tag'))) return 'blog'
   if (names.some((n) => n.includes('metric'))) return 'dashboard'
+  if (names.some((n) => n.includes('lead') || n.includes('enquir') || n.includes('inquir'))) return 'landing'
   return 'saas'
 }

@@ -20,7 +20,7 @@ import { buildExecutionPlan } from './execution-plan.ts'
 import { runBuild } from './executors/build.ts'
 import { runModify } from './executors/modify.ts'
 import { persistPreviewHtml } from './executors/preview-persist.ts'
-import { materializePreview } from './preview-artifact.ts'
+import { materializePreview, parsePreviewMutation, applyPreviewMutationToFiles } from './preview-artifact.ts'
 import {
   clearWorkspaceRuntimesForTests,
   emptyPersistedRuntime,
@@ -72,6 +72,32 @@ describe('BUILD preview compiles Vite trees', () => {
     clearBusinessSpecsForTests()
     clearProductionLaunchJobsForTests()
     clearExecutionPlansForTests()
+  })
+
+  it('scaffolds Vite + React from BusinessSpec when buildReact is provided', async () => {
+    const spec = inferBusinessSpec('create me a ecommerce site for a masala store called Spice Route')
+    let sawSource = ''
+    const compiledHtml =
+      '<!DOCTYPE html><html data-ib-project="proj_vite_preview"><body><h1>Spice Route</h1></body></html>'
+    const result = await materializePreview({
+      projectRef: session.projectRef,
+      spec,
+      probe: async () => true,
+      buildReact: async ({ files }) => {
+        sawSource = files['src/App.tsx'] || ''
+        assert.equal(Boolean(files['package.json'] && files['vite.config.ts']), true)
+        return {
+          ok: true,
+          html: compiledHtml,
+          files: { 'index.html': compiledHtml, 'assets/app.js': '1' },
+          message: 'compiled',
+        }
+      },
+    })
+    assert.equal(result.ok, true)
+    assert.match(sawSource, /Spice Route|masala|spice/i)
+    assert.ok(result.sourceFiles && result.sourceFiles['src/App.tsx'])
+    assert.match(result.html, /Spice Route/)
   })
 
   it('materializePreview compiles a Vite tree and hosts dist, not the canned shell', async () => {
@@ -298,5 +324,91 @@ describe('BUILD preview compiles Vite trees', () => {
     assert.match(disk?.body.toString('utf8') || '', /Midnight drops/)
     const asset = await readLiveFile(session.projectRef, 'assets/app.js')
     assert.equal(asset?.body.toString('utf8'), '2')
+  })
+
+  it('MODIFY patches tagline in Vite source and recompiles', async () => {
+    const files = {
+      ...viteFiles('export default function App(){return <><h1>Flour & Co</h1><p className="tagline">Order online.</p></>}'),
+      'src/theme.css': ':root { --accent:#3B8FD6; }',
+    }
+    rememberWorkspaceRuntime({
+      ...emptyPersistedRuntime(session.projectRef),
+      artifactFiles: files,
+      artifactHtml: '<!DOCTYPE html><html><body><h1>Flour & Co</h1><p class="tagline">Order online.</p></body></html>',
+      preview: { status: 'ready', url: '/live/proj_vite_preview/', artifactRef: 'a', contentHash: 'h', httpOk: true },
+    })
+    const compiledHtml =
+      '<!DOCTYPE html><html><body><h1>Flour & Co</h1><p class="tagline">Fresh daily.</p></body></html>'
+    let sawSource = ''
+    const plan = buildExecutionPlan({
+      projectRef: session.projectRef,
+      intent: 'preview_edit',
+      turnClass: 'modify',
+      message: 'Change the tagline to Fresh daily',
+    })
+    const result = await runModify(plan, {
+      session,
+      message: 'Change the tagline to “Fresh daily”',
+      specSource: '',
+      probe: async () => true,
+      runtime: getWorkspaceRuntime(session.projectRef)!,
+      launchDeps: {
+        buildReact: async ({ files: tree }) => {
+          sawSource = tree['src/App.tsx'] || ''
+          return {
+            ok: true,
+            html: compiledHtml,
+            files: { 'index.html': compiledHtml, 'assets/app.js': '3' },
+            message: 'compiled',
+          }
+        },
+      },
+    })
+    assert.equal(result.mutated, true)
+    assert.match(sawSource, /Fresh daily/)
+    assert.match(result.runtime.artifactFiles?.['src/App.tsx'] || '', /Fresh daily/)
+  })
+
+  it('parses shorter-hero, rename, and change-the-hero mutations', () => {
+    assert.equal(parsePreviewMutation('PREVIEW_EDIT\nrequest: make the hero shorter')?.kind, 'shorten')
+    assert.equal(parsePreviewMutation('Rename the store to Harbor Bread')?.headline, 'Harbor Bread')
+    assert.equal(parsePreviewMutation('Change the hero to Midnight drops')?.headline, 'Midnight drops')
+    const html = '<section><h1>Long artisan bakery headline that should compress for the fold</h1></section>'
+    const applied = applyPreviewMutationToFiles({ 'index.html': html }, { kind: 'shorten', summary: 'a shorter hero' })
+    assert.equal(applied.mutated, true)
+    const next = /<h1>([\s\S]*?)<\/h1>/.exec(applied.files['index.html'] || '')?.[1] || ''
+    assert.ok(next.length < 'Long artisan bakery headline that should compress for the fold'.length)
+  })
+
+  it('MODIFY does not mistake a TypeScript generic for a paragraph tag', () => {
+    const app = [
+      "import { useState } from 'react'",
+      "type Product = { id: string; name: string }",
+      'export default function App() {',
+      '  const [catalog] = useState<Product[]>([])',
+      '  return (',
+      '    <main>',
+      '      <h1>Spice Route</h1>',
+      '      {catalog.map((p) => (',
+      '        <p key={p.id}>{p.name}</p>',
+      '      ))}',
+      '    </main>',
+      '  )',
+      '}',
+    ].join('\n')
+    const files = {
+      'package.json': '{"devDependencies":{"vite":"^6.0.0"}}',
+      'index.html': '<!DOCTYPE html><html><body><div id="root"></div></body></html>',
+      'src/App.tsx': app,
+    }
+
+    const applied = applyPreviewMutationToFiles(files, {
+      kind: 'tagline',
+      tagline: 'Ground this morning',
+      summary: 'a new tagline',
+    })
+    const next = applied.files['src/App.tsx'] || ''
+    assert.match(next, /useState<Product\[\]>\(\[\]\)/)
+    assert.match(next, /<h1>Spice Route<\/h1>/)
   })
 })

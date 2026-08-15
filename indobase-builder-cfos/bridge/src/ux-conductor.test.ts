@@ -145,6 +145,11 @@ describe('UX conductor', () => {
     })
     assert.ok(stuck.actions.some((a) => a.label === 'Try again'))
     assert.ok(stuck.actions.some((a) => a.label === 'Continue editing'))
+    const leaked = humanizeLaunchFailure({
+      code: 'unknown_engine',
+      message: 'Uncaught TypeError: persistCatalogProjection is not defined http.ts:121:3',
+    })
+    assert.doesNotMatch(leaked.title + leaked.body, /persistCatalog|is not defined|http\.ts|TypeError/)
   })
 
   it('workspace view model is state-driven and keeps chat after live', () => {

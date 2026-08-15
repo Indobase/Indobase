@@ -11,6 +11,7 @@ import {
   lifecycleFromRuntime,
   presentsInternalLeak,
   streamPhaseFromHint,
+  hostedSiteUrlFromOperatorMessage,
   translateOperatorCopy,
   type RuntimeView,
 } from './presentation.ts'
@@ -115,10 +116,10 @@ describe('presentation layer', () => {
 
   it('never leaks internals in copy or chips', () => {
     const leaked = translateOperatorCopy(
-      'Call launchBusiness then executeProductionLaunchJob jobId plj_abc PocketBase guidedBackend',
+      'Call launchBusiness then executeProductionLaunchJob jobId plj_abc PocketBase guidedBackend persistCatalogProjection is not defined',
     )
     assert.equal(presentsInternalLeak(leaked), false)
-    assert.doesNotMatch(leaked, /launchBusiness|PocketBase|jobId|plj_|guidedBackend|executeProductionLaunchJob/)
+    assert.doesNotMatch(leaked, /launchBusiness|PocketBase|jobId|plj_|guidedBackend|executeProductionLaunchJob|persistCatalogProjection|is not defined/)
     const surface = composePresentation(ecommerceReady())
     const blob = JSON.stringify(surface)
     assert.doesNotMatch(
@@ -194,7 +195,8 @@ describe('presentation layer', () => {
 
   it('preview chips are Preview/Publish; post-live are operate actions', () => {
     const preview = contextualActionsFor(saasPreview())
-    assert.ok(preview.some((a) => a.label === 'Preview'))
+    assert.ok(preview.some((a) => a.label === 'Open preview'))
+    assert.ok(preview.some((a) => /\/live\/p2\//.test(a.message)))
     assert.ok(preview.some((a) => a.label === 'Publish'))
     const liveStore = contextualActionsFor(
       emptyBusinessRuntimeState({
@@ -207,5 +209,36 @@ describe('presentation layer', () => {
     )
     assert.ok(liveStore.some((a) => /Open store/i.test(a.label)))
     assert.ok(liveStore.some((a) => /Connect payments/i.test(a.label)))
+  })
+
+  it('opens only Indobase hosted preview/live URLs from chip messages', () => {
+    assert.equal(
+      hostedSiteUrlFromOperatorMessage('Open my preview /live/p2/', 'https://builder.indobase.in'),
+      'https://builder.indobase.in/live/p2/',
+    )
+    assert.equal(
+      hostedSiteUrlFromOperatorMessage('Open my live store https://summit.sites.indobase.in', ''),
+      'https://summit.sites.indobase.in',
+    )
+    assert.equal(
+      hostedSiteUrlFromOperatorMessage('Launch my store on Indobase now.', 'https://builder.indobase.in'),
+      null,
+    )
+    assert.equal(hostedSiteUrlFromOperatorMessage('Open https://evil.example/', ''), null)
+  })
+
+  it('points store owners at pending orders the same way websites point at enquiries', () => {
+    const surface = composePresentation(
+      emptyBusinessRuntimeState({
+        business: { ref: 'p4', name: 'Summit Outfitters', kind: 'ecommerce', state: 'live' },
+        spec: { businessName: 'Summit Outfitters', businessType: 'ecommerce', currency: 'INR' },
+        preview: { status: 'ready', url: '/live/p4/' },
+        live: { isLive: true, url: 'https://summit.sites.indobase.in' },
+        commerce: { orderCount: 3, pendingOrderCount: 2, todayOrderCount: 1 },
+        health: { catalogReady: true, paymentsReady: true, previewReady: true },
+      }),
+    )
+    assert.equal(surface.home.inboxSection, 'orders')
+    assert.match(surface.home.inboxStatus || '', /2 orders need attention/i)
   })
 })

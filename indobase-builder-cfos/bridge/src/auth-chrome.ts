@@ -70,7 +70,8 @@ html[data-ib-signed-in="1"] #ib-auth-backdrop { display: none !important; }
 /**
  * Inject guest auth chrome into proxied CFOS HTML (before </body>).
  */
-export function injectAuthChrome(html: string): string {
+export function injectAuthChrome(html: string, opts?: { guest?: boolean }): string {
+  if (opts?.guest === false) return html
   const markup = `<style id="ib-auth-chrome-css">${AUTH_CHROME_CSS}</style>
 <div id="ib-auth-root">
   <div id="ib-auth-backdrop" hidden></div>
@@ -185,7 +186,15 @@ export function injectAuthChrome(html: string): string {
       if (detail.AUTH.start) authPaths.start = detail.AUTH.start;
       if (detail.AUTH.verify) authPaths.verify = detail.AUTH.verify;
     }
-    if (!guest) closeModal();
+    if (!guest) {
+      closeModal();
+      try {
+        var root = document.getElementById('ib-auth-root');
+        if (root && root.parentNode) root.parentNode.removeChild(root);
+        var css = document.getElementById('ib-auth-chrome-css');
+        if (css && css.parentNode) css.parentNode.removeChild(css);
+      } catch (_) {}
+    }
     try {
       if (guest) document.documentElement.removeAttribute('data-ib-signed-in');
       else document.documentElement.setAttribute('data-ib-signed-in', '1');

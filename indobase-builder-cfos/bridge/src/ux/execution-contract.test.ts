@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test'
 import type { Session } from '../auth.ts'
 import { deriveAgentUsername } from '../agent-credentials.ts'
 import { detectFabricatedClaims, isForbiddenAgentClaim, sanitizeAgentNarration } from '@indobase/platform'
-import { clearProductionLaunchJobsForTests } from '../production-launch/index.ts'
+import { clearProductionLaunchJobsForTests, rememberLivePublishJob, rememberProductionLaunchJob } from '../production-launch/index.ts'
 import { clearExecutionPlansForTests } from './execution-store.ts'
 import { readLiveFile } from '../static-launch.ts'
 import {
@@ -20,8 +20,10 @@ import {
 } from './execution-contract.ts'
 import {
   clearWorkspaceRuntimesForTests,
+  emptyPersistedRuntime,
   getWorkspaceRuntime,
   rememberPendingIntent,
+  rememberWorkspaceRuntime,
   takePendingAcrossAuth,
 } from './runtime-store.ts'
 import { clearBusinessSpecsForTests, getBusinessSpec } from './business-spec.ts'
@@ -352,6 +354,7 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(turnClassForIntent(turn.intent), 'build')
     assert.equal(turn.spec?.businessName, 'UrbanThread')
     assert.match(turn.operatorMessage, /Preview is ready for UrbanThread/)
+    assert.match(turn.operatorMessage, /\/live\//)
     assert.doesNotMatch(turn.operatorMessage, /your business/i)
     assert.match(turn.agentContext, /TURN_CLASS=build/)
     assert.match(turn.agentContext, /OWNER=conductor/)
@@ -498,6 +501,16 @@ describe('FTU execution contract A–Q', () => {
     )
     assert.equal(classifyOperatorIntent('Launch my website on Indobase now.', null), 'launch_production')
     assert.equal(classifyOperatorIntent('Change the hero headline to Midnight drops', null), 'preview_edit')
+    assert.equal(classifyOperatorIntent('Change the tagline to Fresh daily', null), 'preview_edit')
+    assert.equal(classifyOperatorIntent('Change the hero to Harbor Bread', null), 'preview_edit')
+    assert.equal(classifyOperatorIntent('make the hero shorter', null), 'preview_edit')
+    assert.equal(classifyOperatorIntent('Rename the store to Harbor Bread', null), 'preview_edit')
+    assert.equal(
+      classifyOperatorIntent('Change “Flour & Co” to “Midnight Bakery”', {
+        preview: { status: 'ready' },
+      } as never),
+      'preview_edit',
+    )
     assert.equal(
       classifyOperatorIntent('Go Live — call launchProductionApp for UrbanThread', null),
       'launch_production',
@@ -959,5 +972,68 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(turn.turnClass, 'build')
     assert.ok(!turn.plan?.steps.some((s) => s.command === 'executeProductionLaunchJob'))
     assert.equal(Boolean(turn.launch?.claim_live), false)
+  })
+
+  it('a new food store in the same workspace does not keep Circuit Nest live HTML', async () => {
+    const nestSess: Session = { ...session, projectRef: 'foodreplace01' }
+    const nestHtml =
+      '<!DOCTYPE html><html><body><h1>Circuit Nest</h1><p data-ib-vertical="electronics">corev1-aug13 electronics</p></body></html>'
+    const live = rememberLivePublishJob({
+      projectRef: nestSess.projectRef,
+      url: 'https://corev1-aug13.sites.indobase.in',
+      html: nestHtml,
+      files: { 'index.html': nestHtml },
+      title: 'Circuit Nest',
+      brand: 'Circuit Nest',
+      intent: 'Launch an electronics store called Circuit Nest',
+      appType: 'ecommerce',
+    })
+    rememberProductionLaunchJob({ ...live, vertical: 'electronics' })
+    rememberWorkspaceRuntime({
+      ...emptyPersistedRuntime(nestSess.projectRef),
+      spec: getBusinessSpec(nestSess.projectRef) || {
+        businessName: 'Circuit Nest',
+        businessType: 'ecommerce',
+        industry: 'Electronics',
+        targetCustomer: 'shoppers',
+        brand: 'Circuit Nest',
+        catalog: { category: 'Electronics', verticalId: 'electronics' },
+        currency: 'INR',
+        visualStyle: 'clean contemporary',
+        sourceIntent: 'Launch an electronics store called Circuit Nest',
+        sealed: true,
+      },
+      artifactHtml: nestHtml,
+      artifactFiles: { 'index.html': nestHtml },
+      preview: {
+        status: 'ready',
+        url: '/live/foodreplace01/',
+        artifactRef: live.jobId,
+        contentHash: 'nest',
+        httpOk: true,
+      },
+    })
+    const turn = await applyOperatorIntent({
+      session: nestSess,
+      message: 'create me a ecommerce site for a masala store',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(turn.turnClass, 'build')
+    assert.equal(turn.spec?.catalog.verticalId, 'food-grocery')
+    assert.notEqual(turn.spec?.businessName, 'Circuit Nest')
+    assert.doesNotMatch(turn.runtime.artifactHtml || '', /Circuit Nest|corev1-aug13/)
+    assert.equal(turn.businessRuntime.live.isLive, false)
+    assert.doesNotMatch(turn.businessRuntime.live.url || '', /corev1-aug13/)
+    const launched = await applyOperatorIntent({
+      session: nestSess,
+      message: 'Launch my store on Indobase now.',
+      guest: false,
+      launchDeps: mockLaunchDeps({ launchProductionApp: false }),
+    })
+    assert.equal(launched.turnClass, 'launch')
+    assert.doesNotMatch(launched.launch?.url || '', /corev1-aug13/)
+    assert.doesNotMatch(launched.businessRuntime.live.url || '', /corev1-aug13/)
+    assert.doesNotMatch(launched.operatorMessage, /corev1-aug13|Circuit Nest/i)
   })
 })

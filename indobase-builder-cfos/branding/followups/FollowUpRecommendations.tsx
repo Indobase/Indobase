@@ -17,7 +17,13 @@ import {
 
 import { ExecutionCard } from './ExecutionCard'
 import { LaunchJourneyCard, readLaunchJourneyFromWindow } from './LaunchJourneyCard'
-import { composePresentation, type PresentationSurface, type RuntimeView } from './presentation'
+import {
+  composePresentation,
+  hostedSiteUrlFromOperatorMessage,
+  pickOperatorMessage,
+  type PresentationSurface,
+  type RuntimeView,
+} from './presentation'
 
 import styles from './FollowUpRecommendations.module.css'
 
@@ -176,6 +182,10 @@ export const FollowUpChipGrid = memo(function FollowUpChipGrid({
               disabled={locked}
               onClick={() => {
                 if (locked) return
+                if (hostedSiteUrlFromOperatorMessage(item.message, typeof window !== 'undefined' ? window.location.origin : '')) {
+                  pickOperatorMessage(item.message, onPick)
+                  return
+                }
                 setPickedKey(key)
                 onPick(item.message)
               }}

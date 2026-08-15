@@ -44,4 +44,13 @@ describe('auth-chrome', () => {
     assert.match(boot, /hideOperatorToolPills/)
     assert.match(boot, /__INDOBASE_PREVIEW_STATUS__/)
   })
+
+  it('does not inject Create-account chrome for signed-in members', () => {
+    const html = injectAuthChrome('<html><body><div id="app"></div></body></html>', { guest: false })
+    assert.doesNotMatch(html, /Create your Indobase account/)
+    assert.doesNotMatch(html, /id="ib-auth-modal"/)
+    const boot = injectIndobaseContextBootstrap('<html><body><main></main></body></html>', { guest: false })
+    assert.doesNotMatch(boot, /Create your Indobase account/)
+    assert.match(boot, /__INDOBASE_SESSION_STAGE__/)
+  })
 })

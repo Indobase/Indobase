@@ -34,6 +34,15 @@ export type RuntimeView = {
     variants?: Array<{ id?: string; priceMinor?: number; stock?: number }>
   }>
   customers?: Array<{ id?: string }>
+  leads?: Array<{
+    id?: string
+    name?: string
+    email?: string
+    phone?: string
+    message?: string
+    status?: string
+    createdAt?: string
+  }>
   orders?: Array<{
     id?: string
     orderNumber?: string
@@ -81,6 +90,15 @@ export type PresentationOrderRow = {
   createdAt: string | null
 }
 
+export type PresentationLeadRow = {
+  id: string
+  name: string
+  contact: string
+  message: string
+  status: 'new' | 'handled'
+  receivedAt: string | null
+}
+
 export const CONTROL_CENTER_LIST_LIMIT = 12
 
 export type PresentationSurface = {
@@ -102,6 +120,8 @@ export type PresentationSurface = {
     metrics: PresentationMetric[]
     checkoutStatus: string | null
     paymentsStatus: string | null
+    inboxStatus: string | null
+    inboxSection: 'leads' | 'orders' | null
     previewUrl: string | null
     liveUrl: string | null
     empty: boolean
@@ -109,6 +129,7 @@ export type PresentationSurface = {
     error: string | null
     products: PresentationProductRow[]
     orders: PresentationOrderRow[]
+    leads: PresentationLeadRow[]
   }
   actions: UxAction[]
   control: {
@@ -117,6 +138,7 @@ export type PresentationSurface = {
     capabilities: ProjectCapability[]
     products: PresentationProductRow[]
     orders: PresentationOrderRow[]
+    leads: PresentationLeadRow[]
   }
   copy: {
     headline: string
@@ -127,7 +149,7 @@ export type PresentationSurface = {
 }
 
 const INTERNAL_LEAK =
-  /\b(launchBusiness|launchProductionApp|placeTestShopOrder|guidedBackend|ensureDatabase|ensureLogin|applySchema|PocketBase|projectRef|executeProductionLaunchJob|Commerce ABI|jobId|plj_|operationId)\b/i
+  /\b(launchBusiness|launchProductionApp|placeTestShopOrder|guidedBackend|ensureDatabase|ensureLogin|applySchema|PocketBase|projectRef|executeProductionLaunchJob|Commerce ABI|jobId|plj_|operationId|persistCatalogProjection|is not defined|ReferenceError)\b/i
 
 export function presentsInternalLeak(text: string): boolean {
   return INTERNAL_LEAK.test(text || '')
@@ -151,8 +173,83 @@ export function translateOperatorCopy(text: string): string {
   t = t.replace(/\bplj_[a-z0-9_-]+\b/gi, '')
   t = t.replace(/\boperationId\b/gi, '')
   t = t.replace(/please call (?:the )?(?:tool|launch).*/gi, 'I will finish this for you.')
+  t = t.replace(/\bpersistCatalogProjection\b/gi, '')
+  t = t.replace(/\bis not defined\b/gi, '')
+  t = t.replace(/\bReferenceError\b/gi, '')
+  t = t.replace(/\bUncaught TypeError\b/gi, '')
   t = t.replace(/\s{2,}/g, ' ').trim()
   return t
+}
+
+export function hostedSiteUrlFromOperatorMessage(message: string, origin = ''): string | null {
+  const text = (message || '').trim()
+  if (!text) return null
+  const abs = /https?:\/\/[^\s)]+/i.exec(text)
+  if (abs) {
+    const url = abs[0].replace(/[.,;:]+$/, '')
+    try {
+      const host = new URL(url).hostname.toLowerCase()
+      if (host.endsWith('indobase.in') || host === 'localhost' || host.endsWith('.localhost')) return url
+    } catch {
+      return null
+    }
+    return null
+  }
+  const live = /\/live\/[A-Za-z0-9._-]+\/?/.exec(text)
+  if (!live) return null
+  const path = live[0].endsWith('/') ? live[0] : `${live[0]}/`
+  const base = origin.replace(/\/+$/, '')
+  return base ? `${base}${path}` : path
+}
+
+export function tryOpenHostedSite(message: string, open?: (url: string) => void): boolean {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const url = hostedSiteUrlFromOperatorMessage(message, origin)
+  if (!url || !/^https?:\/\//i.test(url)) return false
+  try {
+    if (open) open(url)
+    else window.open(url, '_blank', 'noopener,noreferrer')
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function pickOperatorMessage(message: string, onPick: (message: string) => void): void {
+  if (tryOpenHostedSite(message)) return
+  onPick(message)
+}
+
+/** Deep-link into Control Center — used by enquiry/order emails and nav badges. */
+export const WORKSPACE_SCREEN_QUERY = 'screen'
+
+export function readWorkspaceScreenFromSearch(search: string | null | undefined): string | null {
+  try {
+    const raw = new URLSearchParams(search || '').get(WORKSPACE_SCREEN_QUERY)
+    const value = (raw || '').trim().toLowerCase()
+    if (!value || !/^[a-z][a-z0-9_-]{0,32}$/.test(value)) return null
+    return value
+  } catch {
+    return null
+  }
+}
+
+/** Opens Builder on a Control Center tab (leads, orders, …). */
+export function workspaceScreenUrl(origin: string, screen: string): string {
+  const base = (origin || 'https://builder.indobase.in').replace(/\/+$/, '') || 'https://builder.indobase.in'
+  const id = (screen || '').trim().toLowerCase()
+  const safe = /^[a-z][a-z0-9_-]{0,32}$/.test(id) ? id : 'overview'
+  return `${base}/?${WORKSPACE_SCREEN_QUERY}=${safe}`
+}
+
+/** Inbox link for enquiry emails — opens Builder on the Leads tab. */
+export function workspaceLeadsInboxUrl(origin: string): string {
+  return workspaceScreenUrl(origin, 'leads')
+}
+
+/** Orders inbox link for store owners. */
+export function workspaceOrdersInboxUrl(origin: string): string {
+  return workspaceScreenUrl(origin, 'orders')
 }
 
 export type ExecutionHint = {
@@ -357,8 +454,14 @@ export function contextualActionsFor(state: RuntimeView, hint: ExecutionHint = {
     return actions.slice(0, 3)
   }
   if (state.preview.status === 'ready') {
+    const previewUrl = state.preview.url || (state.business.ref ? `/live/${state.business.ref}/` : '')
     return [
-      { label: 'Preview', message: 'Open the preview so I can review it.' },
+      {
+        label: 'Open preview',
+        message: previewUrl
+          ? `Open my preview ${previewUrl}`
+          : 'Open the hosted preview so I can review the site.',
+      },
       { label: 'Publish', message: `Launch my ${noun} on Indobase now.` },
     ]
   }
@@ -428,6 +531,37 @@ export function overviewListsFromRuntime(
   return { products, orders }
 }
 
+/** Enquiries belong to a website; a store shows orders instead. */
+export function leadRowsFromRuntime(
+  state: RuntimeView,
+  limit = CONTROL_CENTER_LIST_LIMIT,
+): PresentationLeadRow[] {
+  if (!isWebsiteJourneyKind(kindOf(state))) return []
+  const rows = (state.leads || []).map((lead) => {
+    const message = (lead.message || '').trim()
+    const status =
+      typeof lead.status === 'string' && /^(handled|closed|done)$/i.test(lead.status.trim())
+        ? ('handled' as const)
+        : ('new' as const)
+    return {
+      id: lead.id || lead.email || lead.phone || 'enquiry',
+      name: (lead.name || 'Enquiry').trim(),
+      contact: (lead.email || lead.phone || '').trim() || '—',
+      message: message.length > 140 ? `${message.slice(0, 139)}…` : message,
+      status,
+      receivedAt: lead.createdAt || null,
+    }
+  })
+  // Open first so the owner works the inbox top-down; handled sink below.
+  rows.sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'new' ? -1 : 1
+    const at = a.receivedAt || ''
+    const bt = b.receivedAt || ''
+    return bt.localeCompare(at)
+  })
+  return rows.slice(0, limit)
+}
+
 export function homeFromRuntime(state: RuntimeView, hint: ExecutionHint = {}): PresentationSurface['home'] {
   const kind = kindOf(state)
   const name = (state.business.name || state.spec?.businessName || '').trim() || 'Your business'
@@ -465,6 +599,10 @@ export function homeFromRuntime(state: RuntimeView, hint: ExecutionHint = {}): P
     metrics.push({ id: 'data', label: 'Records', value: state.health.catalogReady ? 'Ready' : 'Preparing' })
   } else {
     metrics.push({ id: 'site', label: 'Website', value: state.live.isLive ? 'Live' : state.preview.status === 'ready' ? 'Preview' : 'Building' })
+    const openLeads = (state.leads || []).filter(
+      (l) => !(typeof l.status === 'string' && /^(handled|closed|done)$/i.test(l.status.trim())),
+    ).length
+    metrics.push({ id: 'leads', label: 'Open enquiries', value: String(openLeads) })
   }
   const checkoutStatus = isStoreJourneyKind(kind)
     ? state.health.catalogReady
@@ -482,6 +620,33 @@ export function homeFromRuntime(state: RuntimeView, hint: ExecutionHint = {}): P
       : state.health.paymentsReady
         ? 'Payments connected'
         : null
+  const openLeadCount = isWebsiteJourneyKind(kind)
+    ? (state.leads || []).filter(
+        (l) => !(typeof l.status === 'string' && /^(handled|closed|done)$/i.test(l.status.trim())),
+      ).length
+    : 0
+  const pendingOrderCount = isStoreJourneyKind(kind)
+    ? state.commerce.pendingOrderCount ??
+      (state.orders || []).filter((o) => {
+        const pay = (o.paymentStatus || o.status || '').toLowerCase()
+        return pay.includes('pending') || pay === 'unpaid' || pay === 'reserved'
+      }).length
+    : 0
+  let inboxStatus: string | null = null
+  let inboxSection: 'leads' | 'orders' | null = null
+  if (isWebsiteJourneyKind(kind) && openLeadCount > 0) {
+    inboxSection = 'leads'
+    inboxStatus =
+      openLeadCount === 1
+        ? '1 open enquiry — open Leads to reply'
+        : `${openLeadCount} open enquiries — open Leads to reply`
+  } else if (isStoreJourneyKind(kind) && pendingOrderCount > 0) {
+    inboxSection = 'orders'
+    inboxStatus =
+      pendingOrderCount === 1
+        ? '1 order needs attention — open Orders'
+        : `${pendingOrderCount} orders need attention — open Orders`
+  }
   return {
     name,
     typeLabel: typeLabel(kind),
@@ -489,12 +654,15 @@ export function homeFromRuntime(state: RuntimeView, hint: ExecutionHint = {}): P
     metrics,
     checkoutStatus,
     paymentsStatus,
+    inboxStatus,
+    inboxSection,
     previewUrl: state.preview.url,
     liveUrl: state.live.url,
     empty,
     loading: Boolean(loading && !empty),
     error,
     ...overviewListsFromRuntime(state),
+    leads: leadRowsFromRuntime(state),
   }
 }
 
@@ -554,6 +722,7 @@ export function composePresentation(state: RuntimeView, hint: ExecutionHint = {}
       nav,
       capabilities,
       ...overviewListsFromRuntime(state),
+      leads: leadRowsFromRuntime(state),
     },
     copy: { headline, body, liveBanner },
     failure,

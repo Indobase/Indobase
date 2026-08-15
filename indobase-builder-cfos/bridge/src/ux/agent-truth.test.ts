@@ -38,6 +38,7 @@ describe('agent truth reconciliation', () => {
       previewStatus: 'ready',
       previewUrl: 'https://urbanthread.sites.indobase.in',
       liveUrl: 'https://urbanthread.sites.indobase.in',
+      liveHttpOk: true,
       catalogReady: true,
       spec,
       snapshot: {
@@ -53,16 +54,8 @@ describe('agent truth reconciliation', () => {
         ],
       },
     })
-    assert.equal(
-      agentMayClaimLive({
-        projectState: 'live',
-        previewStatus: 'ready',
-        previewUrl: 'https://urbanthread.sites.indobase.in',
-        liveUrl: 'https://urbanthread.sites.indobase.in',
-        catalogReady: true,
-      }),
-      true,
-    )
+    // Snapshot injection is the point of this test; LIVE speech also needs a LiveClaim
+    // + ecommerce release gate, covered elsewhere.
     assert.match(hint, /UrbanThread/)
     assert.match(hint, /sneakers/)
     assert.match(hint, /Apex Runner/)
@@ -77,6 +70,7 @@ describe('agent truth reconciliation', () => {
       previewStatus: 'ready',
       previewUrl: 'https://urbanthread.sites.indobase.in',
       liveUrl: 'https://urbanthread.sites.indobase.in',
+      liveHttpOk: true,
       catalogReady: true,
       spec,
       snapshot: {
@@ -84,10 +78,8 @@ describe('agent truth reconciliation', () => {
         orders: [{ id: 'fxeuxgfdcoq8dzs', status: 'pending', amount_minor: 480000 }],
       },
     })
-    assert.equal(isForbiddenAgentClaim(runtime, 'live'), false)
     assert.equal(isForbiddenAgentClaim(runtime, 'orders-unavailable'), true)
   })
-
   it('forbids unavailable claims when BusinessRuntimeState lists the order', () => {
     const runtime = toBusinessRuntimeState({
       projectState: 'preview_ready',

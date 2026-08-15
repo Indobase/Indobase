@@ -2,11 +2,13 @@
  * Persistent Control Center — derived from BusinessRuntimeState via presentation.
  * Ecommerce vs SaaS vs landing show only relevant capabilities.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import styles from './BusinessControlCenter.module.css'
 import {
   composePresentation,
+  pickOperatorMessage,
+  readWorkspaceScreenFromSearch,
   type PresentationSurface,
   type RuntimeView,
 } from './presentation'
@@ -64,10 +66,13 @@ export function BusinessControlCenter({
   onOpenStorefront: () => void
   onScreen: (screen: WorkspaceScreen) => void
 }) {
-  const [section, setSection] = useState(nav[0]?.id || 'overview')
+  const [section, setSection] = useState(() => sectionFromUrl(nav))
   const [entityId, setEntityId] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
   const [tick, setTick] = useState(0)
+  const [leadBusy, setLeadBusy] = useState<string | null>(null)
+  const [leadOverrides, setLeadOverrides] = useState<Record<string, 'new' | 'handled'>>({})
+  const deepLinkApplied = useRef(false)
   const current = nav.find((n) => n.id === section) || nav[0]
   const screen = useMemo<WorkspaceScreen>(
     () => ({ section, entityId, label: current?.label || section }),
@@ -79,7 +84,10 @@ export function BusinessControlCenter({
   }, [onScreen, screen])
 
   useEffect(() => {
-    const refresh = () => setTick((n) => n + 1)
+    const refresh = () => {
+      setTick((n) => n + 1)
+      setLeadOverrides({})
+    }
     window.addEventListener('indobase:context', refresh)
     window.addEventListener('indobase:runtime-updated', refresh)
     return () => {
@@ -102,11 +110,50 @@ export function BusinessControlCenter({
   const visibleNav = surface?.control.nav?.length ? surface.control.nav : nav
   const kind = home?.kind
   const store = kind === 'store' || kind === 'ecommerce' || kind === 'ordering'
+  const leads = (home?.leads || []).map((lead) => ({
+    ...lead,
+    status: leadOverrides[lead.id] || lead.status,
+  }))
+  const openLeadCount = leads.filter((lead) => lead.status === 'new').length
+  const openOrderCount = (home?.orders || []).filter((o) =>
+    /pending|unpaid|reserved/i.test(o.status || ''),
+  ).length
+
+  useEffect(() => {
+    if (deepLinkApplied.current) return
+    const items = visibleNav.length ? visibleNav : nav
+    const wanted = readWorkspaceScreenFromSearch(window.location.search)
+    if (!wanted) {
+      deepLinkApplied.current = true
+      return
+    }
+    if (!items.some((item) => item.id === wanted)) return
+    setSection(wanted)
+    deepLinkApplied.current = true
+  }, [visibleNav, nav])
 
   const send = (request: string) => {
     const text = request.trim()
     if (!text) return
     onPick(formatScreenMessage(screen, text))
+  }
+
+  const setLeadStatus = async (leadId: string, status: 'new' | 'handled') => {
+    if (!leadId || leadBusy) return
+    setLeadBusy(leadId)
+    try {
+      const res = await fetch(`/api/os/leads/${encodeURIComponent(leadId)}`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) return
+      setLeadOverrides((prev) => ({ ...prev, [leadId]: status }))
+      window.dispatchEvent(new CustomEvent('indobase:runtime-updated'))
+    } finally {
+      setLeadBusy(null)
+    }
   }
 
   return (
@@ -127,6 +174,16 @@ export function BusinessControlCenter({
             }}
           >
             {item.label}
+            {item.id === 'leads' && openLeadCount > 0 ? (
+              <span className={styles.navBadge} aria-label={`${openLeadCount} open`}>
+                {openLeadCount}
+              </span>
+            ) : null}
+            {item.id === 'orders' && openOrderCount > 0 ? (
+              <span className={styles.navBadge} aria-label={`${openOrderCount} pending`}>
+                {openOrderCount}
+              </span>
+            ) : null}
           </button>
         ))}
       </nav>
@@ -162,6 +219,41 @@ export function BusinessControlCenter({
             </div>
             {home?.checkoutStatus ? <p className={styles.muted}>{home.checkoutStatus}</p> : null}
             {home?.paymentsStatus ? <p className={styles.muted}>{home.paymentsStatus}</p> : null}
+            {home?.inboxStatus ? (
+              <p className={styles.muted}>
+                <button
+                  type="button"
+                  className={styles.linkish}
+                  onClick={() => setSection(home.inboxSection || (store ? 'orders' : 'leads'))}
+                >
+                  {home.inboxStatus}
+                </button>
+              </p>
+            ) : null}
+            {!store && openLeadCount > 0 ? (
+              <div className={styles.overviewLists}>
+                <div>
+                  <p className={styles.muted}>Open enquiries</p>
+                  <ul className={styles.list}>
+                    {leads
+                      .filter((lead) => lead.status === 'new')
+                      .slice(0, 5)
+                      .map((lead) => (
+                        <li key={lead.id} className={styles.row}>
+                          <span>
+                            {lead.name}
+                            <span className={styles.muted}>
+                              {' '}
+                              · {lead.contact}
+                              {lead.message ? ` — ${lead.message}` : ''}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
             {store && (home?.products.length || home?.orders.length) ? (
               <div className={styles.overviewLists}>
                 {home?.products.length ? (
@@ -208,7 +300,7 @@ export function BusinessControlCenter({
             ) : null}
             <div className={styles.actions}>
               {(surface?.actions || []).map((a) => (
-                <button key={a.label} type="button" onClick={() => onPick(a.message)}>
+                <button key={a.label} type="button" onClick={() => pickOperatorMessage(a.message, onPick)}>
                   {a.label}
                 </button>
               ))}
@@ -283,12 +375,60 @@ export function BusinessControlCenter({
             </button>
           </div>
         ) : null}
+        {section === 'leads' ? (
+          <div>
+            {leads.length ? (
+              <ul className={styles.list}>
+                {leads.map((lead) => (
+                  <li key={lead.id} className={styles.row} data-status={lead.status}>
+                    <span>
+                      {lead.name}
+                      <span className={styles.muted}>
+                        {' '}
+                        · {lead.contact}
+                        {lead.receivedAt ? ` · ${lead.receivedAt.slice(0, 10)}` : ''}
+                        {lead.status === 'handled' ? ' · handled' : ''}
+                      </span>
+                      {lead.message ? <span className={styles.muted}> — {lead.message}</span> : null}
+                    </span>
+                    <button
+                      type="button"
+                      data-secondary=""
+                      disabled={disabled || leadBusy === lead.id}
+                      onClick={() =>
+                        void setLeadStatus(lead.id, lead.status === 'handled' ? 'new' : 'handled')
+                      }
+                    >
+                      {leadBusy === lead.id
+                        ? 'Saving…'
+                        : lead.status === 'handled'
+                          ? 'Reopen'
+                          : 'Mark handled'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.muted}>
+                No enquiries yet. They arrive here as soon as someone uses the form on your site.
+              </p>
+            )}
+            <div className={styles.actions}>
+              {liveUrl ? (
+                <a href={liveUrl} target="_blank" rel="noreferrer">
+                  <button type="button" data-secondary="">
+                    Open live site
+                  </button>
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         {section === 'settings' ||
         section === 'customers' ||
         section === 'users' ||
         section === 'data' ||
         section === 'content' ||
-        section === 'leads' ||
         section === 'website' ||
         section === 'application' ? (
           <div className={styles.actions}>
@@ -334,4 +474,11 @@ function hostOf(url: string): string {
   } catch {
     return url.replace(/^https?:\/\//, '')
   }
+}
+
+function sectionFromUrl(nav: ControlCenterSection[]): string {
+  if (typeof window === 'undefined') return nav[0]?.id || 'overview'
+  const wanted = readWorkspaceScreenFromSearch(window.location.search)
+  if (wanted && nav.some((item) => item.id === wanted)) return wanted
+  return nav[0]?.id || 'overview'
 }

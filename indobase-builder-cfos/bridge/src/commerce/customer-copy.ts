@@ -11,8 +11,12 @@ export const CHECKOUT_OUT_OF_STOCK = 'That item just sold out. Update the cart a
 
 export const CHECKOUT_INVALID = 'Check the email and cart, then try checkout again.'
 
+export const CATALOG_UNAVAILABLE = 'This catalog is taking a moment. Please try again shortly.'
+
+export const GENERIC_SERVICE_UNAVAILABLE = "Something went wrong. Please try again in a moment."
+
 const INTERNAL_CHECKOUT =
-  /\b(fetch failed|paymentStatus|payment_status|ECONNREFUSED|ETIMEDOUT|backend_unavailable|gateway_not_ready|checkout_failed|PocketBase|undici|TypeError)\b/i
+  /\b(fetch failed|paymentStatus|payment_status|ECONNREFUSED|ETIMEDOUT|backend_unavailable|gateway_not_ready|checkout_failed|PocketBase|undici|TypeError|ReferenceError|SyntaxError|is not defined|persistCatalog|http\.ts|catalog-domain)\b/i
 
 export function isInternalCheckoutCopy(message: string | null | undefined): boolean {
   return INTERNAL_CHECKOUT.test(message || '')
@@ -33,4 +37,14 @@ export function customerFacingCheckoutMessage(input: {
   if (input.code === 'out_of_stock') return CHECKOUT_OUT_OF_STOCK
   if (input.code === 'invalid_request' || input.code === 'invalid_product') return CHECKOUT_INVALID
   return CHECKOUT_CONNECTION_FAILURE
+}
+
+/** Never put engine exceptions on a public JSON body or storefront. */
+export function publicApiMessage(
+  raw: string | null | undefined,
+  fallback: string = GENERIC_SERVICE_UNAVAILABLE,
+): string {
+  const t = (raw || '').trim()
+  if (!t || isInternalCheckoutCopy(t) || /at \S+\.(ts|js):\d+/i.test(t)) return fallback
+  return fallback
 }

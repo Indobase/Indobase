@@ -7,6 +7,7 @@ import {
 import { flattenSafeFiles, isViteReactProject } from '../../production-launch/react-project.js'
 import { buildViteReactApp } from '../../production-launch/vite-build.js'
 import { readLiveFile, writeDraftPreview } from '../../static-launch.js'
+import { injectCustomerSafePage } from '../preview-boot.js'
 import type { PersistedWorkspaceRuntime } from '../runtime-store.js'
 import { appendRuntimeEvent, getWorkspaceRuntime, issueRuntimeCommand, patchWorkspaceRuntime } from '../runtime-store.js'
 
@@ -58,7 +59,7 @@ export async function persistPreviewHtml(input: {
       })
       appendRuntimeEvent(session.projectRef, {
         kind: 'runtime.preview.failed',
-        message: `react_build_failed: ${compiled.message || 'vite build failed'}`,
+        message: 'I could not finish compiling the preview.',
         commandId: command.id,
       })
       const job = getLatestProductionLaunchJob(session.projectRef)
@@ -78,6 +79,9 @@ export async function persistPreviewHtml(input: {
     if (html) diskFiles['index.html'] = diskFiles['index.html'] || html
     artifactFiles = diskFiles
   }
+
+  html = injectCustomerSafePage(html)
+  if (diskFiles['index.html']) diskFiles['index.html'] = injectCustomerSafePage(diskFiles['index.html'])
 
   const written = await writeDraftPreview({
     workspaceRef: session.projectRef,

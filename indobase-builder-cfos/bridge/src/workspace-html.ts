@@ -80,7 +80,7 @@ const SHELL_CSS = `
  * Agent uses /api/session + launchBusiness; guests get Create-account chrome
  * (same /auth/start|/auth/verify as chat) so auth works if the model stalls.
  */
-export function injectIndobaseContextBootstrap(html: string): string {
+export function injectIndobaseContextBootstrap(html: string, opts?: { guest?: boolean }): string {
   const script = `<script>
 (function () {
   async function pull() {
@@ -264,7 +264,7 @@ export function injectIndobaseContextBootstrap(html: string): string {
   } else {
     withScript = `${html}${script}`
   }
-  return injectAuthChrome(withScript)
+  return injectAuthChrome(withScript, opts)
 }
 
 /** Fallback if handoff secret missing — normal entry mints a guest and opens the agent desktop. */

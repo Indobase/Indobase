@@ -15,7 +15,12 @@ import { sanitizeAppId } from '../pocketbase/managed.js'
 import { getLatestProductionLaunchJob } from '../production-launch/job-store.js'
 import { executeCheckout, markOrderFailed, markOrderPaid } from './checkout-service.js'
 import { authorizeControlCenterAccess, resolvePublicCatalogProjectRef, resolveTenantProjectRef } from './control-center-auth.js'
-import { customerFacingCheckoutMessage } from './customer-copy.js'
+import {
+  CATALOG_UNAVAILABLE,
+  GENERIC_SERVICE_UNAVAILABLE,
+  customerFacingCheckoutMessage,
+  publicApiMessage,
+} from './customer-copy.js'
 import { handleCustomerOrderGet, sessionFromRequest } from './customer-http.js'
 import {
   getCommerceProduct,
@@ -75,11 +80,23 @@ function commerceOperatorAuthorized(c: Context): boolean {
   return timingSafeEqualString(provided, expected)
 }
 
+function rawClientProjectRef(c: Context, body?: Record<string, unknown>): string {
+  const header = (c.req.header('X-Indobase-Project-Ref') || '').trim()
+  let q = (c.req.query('projectRef') || '').trim()
+  if (!q) {
+    try {
+      q = new URL(c.req.url, 'http://localhost').searchParams.get('projectRef') || ''
+    } catch {
+      q = ''
+    }
+  }
+  const b = typeof body?.projectRef === 'string' ? body.projectRef.trim() : ''
+  return (header || q || b).trim()
+}
+
 function clientProjectRefFrom(c: Context, body?: Record<string, unknown>): string {
-  const header = c.req.header('X-Indobase-Project-Ref') || ''
-  const q = c.req.query('projectRef') || ''
-  const b = typeof body?.projectRef === 'string' ? body.projectRef : ''
-  return sanitizeAppId(header || q || b)
+  const raw = rawClientProjectRef(c, body)
+  return raw ? sanitizeAppId(raw) : ''
 }
 
 function bindCommerceProjectRef(
@@ -129,7 +146,10 @@ export async function handleCommerceOptions(c: Context) {
 }
 
 export async function handleCommerceRuntimeJs(c: Context) {
-  const projectRef = clientProjectRefFrom(c)
+  const fromQuery = clientProjectRefFrom(c)
+  const referer = c.req.header('referer') || c.req.header('referrer') || ''
+  const fromLive = /\/live\/([A-Za-z0-9._-]+)/.exec(referer)?.[1] || ''
+  const projectRef = fromQuery || (fromLive ? sanitizeAppId(fromLive) : '')
   const bridgePublic =
     process.env.INDOBASE_BRIDGE_PUBLIC_URL?.trim() ||
     process.env.BRIDGE_PUBLIC_URL?.trim() ||
@@ -137,7 +157,7 @@ export async function handleCommerceRuntimeJs(c: Context) {
   const commerceBase = `${bridgePublic.replace(/\/+$/, '')}/api/os/commerce`
   const js = buildCommerceRuntimeJs({
     commerceBaseUrl: commerceBase,
-    projectRef: projectRef || 'app',
+    projectRef,
   })
   return c.body(js, 200, {
     ...commerceCorsHeaders(),
@@ -156,15 +176,27 @@ export async function handleCommerceProductsList(
     return c.json({ ok: false, code: bound.code }, bound.status, commerceCorsHeaders())
   }
   try {
-    const products = persistCatalogProjection(await listFn(bound.projectRef))
+    const listed = await listFn(bound.projectRef)
+    const products = safeCatalogProjection(listed)
     return c.json({ ok: true, products }, 200, commerceCorsHeaders())
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'List failed' },
+      { ok: false, code: 'backend_unavailable', message: CATALOG_UNAVAILABLE },
       502,
       commerceCorsHeaders(),
     )
   }
+}
+
+function safeCatalogProjection<T>(products: T): T {
+  try {
+    if (typeof persistCatalogProjection === 'function') {
+      return persistCatalogProjection(products as never) as T
+    }
+  } catch {
+    /* serve the unprojected catalog rather than a customer-visible crash */
+  }
+  return products
 }
 
 export async function handleCommerceCollectionsList(
@@ -178,9 +210,9 @@ export async function handleCommerceCollectionsList(
   try {
     const collections = await listCatalogCollections(bound.projectRef)
     return c.json({ ok: true, collections }, 200, commerceCorsHeaders())
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'List failed' },
+      { ok: false, code: 'backend_unavailable', message: CATALOG_UNAVAILABLE },
       502,
       commerceCorsHeaders(),
     )
@@ -200,14 +232,14 @@ export async function handleCommerceProductGet(
     return c.json({ ok: false, code: 'invalid_request', message: 'projectRef and id required' }, 400, commerceCorsHeaders())
   }
   try {
-    const product = persistCatalogProjection([await getCommerceProduct(bound.projectRef, id)])[0]
+    const product = safeCatalogProjection([await getCommerceProduct(bound.projectRef, id)])[0]
     if (!product) {
       return c.json({ ok: false, code: 'invalid_product', message: 'Not found' }, 404, commerceCorsHeaders())
     }
     return c.json({ ok: true, product }, 200, commerceCorsHeaders())
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'Get failed' },
+      { ok: false, code: 'backend_unavailable', message: CATALOG_UNAVAILABLE },
       502,
       commerceCorsHeaders(),
     )
@@ -318,9 +350,9 @@ export async function handleCommerceAdminSnapshot(
       snapshotLoaders.listOrders(auth.projectRef),
     ])
     return c.json({ ok: true, products, orders }, 200, commerceCorsHeaders())
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'Snapshot failed' },
+      { ok: false, code: 'backend_unavailable', message: publicApiMessage('', GENERIC_SERVICE_UNAVAILABLE) },
       502,
       commerceCorsHeaders(),
     )

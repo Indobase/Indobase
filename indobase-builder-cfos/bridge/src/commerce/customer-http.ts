@@ -13,6 +13,7 @@ import {
 } from '../auth.js'
 import { sanitizeAppId } from '../pocketbase/managed.js'
 import { resolveTenantProjectRef } from './control-center-auth.js'
+import { GENERIC_SERVICE_UNAVAILABLE } from './customer-copy.js'
 import { canViewOrder, verifyCustomerSession } from './customer-identity.js'
 import { getOrderOwnership, listOrdersForCustomer } from './customer-pb.js'
 import { startCustomerOtp, verifyCustomerOtp } from './customer-service.js'
@@ -97,9 +98,9 @@ export async function handleCustomerOtpVerify(c: Context) {
   try {
     const result = await verifyCustomerOtp({ projectRef, email, code, name })
     return c.json(result, result.ok ? 200 : 400, commerceCorsHeaders())
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'Verify failed' },
+      { ok: false, code: 'backend_unavailable', message: GENERIC_SERVICE_UNAVAILABLE },
       502,
       commerceCorsHeaders(),
     )
@@ -166,9 +167,9 @@ export async function handleCustomerOrdersList(c: Context) {
       200,
       commerceCorsHeaders(),
     )
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'List failed' },
+      { ok: false, code: 'backend_unavailable', message: GENERIC_SERVICE_UNAVAILABLE },
       502,
       commerceCorsHeaders(),
     )
@@ -215,9 +216,9 @@ export async function handleCustomerOrderGet(c: Context) {
       200,
       commerceCorsHeaders(),
     )
-  } catch (err) {
+  } catch {
     return c.json(
-      { ok: false, code: 'backend_unavailable', message: err instanceof Error ? err.message : 'Get failed' },
+      { ok: false, code: 'backend_unavailable', message: GENERIC_SERVICE_UNAVAILABLE },
       502,
       commerceCorsHeaders(),
     )

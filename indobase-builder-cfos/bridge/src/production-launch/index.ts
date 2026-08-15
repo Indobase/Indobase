@@ -19,6 +19,7 @@ export {
   clearProductionLaunchJobsForTests,
   getLatestProductionLaunchJob,
   getProductionLaunchJob,
+  productionJobMatchesSpec,
   rememberLivePublishJob,
   rememberProductionLaunchJob,
   type ProductionLaunchFailure,
@@ -56,10 +57,15 @@ export {
   blueprintForAppType,
   composeGenerateSkillsHint,
   GENERATE_SKILL_ID,
+  listSkillIds,
   type ApplicationBlueprint,
 } from './agent-blueprint.js'
 export { isViteReactProject } from './react-project.js'
 export { buildViteReactApp } from './vite-build.js'
+export {
+  resolveViteProjectFiles,
+  scaffoldViteReactProject,
+} from './scaffold-vite-react.js'
 export {
   deriveProductionChecklist,
   emptyProductionEvidence,

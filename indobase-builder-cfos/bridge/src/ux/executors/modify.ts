@@ -1,4 +1,8 @@
-import { applyHeadlineToProjectFiles, extractRequestedHeadline, mutateHeroHeadline } from '../preview-artifact.js'
+import {
+  applyPreviewMutationToFiles,
+  mutateHeroHeadline,
+  parsePreviewMutation,
+} from '../preview-artifact.js'
 import { currentArtifact, rememberArtifact } from '../artifact-store.js'
 import { patchApplicationLifecycle } from '../lifecycle-store.js'
 import { getWorkspaceRuntime } from '../runtime-store.js'
@@ -13,8 +17,8 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
   const { session } = ctx
   const message = ctx.message
   let runtime = ctx.runtime
-  const headline = extractRequestedHeadline(message)
-  if (!headline) {
+  const mutation = parsePreviewMutation(message)
+  if (!mutation) {
     return { plan, runtime, recovered: false, mutatedHeadline: null, mutated: false, commandId: plan.commandId }
   }
 
@@ -24,18 +28,34 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
     ...(html ? { 'index.html': runtime.artifactFiles?.['index.html'] || html } : {}),
   })
   const vite = isViteReactProject(currentFiles)
-  const applied = applyHeadlineToProjectFiles(currentFiles, headline)
+  const applied = applyPreviewMutationToFiles(currentFiles, mutation)
   let nextFiles = applied.files
   let nextHtml = nextFiles['index.html'] || html
   if (!applied.mutated) {
-    if (!html) {
-      return { plan, runtime, recovered: false, mutatedHeadline: headline, mutated: false, commandId: plan.commandId }
+    if (mutation.kind === 'headline' && mutation.headline && html) {
+      nextHtml = mutateHeroHeadline(html, mutation.headline)
+      if (!nextHtml || nextHtml === html) {
+        return {
+          plan,
+          runtime,
+          recovered: false,
+          mutatedHeadline: mutation.headline,
+          mutated: false,
+          commandId: plan.commandId,
+        }
+      }
+      nextFiles = { ...currentFiles, 'index.html': nextHtml }
+    } else {
+      return {
+        plan,
+        runtime,
+        recovered: false,
+        mutatedHeadline: mutation.headline || null,
+        mutated: false,
+        mutationSummary: mutation.summary,
+        commandId: plan.commandId,
+      }
     }
-    nextHtml = mutateHeroHeadline(html, headline)
-    if (!nextHtml || nextHtml === html) {
-      return { plan, runtime, recovered: false, mutatedHeadline: headline, mutated: false, commandId: plan.commandId }
-    }
-    nextFiles = { ...currentFiles, 'index.html': nextHtml }
   }
 
   patchApplicationLifecycle(session.projectRef, 'modifying')
@@ -44,9 +64,9 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
     runtime,
     html: nextHtml,
     files: nextFiles,
-    mutation: 'hero_headline',
+    mutation: mutation.kind,
     eventKind: 'runtime.preview.mutate',
-    eventMessage: `Hero headline → ${headline}`,
+    eventMessage: `Preview ${mutation.kind} → ${mutation.summary}`,
     launchDeps: ctx.launchDeps,
   })
   runtime = getWorkspaceRuntime(session.projectRef) || runtime
@@ -56,7 +76,8 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
       runtime,
       recovered: false,
       mutated: false,
-      mutatedHeadline: headline,
+      mutatedHeadline: mutation.headline || null,
+      mutationSummary: mutation.summary,
       commandId: runtime.lastCommandId || plan.commandId,
     }
   }
@@ -73,13 +94,14 @@ export async function runModify(plan: ExecutionPlan, ctx: ExecutorContext): Prom
     artifactId: artifact.artifactId,
     artifactHash: artifact.artifactHash,
   })
-  markStepStatus(plan, PLAN_STEP.preview, 'succeeded', { resultRef: headline })
+  markStepStatus(plan, PLAN_STEP.preview, 'succeeded', { resultRef: mutation.summary })
   return {
     plan,
     runtime,
     recovered: true,
     mutated: true,
-    mutatedHeadline: headline,
+    mutatedHeadline: mutation.headline || null,
+    mutationSummary: mutation.summary,
     commandId: runtime.lastCommandId || plan.commandId,
   }
 }

@@ -86,6 +86,10 @@ describe('buildLaunchJourneyState', () => {
   })
 
   it('confirmed preview without publish offers Launch store', () => {
+    rememberBusinessSpec(
+      'threadline',
+      inferBusinessSpec('Launch a premium sneaker store called UrbanThread'),
+    )
     const journey = buildLaunchJourneyState(memberSession(), {
       previewReady: true,
       previewUrl: 'https://builder.indobase.in/live/threadline/',
@@ -95,6 +99,23 @@ describe('buildLaunchJourneyState', () => {
     assert.match(journey.next_action?.label || '', /Launch store/i)
     assert.equal(journey.backend_ready, true)
     assert.ok(journey.completed_stages.includes('preview'))
+    clearBusinessSpecsForTests()
+  })
+
+  it('shop preview marks Store done without a separate catalog provision', () => {
+    rememberBusinessSpec(
+      'threadline',
+      inferBusinessSpec('Launch a masala grocery store called Spice Route'),
+    )
+    const journey = buildLaunchJourneyState(memberSession(), {
+      previewReady: true,
+      previewUrl: 'https://builder.indobase.in/live/threadline/',
+    })
+    assert.equal(journey.stages.find((s) => s.id === 'backend')?.status, 'done')
+    assert.equal(journey.backend_ready, true)
+    assert.equal(journey.current_stage, 'live')
+    assert.match(journey.next_action?.label || '', /Launch store/i)
+    clearBusinessSpecsForTests()
   })
 
   it('live site advances to Add payments (domain is secondary chip)', () => {

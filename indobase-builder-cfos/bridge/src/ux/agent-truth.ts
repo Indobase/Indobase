@@ -62,6 +62,26 @@ export type BusinessSnapshotSummary = {
     createdAt?: string
   }>
   customers?: Array<{ id?: string; email?: string; name?: string }>
+  leads?: Array<{
+    id?: string
+    name?: string
+    email?: string
+    phone?: string
+    message?: string
+    source?: string
+    status?: string
+    createdAt?: string
+  }>
+}
+
+export type RuntimeLeadRow = {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  message?: string
+  status?: string
+  createdAt?: string
 }
 
 export type AuthoritativeTruth = {
@@ -84,7 +104,9 @@ export type AuthoritativeTruth = {
   paymentsReady?: boolean
 }
 
-export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRuntimeState {
+export function toBusinessRuntimeState(
+  truth: AuthoritativeTruth,
+): BusinessRuntimeState & { leads: RuntimeLeadRow[] } {
   const snap = truth.snapshot
   const live = Boolean(truth.liveUrl) && truth.projectState === 'live'
   const products = persistCatalogProjection(
@@ -183,9 +205,21 @@ export function toBusinessRuntimeState(truth: AuthoritativeTruth): BusinessRunti
       previewReady: truth.previewStatus === 'ready' && Boolean(truth.previewUrl) && truth.previewHttpOk !== false,
     },
   })
+  const leads: RuntimeLeadRow[] = (snap?.leads || [])
+    .filter((l) => l.id || l.name || l.email || l.phone)
+    .map((l) => ({
+      id: l.id || l.email || l.phone || '',
+      name: l.name || 'Enquiry',
+      email: l.email,
+      phone: l.phone,
+      message: l.message,
+      status: l.status,
+      createdAt: l.createdAt,
+    }))
   const catalogStats = catalogFromProducts(products)
   return {
     ...state,
+    leads,
     catalog: {
       ...catalogStats,
       collections: state.catalog.collections || [],

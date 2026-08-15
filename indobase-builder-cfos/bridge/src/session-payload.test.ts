@@ -328,4 +328,46 @@ describe('session-payload', () => {
     assert.match(payload.agent_hint, /landing/)
     clearBusinessSpecsForTests()
   })
+
+  it('does not treat a Circuit Nest live job as this workspace after a new spec', () => {
+    rememberBusinessSpec('proj_abc', inferBusinessSpec('create me a ecommerce site for a masala store'))
+    const payload = buildSessionApiPayload({
+      session: signedIn,
+      agentHint: 'hint',
+      generation: { schemaVersion: 1 },
+      agentRuntimeConfigured: true,
+      agentRuntimeUrl: 'http://127.0.0.1:8787',
+      osProxyPath: '/os/app/',
+      indobaseProxyPath: '/api/indobase/proxy/',
+      launchStatus: { url: 'https://corev1-aug13.sites.indobase.in', previewReady: true },
+      productionJob: {
+        version: 'production-launch-job/v1',
+        jobId: 'plj_nest',
+        projectRef: 'proj_abc',
+        gotrueId: 'user-1',
+        email: 'op@indobase.in',
+        intent: 'Launch an electronics store called Circuit Nest',
+        production: true,
+        appType: 'ecommerce',
+        plan: { appType: 'ecommerce' },
+        contract: { capabilities: [] },
+        status: 'live',
+        stages: [],
+        title: 'Circuit Nest',
+        brand: 'Circuit Nest',
+        vertical: 'electronics',
+        url: 'https://corev1-aug13.sites.indobase.in',
+        claim_live: true,
+        repairAttempts: 0,
+        failures: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as never,
+    })
+    assert.equal(payload.runtime.live.isLive, false)
+    assert.doesNotMatch(payload.runtime.live.url || '', /corev1-aug13/)
+    assert.equal(payload.production_job, null)
+    assert.match(payload.runtime.spec?.businessName || '', /masala/i)
+    clearBusinessSpecsForTests()
+  })
 })

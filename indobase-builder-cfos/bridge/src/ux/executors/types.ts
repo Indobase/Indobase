@@ -27,6 +27,7 @@ export type ExecutorResult = {
   store?: StoreCommandResult | null
   snapshot?: BusinessSnapshotSummary | null
   mutatedHeadline?: string | null
+  mutationSummary?: string | null
   mutated?: boolean
   plan: ExecutionPlan
 }

@@ -18,6 +18,7 @@ import { deriveAgentUsername } from '../agent-credentials.js'
 import type { LaunchStatusSnapshot } from '../launch-journey.js'
 import {
   getLatestProductionLaunchJob,
+  productionJobMatchesSpec,
   type ProductionLaunchDeps,
   type ProductionLaunchExecuteResult,
   type ProductionLaunchJob,
@@ -227,7 +228,20 @@ export function classifyOperatorIntent(
   const text = stripRuntimeStamp(message || '').trim()
   if (!text) return 'other'
   if (/^PREVIEW_EDIT\b/.test(text)) return 'preview_edit'
-  if (/\b(hero headline|change the hero|headline to|make (?:the )?hero more premium)\b/i.test(text)) {
+  if (
+    /\b(hero headline|change the hero|headline to|make (?:the )?hero (?:more premium|shorter)|tagline to|subtitle to|accent to|brand color to|primary color to|rename (?:the )?(?:store|shop|site|business|brand))\b/i.test(
+      text,
+    )
+  ) {
+    return 'preview_edit'
+  }
+  if (
+    /change\s+[`'‘’“”"][^`'‘’“”"]+[`'‘’“”"]\s+to\s+[`'‘’“”"]/i.test(text) &&
+    runtime?.preview.status === 'ready'
+  ) {
+    return 'preview_edit'
+  }
+  if (/\bmake (?:it|the (?:site|store|page)) (?:more premium|warmer|more warm)\b/i.test(text) && runtime?.preview.status === 'ready') {
     return 'preview_edit'
   }
   if (/^SCREEN\b/.test(text)) return 'operate'
@@ -239,6 +253,16 @@ export function classifyOperatorIntent(
   if (looksLikeCreateBusiness(text)) return 'create_business'
   if (/\b(orders?|products?|customers?|inventory|sales|visitors?)\b/i.test(text)) return 'operate'
   return 'other'
+}
+
+function htmlBelongsToSpec(
+  html: string,
+  spec: { businessName?: string; catalog?: { verticalId?: string } },
+): boolean {
+  if (/circuit nest|corev1-aug13/i.test(html) && !/circuit nest/i.test(spec.businessName || '')) return false
+  const vert = /data-ib-vertical=["']([^"']+)["']/.exec(html)?.[1]
+  if (vert && spec.catalog?.verticalId && vert !== spec.catalog.verticalId) return false
+  return true
 }
 
 function specFromProductionJob(job: ProductionLaunchJob): BusinessSpec {
@@ -290,12 +314,20 @@ export async function rehydrateWorkspaceRuntime(
     }
   }
 
-  let artifactHtml = runtime.artifactHtml || job?.html || job?.files?.['index.html'] || ''
-  let artifactFiles = runtime.artifactFiles || job?.files
+  const specForJob = runtime.spec || getBusinessSpec(session.projectRef)
+  const jobMatches = productionJobMatchesSpec(job, specForJob)
+  let artifactHtml =
+    runtime.artifactHtml ||
+    (jobMatches ? job?.html || job?.files?.['index.html'] || '' : '') ||
+    ''
+  let artifactFiles = runtime.artifactFiles || (jobMatches ? job?.files : undefined)
   if (!artifactHtml) {
     const disk = await readLiveFile(session.projectRef, 'index.html')
     const body = disk?.body?.toString('utf8') || ''
-    if (body.includes('<html') || body.includes('<!DOCTYPE')) {
+    if (
+      (body.includes('<html') || body.includes('<!DOCTYPE')) &&
+      (!specForJob || htmlBelongsToSpec(body, specForJob))
+    ) {
       artifactHtml = body
       artifactFiles = { ...(artifactFiles || {}), 'index.html': body }
     }
@@ -309,8 +341,8 @@ export async function rehydrateWorkspaceRuntime(
     existingEmbed ||
     (artifactHtml && session.projectRef ? `/live/${session.projectRef}/` : launch?.previewUrl || null)
   const durablePreview =
-    Boolean(launch?.previewReady) ||
-    Boolean(job && (job.status === 'live' || job.html || job.files?.['index.html'])) ||
+    Boolean(launch?.previewReady && jobMatches) ||
+    Boolean(jobMatches && job && (job.status === 'live' || job.html || job.files?.['index.html'])) ||
     Boolean(artifactHtml)
   if (runtime.preview.status !== 'ready' && durablePreview) {
     const probed = runtime.preview.httpOk
@@ -352,11 +384,13 @@ function toSessionRuntime(
   launch?: ProductionLaunchExecuteResult | null,
 ): BusinessRuntimeState {
   const latestJob = launch?.job || getLatestProductionLaunchJob(session.projectRef)
+  const spec = persisted.spec || getBusinessSpec(session.projectRef)
+  const jobForLive = productionJobMatchesSpec(latestJob, spec) ? latestJob : null
   const liveUrl =
-    (launch?.job.status === 'live' && launch.url) ||
-    (latestJob?.status === 'live' && latestJob.url) ||
+    (launch?.job && productionJobMatchesSpec(launch.job, spec) && launch.job.status === 'live' && launch.url) ||
+    (jobForLive?.status === 'live' && jobForLive.url) ||
     null
-  const liveHttpOk = latestJob?.evidence?.smoke_ok === true || launch?.job.evidence?.smoke_ok === true
+  const liveHttpOk = jobForLive?.evidence?.smoke_ok === true || (launch?.job && productionJobMatchesSpec(launch.job, spec) && launch.job.evidence?.smoke_ok === true)
   const previewReady =
     persisted.preview.status === 'ready' &&
     Boolean(persisted.preview.url) &&
@@ -372,9 +406,10 @@ function toSessionRuntime(
     liveHttpOk: liveUrl ? liveHttpOk : null,
     catalogReady:
       Boolean(snapshot?.products?.length) ||
-      Boolean(launch?.job.evidence?.catalog_seeded) ||
-      Boolean(latestJob?.evidence?.catalog_seeded),
-    spec: persisted.spec || getBusinessSpec(session.projectRef),
+      Boolean(launch?.job && productionJobMatchesSpec(launch.job, spec) && launch.job.evidence?.catalog_seeded) ||
+      Boolean(jobForLive?.evidence?.catalog_seeded) ||
+      Boolean(previewReady && spec?.businessType === 'ecommerce'),
+    spec,
     snapshot: snapshot || null,
     identity: {
       signedIn: Boolean(session.email),
@@ -387,10 +422,10 @@ function toSessionRuntime(
       kind: persisted.spec?.businessType || 'unknown',
       state: projectState,
     },
-    deployment: latestJob
-      ? { status: latestJob.status, jobId: latestJob.jobId }
+    deployment: jobForLive
+      ? { status: jobForLive.status, jobId: jobForLive.jobId }
       : undefined,
-    jobs: latestJob ? [{ id: latestJob.jobId, status: latestJob.status }] : [],
+    jobs: jobForLive ? [{ id: jobForLive.jobId, status: jobForLive.status }] : [],
     workspace: { ref: session.projectRef, slug: session.orgSlug },
     capabilities: Object.entries(persisted.capabilities).map(([id, status]) => ({
       id,
@@ -460,8 +495,10 @@ function operatorMessageForTurn(input: {
   named: string
   specName?: string
   previewStatus: PersistedWorkspaceRuntime['preview']['status']
+  previewUrl?: string | null
   launch?: ProductionLaunchExecuteResult | null
   mutatedHeadline: string | null
+  mutationSummary?: string | null
   mutated: boolean
   businessRuntime: BusinessRuntimeState
   store?: StoreCommandResult | null
@@ -505,6 +542,9 @@ function operatorMessageForTurn(input: {
     if (input.mutated && input.mutatedHeadline) {
       return `Done — I updated the hero to “${input.mutatedHeadline}”.`
     }
+    if (input.mutated && input.mutationSummary) {
+      return `Done — I updated the preview (${input.mutationSummary}).`
+    }
     return 'I applied the preview change in this workspace.'
   }
   if (input.turnClass === 'operate') {
@@ -515,7 +555,14 @@ function operatorMessageForTurn(input: {
       const kind = input.businessRuntime.business.kind
       const noun =
         kind === 'saas' || kind === 'app' ? 'app' : kind === 'landing' || kind === 'website' ? 'website' : 'store'
-      return `Preview is ready for ${input.named || `your ${noun}`}.`
+      const previewUrl =
+        input.previewUrl ||
+        input.businessRuntime.preview.url ||
+        (input.businessRuntime.business.ref ? `/live/${input.businessRuntime.business.ref}/` : '')
+      const who = input.named || `your ${noun}`
+      return previewUrl
+        ? `Preview is ready for ${who}. Review it at ${previewUrl}`
+        : `Preview is ready for ${who}.`
     }
     if (input.previewStatus === 'failed') {
       return 'Preview did not come up. I am retrying automatically.'
@@ -780,6 +827,7 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   let commandId: string | undefined
   let spec = runtime.spec || getBusinessSpec(session.projectRef)
   let mutatedHeadline: string | null = null
+  let mutationSummary: string | null = null
   let store: StoreCommandResult | null = null
   let snapshot = input.snapshot
   let plan: ExecutionPlan | undefined
@@ -846,6 +894,8 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
     if (executed.commandId) commandId = executed.commandId
     if (executed.launch) launch = executed.launch
     if (executed.mutatedHeadline !== undefined) mutatedHeadline = executed.mutatedHeadline
+    if (executed.mutationSummary) mutationSummary = executed.mutationSummary
+    if (executed.mutated) recovered = true
     if (executed.store) store = executed.store
     if (executed.snapshot) snapshot = executed.snapshot
     plan = executed.plan || plan
@@ -866,9 +916,11 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
       named,
       specName: spec?.businessName,
       previewStatus: runtime.preview.status,
+      previewUrl: runtime.preview.url,
       launch,
       mutatedHeadline,
-      mutated: recovered && Boolean(mutatedHeadline),
+      mutationSummary,
+      mutated: recovered && Boolean(mutatedHeadline || mutationSummary),
       businessRuntime,
       store,
     }),
@@ -885,6 +937,8 @@ export async function applyOperatorIntent(input: ApplyOperatorIntentInput): Prom
   })
   if (mutatedHeadline && recovered) {
     agentContext += `\nMUTATION_APPLIED: hero headline is now “${mutatedHeadline}”. Persisted to the preview artifact. Do not say the store is missing.`
+  } else if (mutationSummary && recovered) {
+    agentContext += `\nMUTATION_APPLIED: preview now shows “${mutationSummary}”. Persisted to the preview artifact. Do not say the store is missing.`
   }
   if (store?.mutated) {
     agentContext += `\nMUTATION_APPLIED: ${store.message} Speak only from BusinessRuntimeState.products / catalog. Never name PocketBase or tell the operator to open Products.`

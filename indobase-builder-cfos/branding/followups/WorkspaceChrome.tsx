@@ -19,6 +19,7 @@ import {
   previewSelectToEditMessage,
   workspaceViewModel,
 } from './ux-conductor'
+import { pickOperatorMessage, readWorkspaceScreenFromSearch } from './presentation'
 
 type JourneyWindow = {
   guest?: boolean
@@ -142,7 +143,15 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   } | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const view = useMemo(() => workspaceViewModel(snap), [snap])
-  const showChromeAside = false
+  const deepLinkScreen =
+    typeof window !== 'undefined' ? readWorkspaceScreenFromSearch(window.location.search) : null
+  const gadgetPreview = useGadgetPreviewPane(view, snap)
+  // Live stores stay chat + Open site (no dashboard over Gadget). Websites/SaaS get
+  // Control Center; an enquiry email deep link forces the inbox open.
+  const allowControl =
+    view.showControlCenter && (!isStoreDashboardKind(view.kind) || Boolean(deepLinkScreen))
+  const showControl = allowControl && (pane === 'control' || Boolean(deepLinkScreen) || !isStoreDashboardKind(view.kind))
+  const showChromeAside = showControl || (!gadgetPreview && view.state === 'needs_attention')
 
   const refresh = useCallback(() => {
     setSnap(readSnapshot())
@@ -216,8 +225,8 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   }, [view.previewUrl, view.state])
 
   useEffect(() => {
-    if (view.showControlCenter) setPane('control')
-  }, [view.showControlCenter])
+    if (allowControl) setPane('control')
+  }, [allowControl])
 
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
@@ -344,7 +353,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
               type="button"
               className={styles.action}
               disabled={disabled}
-              onClick={() => onPick(view.actions[0].message)}
+              onClick={() => pickOperatorMessage(view.actions[0].message, onPick)}
             >
               {view.actions[0].label}
             </button>
@@ -386,7 +395,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
                     : `${styles.action} ${styles.actionSecondary}`
                 }
                 disabled={disabled}
-                onClick={() => onPick(a.message)}
+                onClick={() => pickOperatorMessage(a.message, onPick)}
               >
                 {a.label}
               </button>
@@ -529,7 +538,7 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
                           : `${styles.action} ${styles.actionSecondary}`
                       }
                       disabled={disabled}
-                      onClick={() => onPick(a.message)}
+                      onClick={() => pickOperatorMessage(a.message, onPick)}
                     >
                       {a.label}
                     </button>
@@ -544,6 +553,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
     document.body,
   )
 })
+
+function isStoreDashboardKind(kind: string | null | undefined): boolean {
+  const k = (kind || '').toLowerCase()
+  return k === 'store' || k === 'ecommerce' || k === 'ordering'
+}
 
 function hostedWebsiteKind(kind: string | null | undefined): boolean {
   const k = (kind || '').toLowerCase()

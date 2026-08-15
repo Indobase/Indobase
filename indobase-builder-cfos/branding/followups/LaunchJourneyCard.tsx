@@ -12,7 +12,7 @@ import {
   uxJobHeadline,
   workspaceViewModel,
 } from './ux-conductor'
-import { type PresentationSurface } from './presentation'
+import { pickOperatorMessage, type PresentationSurface } from './presentation'
 
 type LaunchJourneyStage = {
   id: string
@@ -301,7 +301,7 @@ export const LaunchJourneyCard = memo(function LaunchJourneyCard({
           type="button"
           className={styles.primary}
           disabled={disabled}
-          onClick={() => onPick(next_action.message)}
+          onClick={() => pickOperatorMessage(next_action.message, onPick)}
         >
           {next_action.label}
         </button>

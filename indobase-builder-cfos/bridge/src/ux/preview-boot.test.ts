@@ -36,6 +36,8 @@ describe('preview boot handshake', () => {
     assert.match(html, /data-ib-boot="1"/)
     assert.match(html, /INDOBASE_PREVIEW_READY/)
     assert.match(html, /proj_masala_boot/)
+    assert.match(html, /data-ib-safe="1"/)
+    assert.match(html, /vite-error-overlay/)
     assert.doesNotMatch(html, /Circuit Nest/)
   })
 })

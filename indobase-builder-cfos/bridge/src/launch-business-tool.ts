@@ -18,7 +18,7 @@ import {
 import { platformDeployPublish, resolvePlatformApiUrl } from './platform-api-client.js'
 import { isManagedBackendConfigured } from './pocketbase/managed.js'
 import { assertLaunchArchitectureReady, resolveEffectiveAppType } from './launch-backend-gate.js'
-import { autoWireLaunchArtifacts } from './wire-proof.js'
+import { autoWireLaunchArtifacts, landingFormIsDead } from './wire-proof.js'
 import { publishToAppHost, resolveAppHostProvisioner } from './app-host-publish.js'
 import type { BackendConfig } from './auth.js'
 import { getBusinessSpec, inferBusinessSpec } from './ux/business-spec.js'
@@ -130,6 +130,7 @@ export async function executeLaunchBusinessTool(
   let launchHtml = typeof input.html === 'string' ? input.html : undefined
   let launchFiles = input.files && typeof input.files === 'object' ? { ...input.files } : undefined
   const spec = getBusinessSpec(workspaceRef) || inferBusinessSpec(input.title || '')
+  let materializedType: 'ecommerce' | 'saas' | 'landing' | null = null
   if (
     spec.businessType === 'ecommerce' ||
     effectiveAppType === 'ecommerce' ||
@@ -145,6 +146,7 @@ export async function executeLaunchBusinessTool(
     })
     launchHtml = built.html
     launchFiles = built.files
+    materializedType = 'ecommerce'
   } else if (
     spec.businessType === 'saas' ||
     effectiveAppType === 'saas' ||
@@ -160,6 +162,7 @@ export async function executeLaunchBusinessTool(
     })
     launchHtml = built.html
     launchFiles = built.files
+    materializedType = 'saas'
   } else if (
     spec.businessType === 'landing' ||
     effectiveAppType === 'landing' ||
@@ -168,19 +171,25 @@ export async function executeLaunchBusinessTool(
   ) {
     const built = ensureLandingAppFiles({
       spec: { ...spec, businessType: 'landing' },
+      projectRef: workspaceRef,
       html: launchHtml,
       files: launchFiles,
     })
     launchHtml = built.html
     launchFiles = built.files
+    materializedType = 'landing'
   }
-  if (
-    defaults?.backend &&
-    spec.businessType !== 'landing' &&
-    effectiveAppType !== 'landing' &&
-    input.app_type !== 'landing' &&
-    input.app_type !== 'website'
-  ) {
+  // Wire against the storefront we just materialized, not the raw input html: a
+  // plain page whose spec is a shop still ships a commerce runtime, and that
+  // runtime is dead without __INDOBASE_ENV__.
+  const treatAsLanding =
+    materializedType === 'landing' ||
+    (materializedType === null &&
+      (spec.businessType === 'landing' ||
+        effectiveAppType === 'landing' ||
+        input.app_type === 'landing' ||
+        input.app_type === 'website'))
+  if (defaults?.backend && !treatAsLanding) {
     const wired = autoWireLaunchArtifacts({
       html: launchHtml,
       files: launchFiles,
@@ -190,6 +199,19 @@ export async function executeLaunchBusinessTool(
     })
     launchHtml = wired.html
     launchFiles = wired.files
+  }
+
+  if (materializedType === 'landing' && landingFormIsDead(launchHtml)) {
+    return {
+      ok: false,
+      status: 'rejected',
+      message:
+        'The enquiry form is not connected yet, so nobody would receive a submission. Rebuild the page so the form posts through Indobase, then go live.',
+      lane: 'static',
+      claim_live: false,
+      tool: 'launchBusiness',
+      code: 'wire_required',
+    }
   }
 
   const backendGate = await assertLaunchArchitectureReady(defaults?.backend, {

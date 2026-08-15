@@ -596,6 +596,10 @@ const FAILURE_COPY: Record<string, { title: string; body: string }> = {
     title: 'Launch paused',
     body: "I found an issue I couldn't safely resolve automatically.",
   },
+  react_build_failed: {
+    title: "I couldn't finish the preview yet.",
+    body: "I'm rebuilding the application. You don't need to do anything.",
+  },
   smoke_failed: {
     title: "I couldn't safely launch this yet.",
     body: "The live site didn't respond correctly when I checked it.",
@@ -611,9 +615,11 @@ export function stripInternalFailureCopy(message: string): string {
     .replace(/^LAUNCH BLOCKED\s*[—–-]\s*/i, '')
     .replace(/^production verification failed:\s*/i, '')
     .replace(
-      /\b(backend_required|wire_required|account_required|contract_verifier_failed|functional_verifier_failed|guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|CAS|payment_revision|compare-and-set|Studio|tenant|provisioner|Coolify|Traefik|Docker|Postgres)\b/gi,
+      /\b(backend_required|wire_required|account_required|contract_verifier_failed|functional_verifier_failed|guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|CAS|payment_revision|compare-and-set|Studio|tenant|provisioner|Coolify|Traefik|Docker|Postgres|persistCatalogProjection|ReferenceError|TypeError|is not defined)\b/gi,
       '',
     )
+    .replace(/\bUncaught\b/gi, '')
+    .replace(/\b\S+\.(ts|js):\d+(?::\d+)?\b/g, '')
     .replace(/\s{2,}/g, ' ')
     .replace(/^[:.—–-]+\s*/, '')
     .trim()
@@ -630,7 +636,9 @@ export function humanizeLaunchFailure(input: {
   const stripped = input.message ? stripInternalFailureCopy(input.message) : ''
   const title = known?.title || "I couldn't safely launch this yet."
   const body =
-    known?.body || stripped || 'I found an issue I need to fix before this can go live.'
+    known?.body ||
+    (stripped && !/\.ts:\d+|not defined|persistCatalog/i.test(stripped) ? stripped : '') ||
+    'I found an issue I need to fix before this can go live.'
   const actions: UxAction[] = repairable
     ? [
         {

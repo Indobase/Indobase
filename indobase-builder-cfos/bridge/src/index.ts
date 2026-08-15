@@ -63,6 +63,7 @@ import {
   handleCommerceProductsList,
   handleCommerceRuntimeJs,
 } from './commerce/http.js'
+import { handleLeadSubmit, handleLeadStatusUpdate, handleLeadsList, handleLeadsOptions } from './leads/http.js'
 import {
   handleCustomerLogout,
   handleCustomerMe,
@@ -113,6 +114,7 @@ import {
 import { ensureAgentModelsWithTimeout, openRouterKeyConfigured } from './ensure-agent-models.js'
 import { syncBackendAfterEnsure, syncGuidedBackendResult } from './backend-session-sync.js'
 import {
+  buildViteReactApp,
   executeProductionLaunchJob,
   getLatestProductionLaunchJob,
   getProductionLaunchJob,
@@ -467,7 +469,9 @@ async function serveAgentDesktop(
 
   const contentType = proxied.headers.get('content-type') || ''
   if (contentType.includes('text/html') && c.req.method === 'GET') {
-    const html = injectBrowserSentry(injectIndobaseContextBootstrap(await proxied.text()))
+    const html = injectBrowserSentry(
+      injectIndobaseContextBootstrap(await proxied.text(), { guest: isGuestSession(session) }),
+    )
     const headers = new Headers(proxied.headers)
     if (setCookie) headers.append('Set-Cookie', setCookie)
     return new Response(html, {
@@ -800,7 +804,11 @@ app.post('/auth/verify', async (c) => {
   ])
   if (guestPending) rememberPendingIntent(session.projectRef, guestPending)
   try {
-    await applyPendingIntentAfterAuth(session)
+    await applyPendingIntentAfterAuth(session, {
+      launchDeps: {
+        buildReact: async ({ files, cwd }) => buildViteReactApp(files, cwd),
+      },
+    })
   } catch {
     // OTP must succeed even if preview orchestration fails; recovery retries next turn.
   }
@@ -1857,6 +1865,12 @@ app.post('/api/os/tools/goLive', async (c) => {
   return handleLaunchBusinessTool(c, sessionOrErr)
 })
 
+/** Landing enquiries — public ABI for published marketing pages (CORS). */
+app.options('/api/os/leads', handleLeadsOptions)
+app.post('/api/os/leads', handleLeadSubmit)
+app.get('/api/os/leads', handleLeadsList)
+app.patch('/api/os/leads/:id', handleLeadStatusUpdate)
+
 /** Indobase Commerce capability — public ABI for storefronts (CORS). */
 app.options('/api/os/commerce/*', handleCommerceOptions)
 app.get('/api/os/commerce/runtime.js', handleCommerceRuntimeJs)
@@ -2004,6 +2018,9 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
         snapshot: facts.snapshot,
         launchStatus: facts.launchStatus,
         productionJob: facts.productionJob,
+        launchDeps: {
+          buildReact: async ({ files, cwd }) => buildViteReactApp(files, cwd),
+        },
       })
     } catch {
       execution = null
@@ -2068,6 +2085,9 @@ app.post(BRIDGE_AGENT_BEGIN_TURN_PATH, async (c) => {
         snapshot: facts.snapshot,
         launchStatus: facts.launchStatus,
         productionJob: facts.productionJob,
+        launchDeps: {
+          buildReact: async ({ files, cwd }) => buildViteReactApp(files, cwd),
+        },
       })
     } catch {
       execution = null

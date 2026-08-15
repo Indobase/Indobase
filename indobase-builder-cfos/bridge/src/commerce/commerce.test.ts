@@ -4,7 +4,7 @@ import { describe, it } from 'node:test'
 import { Hono } from 'hono'
 
 import { CHECKOUT_CONNECTION_FAILURE } from './customer-copy.ts'
-import { handleCommerceCheckout, handleCommerceProductsList } from './http.ts'
+import { handleCommerceCheckout, handleCommerceProductsList, handleCommerceRuntimeJs } from './http.ts'
 import { majorToMinor, minorToMajor, currencyMinorDigits } from './money.ts'
 import { pocketBaseDateTime } from './pb-adapter.ts'
 import { buildCommerceRuntimeJs } from './runtime.ts'
@@ -46,6 +46,7 @@ describe('commerce runtime ABI', () => {
     assert.doesNotMatch(js, /PocketBase/)
     assert.match(js, /variantId/)
     assert.match(js, /CartStore/)
+    assert.match(js, /credentials:\s*["']omit["']/)
     assert.match(js, /I couldn't complete the order yet/)
   })
 })
@@ -102,6 +103,34 @@ describe('commerce catalog HTTP', () => {
     assert.ok(Array.isArray(body.products) && body.products.length === 1)
     assert.ok(Array.isArray(body.products[0].variants) && body.products[0].variants.length >= 1)
     assert.doesNotMatch(JSON.stringify(body), /persistCatalogProjection is not defined/)
+  })
+
+  it('does not leak catalog exceptions in 502 bodies', async () => {
+    const app = new Hono()
+    app.get('/api/os/commerce/products', (c) =>
+      handleCommerceProductsList(c, async () => {
+        throw new Error('persistCatalogProjection is not defined')
+      }, () => true),
+    )
+    const res = await app.request('/api/os/commerce/products?projectRef=proj_masala', {
+      headers: { 'X-Indobase-Project-Ref': 'proj_masala' },
+    })
+    assert.equal(res.status, 502)
+    const body = (await res.json()) as { message?: string }
+    assert.doesNotMatch(String(body.message), /persistCatalogProjection|is not defined|ReferenceError/)
+  })
+
+  it('runtime.js binds projectRef from the query or /live/ referer', async () => {
+    const app = new Hono()
+    app.get('/api/os/commerce/runtime.js', handleCommerceRuntimeJs)
+    const queried = await app.request('/api/os/commerce/runtime.js?projectRef=roshbdc1f7ad63')
+    assert.equal(queried.status, 200)
+    const fromQuery = await queried.text()
+    assert.match(fromQuery, /roshbdc1f7ad63/)
+    const fromLive = await app.request('/api/os/commerce/runtime.js', {
+      headers: { referer: 'https://builder.indobase.in/live/roshbdc1f7ad63/?ib_edit=1' },
+    })
+    assert.match(await fromLive.text(), /roshbdc1f7ad63/)
   })
 })
 

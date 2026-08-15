@@ -10,7 +10,7 @@ import {
   specIdentityFingerprint,
   type BusinessSpec,
 } from '../business-spec.js'
-import { getLatestProductionLaunchJob } from '../../production-launch/index.js'
+import { getLatestProductionLaunchJob, productionJobMatchesSpec } from '../../production-launch/index.js'
 import { flattenSafeFiles, isViteReactProject } from '../../production-launch/react-project.js'
 import { materializePreview } from '../preview-artifact.js'
 import { rememberArtifact, currentArtifact } from '../artifact-store.js'
@@ -110,7 +110,7 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
     })
   }
 
-  if (stepSucceeded(currentPlan(plan), PLAN_STEP.preview) && existing?.artifactHtml) {
+  if (!identityChanged && stepSucceeded(currentPlan(plan), PLAN_STEP.preview) && existing?.artifactHtml) {
     return {
       plan: currentPlan(plan),
       spec,
@@ -136,10 +136,16 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
   markStepStatus(plan, PLAN_STEP.preview, 'running')
 
   const job = getLatestProductionLaunchJob(session.projectRef)
-  const candidateFiles = flattenSafeFiles({
-    ...(job?.files || {}),
-    ...(existing?.artifactFiles || {}),
-  })
+  const jobOk = !job || productionJobMatchesSpec(job, spec)
+  const reusePriorFiles = !identityChanged && jobOk
+  const candidateFiles = flattenSafeFiles(
+    reusePriorFiles
+      ? {
+          ...(job?.files || {}),
+          ...(existing?.artifactFiles || {}),
+        }
+      : {},
+  )
   const previewInput = {
     projectRef: session.projectRef,
     spec,
@@ -170,9 +176,11 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
       httpOk: built.httpOk,
     },
     artifactHtml: built.html,
-    artifactFiles: isViteReactProject(candidateFiles)
-      ? { ...candidateFiles, ...built.files }
-      : built.files,
+    artifactFiles: built.sourceFiles
+      ? built.sourceFiles
+      : isViteReactProject(candidateFiles)
+        ? candidateFiles
+        : built.files,
     lastCommandId: previewCmd.id,
   })
   if (built.ok && built.files) {
@@ -181,7 +189,7 @@ export async function runBuild(plan: ExecutionPlan, ctx: ExecutorContext): Promi
       projectRef: session.projectRef,
       applicationType: spec.businessType,
       businessSpec: spec,
-      files: built.files,
+      files: built.sourceFiles || built.files,
       predecessorId: predecessor?.artifactId,
     })
     patchApplicationLifecycle(session.projectRef, 'preview_ready', {

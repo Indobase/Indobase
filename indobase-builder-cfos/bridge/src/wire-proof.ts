@@ -96,6 +96,20 @@ export function contentHasClientStockAuthority(text: string): boolean {
   return CLIENT_STOCK_AUTHORITY.test(text)
 }
 
+const LEAD_FORM = /<form[\s>]/i
+const LEADS_ABI = /indobase\.leads|\/api\/os\/leads/i
+const FORM_WITH_ACTION = /<form[^>]*\saction=["']https?:\/\//i
+
+/**
+ * An enquiry form that posts nowhere is worse than no form at all: the visitor
+ * believes they made contact and the owner never hears about it.
+ */
+export function landingFormIsDead(html: string | null | undefined): boolean {
+  const text = html || ''
+  if (!LEAD_FORM.test(text)) return false
+  return !LEADS_ABI.test(text) && !FORM_WITH_ACTION.test(text)
+}
+
 export function contentNeedsCommerceAbi(text: string): boolean {
   return inferAppTypeFromContent(text) === 'ecommerce' && !contentHasCommerceCheckoutAbi(text)
 }
@@ -232,9 +246,9 @@ export function autoWireLaunchArtifacts(input: {
 
   let html =
     typeof input.html === 'string' && input.html.trim() ? input.html.trim() : undefined
-  if (html) html = injectCommerceRuntimeIntoHtml(html)
+  if (html) html = injectCommerceRuntimeIntoHtml(html, appId)
   if (typeof files['index.html'] === 'string' && files['index.html'].trim()) {
-    files['index.html'] = injectCommerceRuntimeIntoHtml(files['index.html'])
+    files['index.html'] = injectCommerceRuntimeIntoHtml(files['index.html'], appId)
   }
 
   let injected = injectIndobaseEnvIntoLaunchContent({

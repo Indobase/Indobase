@@ -62,8 +62,8 @@ export type PublicCatalogAuth =
   | { ok: false; status: 400 | 404; code: 'invalid_request' | 'not_published' }
 
 /**
- * Anonymous GET catalog: only the published business for that storefront.
- * Authenticated operators stay session-bound (conflict → 403).
+ * Anonymous GET catalog: only a published/preview storefront for that ref.
+ * OS session cookies on /live/{ref}/ must not 403 a public catalog read.
  */
 export function resolvePublicCatalogProjectRef(input: {
   session: ControlCenterSession | null
@@ -71,15 +71,9 @@ export function resolvePublicCatalogProjectRef(input: {
   clientProjectRef?: string | null
   isPublished: (projectRef: string) => boolean
 }): PublicCatalogAuth {
-  const client = (input.clientProjectRef || '').trim()
-  if (input.session?.projectRef?.trim() && !input.guest) {
-    return authorizeControlCenterAccess({
-      session: input.session,
-      guest: input.guest,
-      requestedProjectRef: client,
-    })
-  }
-  const ref = sanitizeAppId(client)
+  const raw = (input.clientProjectRef || '').trim()
+  if (!raw) return { ok: false, status: 400, code: 'invalid_request' }
+  const ref = sanitizeAppId(raw)
   if (!ref) return { ok: false, status: 400, code: 'invalid_request' }
   if (!input.isPublished(ref)) {
     return { ok: false, status: 404, code: 'not_published' }

@@ -54,7 +54,8 @@ main{max-width:1080px;margin:0 auto;padding:24px 18px 72px}
 button.add{border:0;background:var(--primary);color:#fff;padding:8px 12px;border-radius:var(--radius);cursor:pointer;font:inherit}
 @media(max-width:720px){header[data-ib-section="hero"]{flex-direction:column} .grid{grid-template-columns:1fr}}
 </style>
-<script src="/api/os/commerce/runtime.js"></script>
+<script>window.__INDOBASE_ENV__={"PROJECT_REF":"${escapeAttr(opts.projectRef)}","INDOBASE_URL":"/api/os/commerce","INDOBASE_COMMERCE_URL":"/api/os/commerce"};</script>
+<script src="/api/os/commerce/runtime.js?projectRef=${encodeURIComponent(opts.projectRef)}"></script>
 </head>
 <body>
 <header data-ib-section="hero"><div class="brand"><h1>${brand}</h1><p>${escapeAttr(opts.spec.industry)} · ${escapeAttr(opts.spec.visualStyle)}</p></div></header>

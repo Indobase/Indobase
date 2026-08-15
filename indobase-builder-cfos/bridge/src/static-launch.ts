@@ -3,7 +3,7 @@
  * No Studio / provisioner / third-party hosts (Vercel, Netlify, GitHub Pages, Cloudflare Pages).
  */
 
-import { mkdir, writeFile, readFile, access } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, readdir, rm, access } from 'node:fs/promises'
 import { injectPreviewInspector } from './preview-inspector.js'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
@@ -423,6 +423,25 @@ export async function getLaunchStatus(workspaceRef: string): Promise<{
   }
 }
 
+/**
+ * Vite emits content-hashed bundles, so every edited preview writes a new
+ * asset name and the superseded one would sit in the served directory forever.
+ * Only prune when this deploy carries its own `assets/` output: an html-only
+ * deploy must never delete the bundles its page still points at.
+ */
+async function pruneSupersededBundles(dir: string, files: Record<string, string>): Promise<void> {
+  const keep = new Set(Object.keys(files))
+  if (![...keep].some((rel) => rel.startsWith('assets/'))) return
+  const assetsDir = path.join(dir, 'assets')
+  const entries = await readdir(assetsDir, { withFileTypes: true }).catch(() => [])
+  for (const entry of entries) {
+    if (!entry.isFile()) continue
+    const rel = `assets/${entry.name}`
+    if (keep.has(rel) || !/\.(?:js|css|map)$/i.test(entry.name)) continue
+    await rm(path.join(assetsDir, entry.name), { force: true }).catch(() => {})
+  }
+}
+
 export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
   return {
     async prepare(ref: string) {
@@ -442,6 +461,7 @@ export function createDiskStaticDeploymentAdapter(): StaticDeploymentAdapter {
         hash.update(rel)
         hash.update(content)
       }
+      await pruneSupersededBundles(dir, files)
       return { artifactRef: `static:${ref}:${hash.digest('hex').slice(0, 12)}`, rootDir: dir }
     },
 
