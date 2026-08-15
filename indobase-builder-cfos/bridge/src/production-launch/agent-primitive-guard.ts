@@ -36,7 +36,11 @@ export const PUBLIC_AGENT_TOOL_PATHS = [
   '/api/os/tools/promptQuota',
 ] as const
 
+/** Browser UX helpers under /api/os/tools — not agent-facing, not primitives. */
+export const PLATFORM_UI_TOOL_PATHS = ['/api/os/tools/followups'] as const
+
 const PUBLIC_PATH_SET = new Set<string>(PUBLIC_AGENT_TOOL_PATHS)
+const UI_PATH_SET = new Set<string>(PLATFORM_UI_TOOL_PATHS)
 
 /** HTTP paths the agent must not be able to invoke. */
 export const PLATFORM_PRIMITIVE_TOOL_PATHS = [
@@ -71,9 +75,15 @@ export function isPublicAgentToolPath(pathname: string): boolean {
   return PUBLIC_PATH_SET.has(path)
 }
 
+export function isPlatformUiToolPath(pathname: string): boolean {
+  const path = (pathname.split('?')[0] || pathname).replace(/\/+$/, '') || '/'
+  return UI_PATH_SET.has(path)
+}
+
 export function isPlatformPrimitiveToolPath(pathname: string): boolean {
   const path = (pathname.split('?')[0] || pathname).replace(/\/+$/, '') || '/'
   if (isPublicAgentToolPath(path)) return false
+  if (isPlatformUiToolPath(path)) return false
   if (path.startsWith('/api/os/tools/')) return true
   return PRIMITIVE_PATH_SET.has(path)
 }
@@ -100,5 +110,6 @@ export function rejectAgentPrimitiveIfNeeded(c: Context): Response | null {
   const path = new URL(c.req.url).pathname
   if (!path.startsWith('/api/os/tools/')) return null
   if (isPublicAgentToolPath(path)) return null
+  if (isPlatformUiToolPath(path)) return null
   return c.json(agentPrimitiveRejectedBody(), 403)
 }

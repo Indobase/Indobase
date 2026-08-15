@@ -26,6 +26,7 @@ describe('five-tool physical boundary', () => {
     assert.ok(isPlatformPrimitiveToolPath('/api/os/tools/applySchema'))
     assert.equal(isPlatformPrimitiveToolPath('/api/os/tools/launchProductionApp'), false)
     assert.equal(isPlatformPrimitiveToolPath('/api/os/tools/connectGateway'), false)
+    assert.equal(isPlatformPrimitiveToolPath('/api/os/tools/followups'), false)
     assert.ok(PLATFORM_PRIMITIVE_TOOL_PATHS.includes('/api/os/tools/guidedBackend'))
   })
 
@@ -97,6 +98,20 @@ describe('five-tool physical boundary', () => {
       headers: { cookie: 'ib_os_session=valid-signed-in-token' },
     })
     assert.equal(publicOk.status, 200)
+  })
+
+  it('allows the followups UI helper without expanding the five-tool catalog', async () => {
+    const app = new Hono()
+    app.use('/api/os/tools/*', async (c, next) => {
+      const denied = rejectAgentPrimitiveIfNeeded(c)
+      if (denied) return denied
+      return next()
+    })
+    app.post('/api/os/tools/followups', (c) => c.json({ ok: true, tool: 'followups' }))
+    const res = await app.request('/api/os/tools/followups', { method: 'POST' })
+    assert.equal(res.status, 200)
+    assert.equal(((await res.json()) as { tool?: string }).tool, 'followups')
+    assert.equal(AGENT_FACING_TOOL_NAMES.length, 5)
   })
 
   it('does not allow cookie callers to invoke primitives over HTTP', async () => {
