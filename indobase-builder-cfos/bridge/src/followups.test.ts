@@ -24,6 +24,7 @@ import {
   stripLeakedCot,
   stripToolCapsuleNoise,
   cleanOperatorMessage,
+  stripFollowUpsMarkup,
   rewriteBlockedBuildSpeech,
   stampAuthoritativeTurn,
   stripAuthoritativeTurnStamp,
@@ -58,6 +59,34 @@ INDOBASE_FOLLOWUPS>>>
     assert.equal(parsed.items[2].message, 'Leave it as-is for now')
     assert.match(parsed.body, /Store is ready/)
     assert.doesNotMatch(parsed.body, /INDOBASE_FOLLOWUPS/)
+  })
+
+  it('never shows FOLLOWUPS/CHOICES markup in operator-visible chat', () => {
+    const leaked = `Finish account setup first. I already have your request.
+
+What kind of web app is this? Pick a card and I will start building.
+
+<<<INDOBASE_FOLLOWUPS
+title: What kind of web app is this?
+Landing / marketing site | This is a landing website. Launch my website on Indobase when the preview is ready.
+SaaS / web app | This is a SaaS app. Launch my app on Indobase when the preview is ready.
+Ecommerce / store | This is an online store. Launch my store on Indobase when the preview is ready.
+Booking / appointments | This is a booking app — ensureLogin + applySchema for resources/slots/bookings FIRST, then UI, then Go Live; productionChecklist app_type booking
+I'll describe it | I'll describe the web app so you can pick the right production path
+INDOBASE_FOLLOWUPS>>>`
+
+    const parsed = parseFollowUps(leaked)
+    assert.ok(parsed)
+    assert.equal(parsed.title, 'What kind of web app is this?')
+    assert.ok(parsed.items.some((i) => /Ecommerce/i.test(i.label)))
+    assert.doesNotMatch(parsed.body, /INDOBASE_FOLLOWUPS|ensureLogin|productionChecklist/)
+
+    const visible = cleanOperatorMessage(leaked)
+    assert.doesNotMatch(visible, /<<<INDOBASE_FOLLOWUPS|INDOBASE_FOLLOWUPS>>>|ensureLogin|applySchema|productionChecklist/)
+    assert.match(visible, /Finish account setup first/)
+
+    const streaming = 'Pick a card.\n\n<<<INDOBASE_FOLLOWUPS\ntitle: Niche?\nApparel | invent brand'
+    assert.doesNotMatch(stripFollowUpsMarkup(streaming), /INDOBASE_FOLLOWUPS|invent brand/)
   })
 
   it('prefers the last FOLLOWUPS block when the agent emits two', () => {

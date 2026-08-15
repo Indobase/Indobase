@@ -211,6 +211,9 @@ export function injectIndobaseContextBootstrap(html: string, opts?: { guest?: bo
           out = out.replace(/<<<INDOBASE_RUNTIME>>>[\\s\\S]*/gi, '');
           out = out.replace(/<<<END_INDOBASE_RUNTIME>>>\\s*/gi, '');
           out = out.replace(/\\bINDOBASE_RUNTIME\\b/gi, '');
+          out = out.replace(/<<<INDOBASE_(?:FOLLOWUPS|CHOICES)[\\s\\S]*?INDOBASE_(?:FOLLOWUPS|CHOICES)>>>\\s*/gi, '');
+          out = out.replace(/<<<INDOBASE_(?:FOLLOWUPS|CHOICES)[\\s\\S]*/gi, '');
+          out = out.replace(/INDOBASE_(?:FOLLOWUPS|CHOICES)>>>\\s*/gi, '');
           out = out.replace(/\\b(?:PocketBase|provisioner)\\b/gi, '');
           return out.replace(/\\n{3,}/g, '\\n\\n').trim();
         }
@@ -218,7 +221,7 @@ export function injectIndobaseContextBootstrap(html: string, opts?: { guest?: bo
           if (!node) return;
           if (node.nodeType === 3) {
             var raw = node.nodeValue || '';
-            if (!raw || (raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1 && raw.indexOf('INDOBASE_RUNTIME') === -1 && raw.indexOf('PocketBase') === -1)) return;
+            if (!raw || (raw.indexOf('<<<INDOBASE_RUNTIME>>>') === -1 && raw.indexOf('INDOBASE_RUNTIME') === -1 && raw.indexOf('INDOBASE_FOLLOWUPS') === -1 && raw.indexOf('INDOBASE_CHOICES') === -1 && raw.indexOf('PocketBase') === -1)) return;
             var stripped = stripRuntimeLeak(raw);
             if (stripped !== raw) node.nodeValue = stripped;
             return;

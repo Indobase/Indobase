@@ -8,6 +8,8 @@ import {
   parseFollowUps,
   resolveFollowUps,
   cleanOperatorMessage,
+  stripFollowUpsMarkup,
+  formatFollowUpsBlock,
   shouldShowLaunchJourneyCard,
   inferChipStage,
   itemsLookLikePreBuildChoices,
@@ -230,7 +232,11 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
 }: Props) {
   const instanceId = useId()
   const isLatest = useLatestChipHost(instanceId)
-  const cleaned = useMemo(() => cleanOperatorMessage(message), [message])
+  const fromRaw = useMemo(() => parseFollowUps(message), [message])
+  const cleaned = useMemo(
+    () => cleanOperatorMessage(fromRaw?.body ?? stripFollowUpsMarkup(message)),
+    [fromRaw, message],
+  )
   const journeyOpts = useMemo(() => {
     const journey = readLaunchJourneyFromWindow()
     const guest = isBrowserGuestSession() || Boolean(journey?.guest || journey?.flags?.is_guest)
@@ -269,13 +275,17 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
     }
   }, [cleaned])
   const resolved = useMemo(() => {
-    // Agent-authored FOLLOWUPS blocks can appear before the turn is marked complete.
-    const explicit = parseFollowUps(cleaned)
+    const forResolve =
+      fromRaw && fromRaw.items.length > 0
+        ? `${cleaned}\n\n${formatFollowUpsBlock(fromRaw.title, fromRaw.items)}`
+        : cleaned
+    const explicit =
+      fromRaw && fromRaw.items.length > 0 ? { ...fromRaw, body: cleaned } : parseFollowUps(cleaned)
     const raw = allowFallback
-      ? resolveFollowUps(cleaned, journeyOpts)
+      ? resolveFollowUps(forResolve, journeyOpts)
       : explicit ??
         (journeyOpts?.journeyNextAction
-          ? resolveFollowUps(cleaned, journeyOpts)
+          ? resolveFollowUps(forResolve, journeyOpts)
           : null)
     if (!raw) return null
     if (isBrowserGuestSession() || inferChipStage(cleaned) === 'guest_gate') {
@@ -283,7 +293,7 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
       return { ...raw, title: '', items: [] as FollowUpItem[] }
     }
     return raw
-  }, [allowFallback, cleaned, journeyOpts])
+  }, [allowFallback, cleaned, fromRaw, journeyOpts])
   const body = resolved?.body ?? cleaned
   const surface = useMemo(() => readPresentation(), [cleaned])
   const showJourney =

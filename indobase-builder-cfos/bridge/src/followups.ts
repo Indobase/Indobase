@@ -368,13 +368,27 @@ export function stripAuthoritativeTurnStamp(message: string): string {
   return t.replace(/\n{3,}/g, '\n\n').trim()
 }
 
+const FOLLOWUPS_BLOCK_RE =
+  /<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*\r?\n?[\s\S]*?(?:\r?\n)?INDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi
+
+/** Operator markdown must never show FOLLOWUPS/CHOICES markup (chips parse it separately). */
+export function stripFollowUpsMarkup(message: string): string {
+  if (!message) return message
+  let t = message
+  t = t.replace(FOLLOWUPS_BLOCK_RE, '')
+  t = t.replace(/<<<INDOBASE_(FOLLOWUPS|CHOICES)[\s\S]*$/gi, '')
+  t = t.replace(/INDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi, '')
+  t = t.replace(/<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*/gi, '')
+  return t.replace(/\n{3,}/g, '\n\n').trim()
+}
+
 const OPERATOR_LEAK_LINE =
   /^(?:#{1,3}\s*)?(?:-+\s*)?(?:Never say\s+)?(?:Studio|PocketBase|provisioner|tenant|saas)\b.*$/gim
 
 /** Operator-visible chat must never include model/runtime injection or infra names. */
 export function stripOperatorInfraLeak(message: string): string {
   if (!message) return message
-  let t = stripAuthoritativeTurnStamp(message)
+  let t = stripFollowUpsMarkup(stripAuthoritativeTurnStamp(message))
   t = t.replace(OPERATOR_LEAK_LINE, '')
   t = t.replace(/\b(?:PocketBase|provisioner)\b/gi, '')
   t = t.replace(/\bStudio\b/g, '')
@@ -1131,7 +1145,7 @@ export function parseFollowUps(message: string): ParsedFollowUps | null {
   let found = false
   // Fresh regex — BLOCK_RE is global; avoid lastIndex bleed across calls.
   const blockRe =
-    /<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*\r?\n([\s\S]*?)\r?\nINDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi
+    /<<<INDOBASE_(FOLLOWUPS|CHOICES)\s*\r?\n?([\s\S]*?)(?:\r?\n)?INDOBASE_(FOLLOWUPS|CHOICES)>>>\s*/gi
 
   const body = message
     .replace(blockRe, (_full, _open, inner: string) => {
@@ -1455,7 +1469,8 @@ export function injectAssistantTurnFollowUps(message: string): ParsedFollowUps |
  * prepend or inject that chip so UI matches launch-journey.ts.
  */
 export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions): ParsedFollowUps | null {
-  const cleaned = cleanOperatorMessage(message)
+  const parsedRaw = parseFollowUps(message)
+  const cleaned = cleanOperatorMessage(parsedRaw?.body ?? stripFollowUpsMarkup(message))
   const flags = resolveJourneyFlags(opts)
   const isLive = flags.isLive === true
   const notLive = flags.isLive === false
@@ -1480,7 +1495,9 @@ export function resolveFollowUps(message: string, opts?: ResolveFollowUpsOptions
     }
   }
 
-  const parsed = parseFollowUps(cleaned)
+  const parsed = parsedRaw
+    ? { ...parsedRaw, body: cleaned }
+    : parseFollowUps(cleaned)
   if (parsed) {
     const gated = applyStageGate(parsed)
     // Agent-authored niche while live → replace with post-live ladder (not merge with journey).

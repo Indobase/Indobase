@@ -147,6 +147,7 @@ describe('core workspace chrome', () => {
     assert.match(html, /__INDOBASE_BEGIN_TURN__/)
     assert.match(html, /\/api\/os\/agent\/begin-turn/)
     assert.match(html, /indobase:context/)
+    assert.match(html, /INDOBASE_FOLLOWUPS/)
     assert.match(html, /GUEST/)
     assert.match(html, /ONBOARDING/)
     assert.match(html, /Create your Indobase account/)
