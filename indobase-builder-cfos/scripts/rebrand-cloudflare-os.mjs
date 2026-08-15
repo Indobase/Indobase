@@ -894,6 +894,31 @@ ${injection}`
     }
 
     text = read(path)
+    if (text.includes('/api/os/agent/begin-turn') && !text.includes('__INDOBASE_CHAT_TURNS__')) {
+      const historyNeedle = `    let turnCtx = ''
+    try {
+      const meter = await fetch('/api/os/agent/begin-turn', {`
+      const historyInject = `    let turnCtx = ''
+    try {
+      try {
+        const typed = typeof inputValue === 'string' ? inputValue.trim() : ''
+        if (typed) {
+          const w = window as unknown as { __INDOBASE_CHAT_TURNS__?: Array<{ role: string; content: string }> }
+          const prev = Array.isArray(w.__INDOBASE_CHAT_TURNS__) ? w.__INDOBASE_CHAT_TURNS__ : []
+          w.__INDOBASE_CHAT_TURNS__ = [...prev, { role: 'user', content: typed.slice(0, 1800) }].slice(-16)
+        }
+      } catch { /* ignore */ }
+      const meter = await fetch('/api/os/agent/begin-turn', {`
+      if (text.includes(historyNeedle)) {
+        text = text.replace(historyNeedle, historyInject)
+        write(path, text)
+        console.log('  ChatInterface ← record chat turns for AI follow-ups')
+      } else {
+        console.warn('  skip: ChatInterface chat-turn history anchor drifted')
+      }
+    }
+
+    text = read(path)
     if (text.includes('let messageInput = outboundMessage;')) {
       text = text.replaceAll('let messageInput = outboundMessage;', 'let messageInput = inputValue;')
       write(path, text)

@@ -37,6 +37,8 @@ import {
   filterChipsForJourneyState,
   operatorMayClaimLive,
   shouldShowLaunchJourneyCard,
+  looksLikeCannedAppTypeCatalog,
+  looksLikeCannedCatalogChips,
 } from './followups.ts'
 
 describe('followups parser', () => {
@@ -87,6 +89,23 @@ INDOBASE_FOLLOWUPS>>>`
 
     const streaming = 'Pick a card.\n\n<<<INDOBASE_FOLLOWUPS\ntitle: Niche?\nApparel | invent brand'
     assert.doesNotMatch(stripFollowUpsMarkup(streaming), /INDOBASE_FOLLOWUPS|invent brand/)
+  })
+
+  it('detects the canned app-type catalog so the UI can ignore it', () => {
+    const canned = [
+      { label: 'Landing / marketing site', message: 'This is a landing website.' },
+      { label: 'SaaS / web app', message: 'This is a SaaS app.' },
+      { label: 'Ecommerce / store', message: 'This is an online store.' },
+    ]
+    assert.equal(looksLikeCannedAppTypeCatalog(canned), true)
+    assert.equal(looksLikeCannedCatalogChips(canned), true)
+    assert.equal(
+      looksLikeCannedAppTypeCatalog([
+        { label: 'Headphones', message: 'Build a headphone store' },
+        { label: 'Audio kits', message: 'Build a store for audio kits' },
+      ]),
+      false,
+    )
   })
 
   it('prefers the last FOLLOWUPS block when the agent emits two', () => {

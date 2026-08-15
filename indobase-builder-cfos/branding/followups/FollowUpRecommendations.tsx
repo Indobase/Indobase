@@ -12,8 +12,10 @@ import {
   formatFollowUpsBlock,
   shouldShowLaunchJourneyCard,
   inferChipStage,
-  itemsLookLikePreBuildChoices,
+  filterGuestClarifyingChips,
+  looksLikeCannedAppTypeCatalog,
   type FollowUpItem,
+  type JourneyChipFlags,
   type ParsedFollowUps,
 } from './followups'
 
@@ -100,6 +102,59 @@ function readProjectState(): string | null {
 }
 
 const CHIP_HOST_ATTR = 'data-indobase-chip-host'
+
+type ChatTurn = { role: 'user' | 'assistant'; content: string }
+
+function readWindowTurns(): ChatTurn[] {
+  try {
+    const raw = (window as unknown as { __INDOBASE_CHAT_TURNS__?: unknown }).__INDOBASE_CHAT_TURNS__
+    if (!Array.isArray(raw)) return []
+    return raw
+      .filter(
+        (row): row is ChatTurn =>
+          Boolean(row) &&
+          typeof row === 'object' &&
+          (row.role === 'user' || row.role === 'assistant') &&
+          typeof row.content === 'string' &&
+          row.content.trim().length > 0,
+      )
+      .map((row) => ({ role: row.role, content: row.content.slice(0, 1800) }))
+      .slice(-16)
+  } catch {
+    return []
+  }
+}
+
+function rememberChatTurn(role: ChatTurn['role'], content: string) {
+  const text = (content || '').trim()
+  if (!text) return
+  try {
+    const w = window as unknown as { __INDOBASE_CHAT_TURNS__?: ChatTurn[] }
+    const prev = Array.isArray(w.__INDOBASE_CHAT_TURNS__) ? w.__INDOBASE_CHAT_TURNS__ : []
+    const last = prev[prev.length - 1]
+    const clipped = { role, content: text.slice(0, 1800) }
+    if (last && last.role === role && last.content === clipped.content) {
+      w.__INDOBASE_CHAT_TURNS__ = prev.slice(-16)
+      return
+    }
+    w.__INDOBASE_CHAT_TURNS__ = [...prev, clipped].slice(-16)
+  } catch {
+    /* ignore */
+  }
+}
+
+function historyForFollowUps(assistantBody: string, extra?: ChatTurn[]): ChatTurn[] {
+  const fromWindow = readWindowTurns() || []
+  const merged = [...fromWindow, ...(extra || [])]
+  const assistant = (assistantBody || '').trim()
+  if (assistant) {
+    const last = merged[merged.length - 1]
+    if (!last || last.role !== 'assistant' || last.content !== assistant.slice(0, 1800)) {
+      merged.push({ role: 'assistant', content: assistant.slice(0, 1800) })
+    }
+  }
+  return merged.slice(-16)
+}
 
 /** Only the latest assistant turn shows chips — older turns keep the prose. */
 function useLatestChipHost(instanceId: string): boolean {
@@ -204,6 +259,11 @@ export const FollowUpChipGrid = memo(function FollowUpChipGrid({
 type Props = {
   message: string
   /**
+   * Recent user/assistant turns from ChatInterface. When omitted, the UI
+   * uses window.__INDOBASE_CHAT_TURNS__ (filled on send).
+   */
+  history?: ChatTurn[]
+  /**
    * When true (default), run resolveFollowUps (agent blocks + deliverable fallback).
    * When false, parseFollowUps only (no stage gate / injection).
    */
@@ -218,12 +278,12 @@ type Props = {
 
 /**
  * Splits agent text into markdown body + chip grid.
- * Chips come from agent FOLLOWUPS/CHOICES, or Naive deliverable fallback.
- * Never show chips during guest/auth turns (even if the agent emits CHOICES).
- * Launch journey card is persistent (sticky singleton) whenever signed-in — not latest-turn only.
+ * Chips prefer AI + chat history (POST /api/os/tools/followups).
+ * Canned app-type catalogs are hidden. Markup is never shown in markdown.
  */
 export const FollowUpRecommendations = memo(function FollowUpRecommendations({
   message,
+  history,
   allowFallback = true,
   showLaunchJourney = true,
   onPick,
@@ -247,7 +307,7 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
       (projectState === 'live' ||
         (!projectState && Boolean(journey?.flags?.is_live && liveUrl)))
     const spec = readRuntimeSpec()
-    const journeyFlags = {
+    const journeyFlags: JourneyChipFlags = {
       isGuest: guest,
       isLive,
       isBackendReady: Boolean(journey?.flags?.is_backend_ready || journey?.backend_ready),
@@ -288,13 +348,79 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
           ? resolveFollowUps(forResolve, journeyOpts)
           : null)
     if (!raw) return null
-    if (isBrowserGuestSession() || inferChipStage(cleaned) === 'guest_gate') {
-      if (itemsLookLikePreBuildChoices(raw.items)) return raw
-      return { ...raw, title: '', items: [] as FollowUpItem[] }
+    const guest = Boolean(journeyOpts?.journeyFlags?.isGuest || isBrowserGuestSession())
+    if (guest || inferChipStage(cleaned) === 'guest_gate') {
+      const clarifying = filterGuestClarifyingChips(raw)
+      if (looksLikeCannedAppTypeCatalog(clarifying.items)) {
+        return { ...clarifying, items: [] as FollowUpItem[] }
+      }
+      return clarifying
+    }
+    if (looksLikeCannedAppTypeCatalog(raw.items)) {
+      return { ...raw, items: [] as FollowUpItem[] }
     }
     return raw
   }, [allowFallback, cleaned, fromRaw, journeyOpts])
-  const body = resolved?.body ?? cleaned
+  const [aiFollowUps, setAiFollowUps] = useState<ParsedFollowUps | null>(null)
+  const [aiAttempted, setAiAttempted] = useState(false)
+
+  useEffect(() => {
+    if (!isLatest || disabled || !allowFallback) return
+    rememberChatTurn('assistant', cleaned)
+    let cancelled = false
+    setAiAttempted(false)
+    setAiFollowUps(null)
+    const turns = historyForFollowUps(cleaned, history)
+    const flags = journeyOpts?.journeyFlags || { isGuest: isBrowserGuestSession() }
+    void (async () => {
+      try {
+        const res = await fetch('/api/os/tools/followups', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            history: turns,
+            generate: true,
+            journey_headline: journeyOpts?.journeyHeadline ?? null,
+            journey_next_action: journeyOpts?.journeyNextAction ?? null,
+            journey_flags: flags,
+          }),
+        })
+        if (!res.ok) throw new Error('followups failed')
+        const json = (await res.json()) as {
+          generated?: ParsedFollowUps | null
+          followups?: ParsedFollowUps | null
+          source?: string | null
+        }
+        if (cancelled) return
+        const next = json.generated || (json.source === 'ai' ? json.followups : null)
+        if (next?.items?.length && !looksLikeCannedAppTypeCatalog(next.items)) {
+          setAiFollowUps({ ...next, body: cleaned })
+        }
+      } catch {
+        /* keep deterministic fallback */
+      } finally {
+        if (!cancelled) setAiAttempted(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [allowFallback, cleaned, disabled, history, isLatest, journeyOpts, message])
+
+  const display = useMemo(() => {
+    if (aiFollowUps?.items.length) return aiFollowUps
+    if (!aiAttempted) {
+      return resolved ? { ...resolved, items: [] as FollowUpItem[] } : null
+    }
+    if (resolved && looksLikeCannedAppTypeCatalog(resolved.items)) {
+      return { ...resolved, items: [] as FollowUpItem[] }
+    }
+    return resolved
+  }, [aiAttempted, aiFollowUps, resolved])
+
+  const body = display?.body ?? resolved?.body ?? cleaned
   const surface = useMemo(() => readPresentation(), [cleaned])
   const showJourney =
     showLaunchJourney &&
@@ -306,16 +432,19 @@ export const FollowUpRecommendations = memo(function FollowUpRecommendations({
 
   return (
     <div data-indobase-chip-host={instanceId}>
-      {children ? children(body, resolved) : null}
+      {children ? children(body, display) : null}
       {isLatest && surface?.executionCard ? (
         <ExecutionCard card={surface.executionCard} stream={surface.stream} />
       ) : null}
       {showJourney && <LaunchJourneyCard onPick={onPick} disabled={disabled} sticky />}
-      {isLatest && resolved && resolved.items.length > 0 && (
+      {isLatest && display && display.items.length > 0 && (
         <FollowUpChipGrid
-          title={resolved.title}
-          items={resolved.items}
-          onPick={onPick}
+          title={display.title}
+          items={display.items}
+          onPick={(next) => {
+            rememberChatTurn('user', next)
+            onPick(next)
+          }}
           disabled={disabled}
         />
       )}

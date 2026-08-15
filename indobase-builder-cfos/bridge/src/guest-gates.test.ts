@@ -46,6 +46,8 @@ describe('guest gates', () => {
     // begin-turn allows guests (no consume) so OTP signup chat is not blocked
     assert.equal(pathRequiresSignedInAccount('/api/os/agent/begin-turn'), false)
     assert.equal(pathAllowsGuestRead('/api/os/agent/begin-turn'), true)
+    assert.equal(pathAllowsGuestRead('/api/os/tools/followups'), true)
+    assert.equal(pathRequiresSignedInAccount('/api/os/tools/followups'), false)
     assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/usage/prompt-quota'))
     assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/auth/mail'))
     assert.ok(OS_ACCOUNT_REQUIRED_PATHS.includes('/api/os/tools/launchBusiness'))

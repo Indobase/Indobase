@@ -89,6 +89,7 @@ import { executeGuidedBackend } from './guided-backend-chain.js'
 import { executeProductionChecklist } from './production-checklist-tool.js'
 import { executeResolveProductImages } from './product-images-tool.js'
 import { parseFollowUps, resolveFollowUps, cleanOperatorMessage } from './followups.js'
+import { generateContextualFollowUps, type FollowUpChatTurn } from './followups-ai.js'
 import {
   buildAuthVerifySuccessPayload,
   buildClaimSessionSuccessPayload,
@@ -1268,10 +1269,27 @@ app.post('/api/os/tools/enableAnalytics', async (c) => {
   return c.json(result, result.ok ? 200 : result.status === 403 ? 403 : 502)
 })
 
-/** resolveFollowUps — parse INDOBASE_FOLLOWUPS blocks and inject ladder chips (debug / CFOS UI). */
+function readFollowUpChatHistory(raw: unknown): FollowUpChatTurn[] {
+  if (!Array.isArray(raw)) return []
+  const out: FollowUpChatTurn[] = []
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue
+    const rec = row as { role?: unknown; content?: unknown; message?: unknown }
+    const role = rec.role === 'user' || rec.role === 'assistant' ? rec.role : null
+    const content =
+      typeof rec.content === 'string' ? rec.content : typeof rec.message === 'string' ? rec.message : ''
+    if (!role || !content.trim()) continue
+    out.push({ role, content })
+  }
+  return out
+}
+
+/** Resolve / generate follow-up chips from this chat (guests allowed — clarifying chips only). */
 app.post('/api/os/tools/followups', async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as {
     message?: string
+    history?: unknown
+    generate?: boolean
     journey_next_action?: { label?: string; message?: string } | null
     journey_headline?: string | null
     journey_is_live?: boolean
@@ -1284,11 +1302,17 @@ app.post('/api/os/tools/followups', async (c) => {
       isBackendReady?: boolean
       isPaymentsReady?: boolean
       liveUrl?: string | null
+      specReady?: boolean
+      verticalId?: string | null
+      previewReady?: boolean
+      appKind?: string
+      projectState?: string | null
     } | null
   }
   const message = typeof body.message === 'string' ? body.message : ''
-  if (!message.trim()) {
-    return c.json({ ok: false, error: 'message required' }, 400)
+  const history = readFollowUpChatHistory(body.history)
+  if (!message.trim() && !history.length) {
+    return c.json({ ok: false, error: 'message or history required' }, 400)
   }
   const cleaned = cleanOperatorMessage(message)
   const parsed = parseFollowUps(cleaned)
@@ -1313,20 +1337,52 @@ app.post('/api/os/tools/followups', async (c) => {
     isBackendReady: Boolean(body.journey_flags?.isBackendReady || body.journey_is_backend_ready),
     isPaymentsReady: Boolean(body.journey_flags?.isPaymentsReady || body.journey_is_payments_ready),
     liveUrl,
-    appKind: body.journey_flags?.appKind,
+    appKind: body.journey_flags?.appKind as
+      | 'store'
+      | 'app'
+      | 'website'
+      | 'booking'
+      | 'ordering'
+      | 'agency'
+      | 'saas'
+      | 'ecommerce'
+      | undefined,
+    specReady: Boolean(body.journey_flags?.specReady),
+    verticalId: body.journey_flags?.verticalId || null,
+    previewReady: Boolean(body.journey_flags?.previewReady),
+    projectState: body.journey_flags?.projectState || null,
   }
-  const resolved = resolveFollowUps(message, {
-    journeyNextAction: journeyNext,
-    journeyHeadline: body.journey_headline ?? null,
-    journeyIsLive: journeyFlags.isLive,
-    journeyLiveUrl: liveUrl,
-    journeyFlags,
-  })
+  const resolved = message.trim()
+    ? resolveFollowUps(message, {
+        journeyNextAction: journeyNext,
+        journeyHeadline: body.journey_headline ?? null,
+        journeyIsLive: journeyFlags.isLive,
+        journeyLiveUrl: liveUrl,
+        journeyFlags,
+      })
+    : null
+  const wantGenerate = body.generate !== false
+  let generated = null
+  if (wantGenerate && (history.length > 0 || message.trim())) {
+    try {
+      generated = await generateContextualFollowUps({
+        history,
+        assistantMessage: cleaned || message,
+        flags: journeyFlags,
+      })
+    } catch {
+      generated = null
+    }
+  }
+  const followUps = generated || resolved
   return c.json({
     ok: true,
     cleaned_message: cleaned,
     parsed,
     resolved,
+    generated,
+    followups: followUps,
+    source: generated ? 'ai' : resolved ? 'resolve' : null,
   })
 })
 

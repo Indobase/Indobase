@@ -938,7 +938,7 @@ describe('FTU execution contract A–Q', () => {
     assert.equal(turn.turnClass, 'other')
     assert.notEqual(turn.runtime.preview.status, 'ready')
     assert.match(turn.operatorMessage, /What will your store sell/)
-    assert.match(turn.operatorMessage, /INDOBASE_CHOICES|INDOBASE_FOLLOWUPS/)
+    assert.doesNotMatch(turn.operatorMessage, /INDOBASE_CHOICES|INDOBASE_FOLLOWUPS/)
     assert.doesNotMatch(turn.operatorMessage, /Circuit Nest/i)
   })
 

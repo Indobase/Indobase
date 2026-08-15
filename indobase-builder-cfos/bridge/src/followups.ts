@@ -11,10 +11,11 @@
  *   4. Deliverable / stage done → agent FOLLOWUPS (or inject next ladder stage)
  *   5. Capability path → agent-authored CHOICES for that path
  *
- * Cards prefer agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES.
+ * Cards prefer AI chips generated from this chat (POST /api/os/tools/followups).
+ * Agent-authored <<<INDOBASE_FOLLOWUPS>>> / CHOICES is transport only — rewrite
+ * from the conversation, never dump the canned app-type / niche catalogs.
  * If the agent omits chips after a completed deliverable, resolveFollowUps
- * injects Naive-style postPreview / postBackend / postGoLive chips (≤3).
- * Niche prose without a CHOICES block is injected as ecommerce niche chips.
+ * injects Naive-style postPreview / postBackend / postGoLive chips (≤3) as fallback.
  *
  * Timing is enforced by a thin deterministic stage gate (Naive-style):
  * guest_gate → niche CHOICES only | building → keep ≤3 ladder chips (strip long walls) |
@@ -303,6 +304,26 @@ export function itemsLookLikePreBuildChoices(items: readonly FollowUpItem[]): bo
       `${i.label} ${i.message}`,
     ),
   )
+}
+
+/** Exact 7-type catalog the conductor used to inject — never prefer over AI+history. */
+export function looksLikeCannedAppTypeCatalog(items: readonly FollowUpItem[]): boolean {
+  if (!items.length) return false
+  const blob = items.map((i) => i.label.toLowerCase()).join('\n')
+  const hits = ['landing / marketing', 'saas / web app', 'ecommerce / store', "i'll describe it"].filter((m) =>
+    blob.includes(m),
+  ).length
+  return hits >= 2
+}
+
+/** Apparel / Electronics / Food / Beauty wall — example catalog, not this conversation. */
+export function looksLikeCannedNicheCatalog(items: readonly FollowUpItem[]): boolean {
+  if (!itemsLookLikeEcommerceNiche(items)) return false
+  return items.some((i) => /^apparel \/ fashion$/i.test(i.label.trim()))
+}
+
+export function looksLikeCannedCatalogChips(items: readonly FollowUpItem[]): boolean {
+  return looksLikeCannedAppTypeCatalog(items) || looksLikeCannedNicheCatalog(items)
 }
 
 export function looksLikeEcommerceNicheAsk(message: string): boolean {
@@ -601,6 +622,21 @@ function isBackendEnsureChip(item: FollowUpItem): boolean {
   )
 }
 
+function isDomainOrChecklistChip(item: FollowUpItem): boolean {
+  return /connect (my )?domain|production checklist/i.test(`${item.label} ${item.message}`)
+}
+
+/** Live / payments / domain ladder — hide during guest OTP. */
+export function isAdvanceLaunchChip(item: FollowUpItem): boolean {
+  return isGoLiveChip(item) || isPaymentsChip(item) || isBackendEnsureChip(item) || isDomainOrChecklistChip(item)
+}
+
+/** Guest/auth turns: keep clarifying chips from this chat; never Go Live / payments. */
+export function filterGuestClarifyingChips(parsed: ParsedFollowUps): ParsedFollowUps {
+  const items = parsed.items.filter((i) => !isAdvanceLaunchChip(i)).slice(0, MAX_VISIBLE_CHIPS)
+  return { ...parsed, items, title: items.length ? parsed.title : '' }
+}
+
 function looksLikeNicheChipSet(parsed: ParsedFollowUps): boolean {
   const title = (parsed.title || '').toLowerCase()
   if (/what will your (online )?shop sell|choose your store category|which niche|pick a niche/.test(title)) {
@@ -747,10 +783,10 @@ export function filterChipsForJourneyState(
 ): ParsedFollowUps {
   if (!flags) return parsed
   if (flags.isGuest) {
-    if (itemsLookLikePreBuildChoices(parsed.items)) {
-      return { ...parsed, items: dedupeFollowUpItems(parsed.items).slice(0, MAX_VISIBLE_CHIPS) }
-    }
-    return { ...parsed, title: '', items: [] }
+    return filterGuestClarifyingChips({
+      ...parsed,
+      items: dedupeFollowUpItems(parsed.items),
+    })
   }
   let items = [...parsed.items]
   if (flags.isLive === true) {

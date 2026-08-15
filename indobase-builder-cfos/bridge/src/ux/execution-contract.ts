@@ -37,13 +37,7 @@ import { composeRuntimeStateHint, toBusinessRuntimeState, type BusinessSnapshotS
 import { type probePreviewHttp, readLiveFile } from '../static-launch.js'
 import { createLiveProbeHttp } from './runtime-probes.js'
 import { classifyStoreCommand, looksLikeStoreCommand, type StoreCommandDeps, type StoreCommandResult } from './store-commands.js'
-import {
-  APP_TYPE_FOLLOWUPS,
-  APP_TYPE_TITLE,
-  ECOMMERCE_NICHE_FOLLOWUPS,
-  ECOMMERCE_NICHE_TITLE,
-  formatFollowUpsBlock,
-} from '../followups.js'
+import { ECOMMERCE_NICHE_TITLE } from '../followups.js'
 import {
   emptyPersistedRuntime,
   getWorkspaceRuntime,
@@ -165,16 +159,12 @@ function clarifyKindForMessage(text: string): 'niche' | 'app_type' | null {
 }
 
 function clarifyOperatorMessage(kind: 'niche' | 'app_type', accountPrefix?: string): string {
-  const cards =
-    kind === 'niche'
-      ? formatFollowUpsBlock(ECOMMERCE_NICHE_TITLE, ECOMMERCE_NICHE_FOLLOWUPS)
-      : formatFollowUpsBlock(APP_TYPE_TITLE, APP_TYPE_FOLLOWUPS)
   const ask =
     kind === 'niche'
-      ? 'What will your store sell? Pick a card and I will build the preview.'
-      : 'What kind of web app is this? Pick a card and I will start building.'
+      ? `${ECOMMERCE_NICHE_TITLE} Tell me in your own words — I’ll suggest next steps from this chat.`
+      : 'What should this web app do for you? Tell me in your own words and I’ll start from there.'
   const prefix = (accountPrefix || '').trim()
-  return prefix ? `${prefix}\n\n${ask}\n\n${cards}` : `${ask}\n\n${cards}`
+  return prefix ? `${prefix}\n\n${ask}` : ask
 }
 
 function looksLikeCreateBusiness(text: string): boolean {
