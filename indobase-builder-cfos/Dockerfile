@@ -17,6 +17,10 @@ COPY packages/platform-api/package.json packages/platform-api/
 COPY packages/platform-api/src packages/platform-api/src/
 COPY packages/platform-api/tsconfig.json packages/platform-api/
 
+COPY packages/builder-agent/package.json packages/builder-agent/
+COPY packages/builder-agent/src packages/builder-agent/src/
+COPY packages/builder-agent/tsconfig.json packages/builder-agent/
+
 COPY indobase-builder-cfos/bridge/package.json indobase-builder-cfos/bridge/
 COPY indobase-builder-cfos/bridge/tsconfig.json indobase-builder-cfos/bridge/
 COPY indobase-builder-cfos/bridge/tsconfig.build.json indobase-builder-cfos/bridge/
@@ -25,6 +29,8 @@ COPY indobase-builder-cfos/bridge/src indobase-builder-cfos/bridge/src/
 WORKDIR /app/indobase-builder-cfos/bridge
 # Bundle app code only — keep node_modules (Sentry/OTel) external so ESM
 # dynamic requires of Node builtins work at runtime.
+# Workspace @indobase/* packages must be aliased (or they stay external and
+# break the runtime image, which does not ship monorepo file: paths).
 RUN npm install --ignore-scripts \
   && npm install --no-save esbuild@0.25.2 \
   && ./node_modules/.bin/esbuild src/index.ts \
@@ -36,7 +42,8 @@ RUN npm install --ignore-scripts \
        --outfile=dist/index.js \
        --alias:@indobase/platform=/app/packages/platform/src/index.ts \
        --alias:@indobase/cloudflare-adapter=/app/packages/cloudflare-adapter/src/index.ts \
-       --alias:@indobase/platform-api=/app/packages/platform-api/src/index.ts
+       --alias:@indobase/platform-api=/app/packages/platform-api/src/index.ts \
+       --alias:@indobase/builder-agent=/app/packages/builder-agent/src/index.ts
 
 FROM node:22-alpine
 WORKDIR /app
