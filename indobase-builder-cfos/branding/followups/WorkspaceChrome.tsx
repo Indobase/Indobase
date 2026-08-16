@@ -14,6 +14,7 @@ import {
   type AuthoritativeProject,
   type WorkspaceSnapshot,
   type WorkspaceViewModel,
+  MERCHANT_ADMIN_NAV,
   formatPreviewEditMessage,
   previewEditSuggestions,
   previewSelectToEditMessage,
@@ -136,7 +137,8 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   const [previewOpen, setPreviewOpen] = useState(false)
   const [frameKey, setFrameKey] = useState(0)
   const [previewBoot, setPreviewBoot] = useState<'waiting' | 'ready' | 'failed'>('waiting')
-  const [pane, setPane] = useState<'preview' | 'control'>('preview')
+  const [pane, setPane] = useState<'preview' | 'control'>('control')
+  const [activeNav, setActiveNav] = useState('home')
   const [selection, setSelection] = useState<{
     target: PreviewEditTarget
     rect: { top: number; left: number; width: number; height: number }
@@ -146,12 +148,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
   const deepLinkScreen =
     typeof window !== 'undefined' ? readWorkspaceScreenFromSearch(window.location.search) : null
   const gadgetPreview = useGadgetPreviewPane(view, snap)
-  // Live stores stay chat + Open site (no dashboard over Gadget). Websites/SaaS get
-  // Control Center; an enquiry email deep link forces the inbox open.
-  const allowControl =
-    view.showControlCenter && (!isStoreDashboardKind(view.kind) || Boolean(deepLinkScreen))
-  const showControl = allowControl && (pane === 'control' || Boolean(deepLinkScreen) || !isStoreDashboardKind(view.kind))
+  // Live businesses get Control Center in the center column; Ask stays on the right.
+  const allowControl = Boolean(view.showControlCenter)
+  const showControl = allowControl && (pane === 'control' || Boolean(deepLinkScreen))
   const showChromeAside = showControl || (!gadgetPreview && view.state === 'needs_attention')
+  const isMerchantHome = view.state === 'empty' && !allowControl && !deepLinkScreen && !view.previewUrl
 
   const refresh = useCallback(() => {
     setSnap(readSnapshot())
@@ -304,38 +305,37 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
 
   useEffect(() => {
     const html = document.documentElement
-    if (!showChromeAside) {
+    html.classList.add('indobase-merchant-os')
+    if (isMerchantHome) {
       html.classList.remove('indobase-workspace-split', 'indobase-workspace-preview-open')
+      html.setAttribute('data-ib-surface', 'home')
       html.removeAttribute(WORKSPACE_ATTR)
-      return
+      return () => {
+        html.classList.remove('indobase-merchant-os', 'indobase-workspace-split', 'indobase-workspace-preview-open')
+        html.removeAttribute('data-ib-surface')
+        html.removeAttribute(WORKSPACE_ATTR)
+      }
     }
     html.classList.add('indobase-workspace-split')
+    html.setAttribute('data-ib-surface', 'chat')
     html.setAttribute(WORKSPACE_ATTR, view.state)
     if (previewOpen) html.classList.add('indobase-workspace-preview-open')
     else html.classList.remove('indobase-workspace-preview-open')
-    const styleId = 'indobase-workspace-split-css'
-    if (!document.getElementById(styleId)) {
-      const el = document.createElement('style')
-      el.id = styleId
-      el.textContent =
-        '@media (min-width: 960px){html.indobase-workspace-split body{margin-right:min(52vw,820px)!important;}}'
-      document.head.appendChild(el)
-    }
     return () => {
-      html.classList.remove('indobase-workspace-split', 'indobase-workspace-preview-open')
+      html.classList.remove('indobase-merchant-os', 'indobase-workspace-split', 'indobase-workspace-preview-open')
+      html.removeAttribute('data-ib-surface')
       html.removeAttribute(WORKSPACE_ATTR)
     }
-  }, [previewOpen, view.state, showChromeAside])
+  }, [previewOpen, view.state, isMerchantHome])
 
   if (typeof document === 'undefined') return null
+  if (isMerchantHome) return null
 
   const showIframe = false
   const overlay = showChromeAside ? overlayFor(view) : null
 
-  if (!showChromeAside) return null
-
   return createPortal(
-    <div className={styles.portal}>
+    <div className={`${styles.portal} ${styles.merchant}`}>
       <header className={styles.bar}>
         <div className={styles.brand}>Indobase</div>
         <div className={styles.actions}>
@@ -360,9 +360,56 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
           ) : null}
         </div>
       </header>
+      <nav className={styles.rail} aria-label="Business">
+        {(['main', 'channels', 'footer'] as const).map((group) => (
+          <div key={group} className={group === 'footer' ? styles.railFooter : undefined}>
+            {group === 'channels' ? <p className={styles.group}>Sales channels</p> : null}
+            {MERCHANT_ADMIN_NAV.filter((item) => item.group === group).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                data-id={item.id}
+                data-active={activeNav === item.id ? 'true' : 'false'}
+                onClick={() => {
+                  setActiveNav(item.id)
+                  if (item.id === 'home') {
+                    setPane('preview')
+                    return
+                  }
+                  const screen = 'screen' in item ? item.screen : undefined
+                  if (allowControl && screen) {
+                    setPane('control')
+                    persistScreen({ section: screen, entityId: null, label: item.label })
+                    return
+                  }
+                  if (item.id === 'online-store' && view.liveUrl) {
+                    window.open(view.liveUrl, '_blank', 'noopener,noreferrer')
+                    return
+                  }
+                  if ('prompt' in item && item.prompt) {
+                    onPick(item.prompt)
+                  }
+                }}
+              >
+                {item.id === 'settings' ? (
+                  <span aria-hidden="true" style={{ display: 'inline-flex', marginRight: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16">
+                      <path
+                        fill="currentColor"
+                        d="M6.5 1.5h3l.4 1.6a5 5 0 0 1 1.6.9l1.6-.5 1.5 2.6-1.2 1.2a5 5 0 0 1 0 1.8l1.2 1.2-1.5 2.6-1.6-.5a5 5 0 0 1-1.6.9l-.4 1.6h-3l-.4-1.6a5 5 0 0 1-1.6-.9l-1.6.5L1.4 10l1.2-1.2a5 5 0 0 1 0-1.8L1.4 5.8 2.9 3.2l1.6.5a5 5 0 0 1 1.6-.9L6.5 1.5zm1.5 4.2A2.3 2.3 0 1 0 10.3 8 2.3 2.3 0 0 0 8 5.7z"
+                      />
+                    </svg>
+                  </span>
+                ) : null}
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ))}
+      </nav>
       <aside
         className={[styles.preview, previewOpen ? styles.previewOpen : ''].filter(Boolean).join(' ')}
-        aria-label="Live preview"
+        aria-label="Business workspace"
       >
         <div className={styles.previewHead}>
           <div className={styles.previewTitle}>
@@ -452,8 +499,8 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
             </>
           ) : overlay ? null : (
             <div className={styles.empty}>
-              <h2>{view.state === 'empty' ? 'Live preview' : view.headline}</h2>
-              <p>{view.state === 'empty' ? view.previewHint : view.body}</p>
+              <h2>{view.headline || "You've got a business to launch."}</h2>
+              <p>{view.body || 'What do you want to work on next? Use Ask on the right.'}</p>
             </div>
           )}
           {selection && !showControl ? (
@@ -549,15 +596,11 @@ export const WorkspaceChrome = memo(function WorkspaceChrome({
           ) : null}
         </div>
       </aside>
+      <div className={styles.askDock} aria-hidden="true" />
     </div>,
     document.body,
   )
 })
-
-function isStoreDashboardKind(kind: string | null | undefined): boolean {
-  const k = (kind || '').toLowerCase()
-  return k === 'store' || k === 'ecommerce' || k === 'ordering'
-}
 
 function hostedWebsiteKind(kind: string | null | undefined): boolean {
   const k = (kind || '').toLowerCase()

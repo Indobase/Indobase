@@ -441,8 +441,9 @@ describe('enquiry inbox', () => {
       join(import.meta.dirname, '../../../branding/followups/WorkspaceChrome.tsx'),
       'utf8',
     )
-    assert.match(chrome, /isStoreDashboardKind/)
+    assert.match(chrome, /MERCHANT_ADMIN_NAV/)
     assert.match(chrome, /allowControl/)
+    assert.match(chrome, /deepLinkScreen/)
     assert.match(chrome, /readWorkspaceScreenFromSearch/)
     assert.doesNotMatch(chrome, /const showChromeAside = false/)
     assert.doesNotMatch(

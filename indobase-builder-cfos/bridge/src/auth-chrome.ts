@@ -9,58 +9,58 @@ const AUTH_CHROME_CSS = `
 #ib-auth-modal[hidden], #ib-auth-backdrop[hidden] { display: none !important; }
 #ib-auth-backdrop {
   position: fixed; inset: 0; z-index: 2147483001;
-  background: rgba(6, 12, 22, .62);
+  background: rgba(26, 28, 29, .45);
 }
 #ib-auth-modal {
   position: fixed; z-index: 2147483002;
   left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: min(420px, calc(100vw - 2rem));
-  background: #121a2b; color: #e8eef8;
-  border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+  background: #fff; color: #1a1a1a;
+  border: 1px solid #e3e4e5; border-radius: 16px;
   padding: 1.25rem 1.15rem 1.1rem;
-  box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  box-shadow: 0 20px 50px rgba(26,28,29,.18);
 }
 #ib-auth-modal h2 {
   margin: 0 0 .35rem; font-size: 1.15rem; letter-spacing: -.02em; font-weight: 650;
 }
 #ib-auth-modal p.lead {
-  margin: 0 0 1rem; color: #9aa8c0; font-size: .86rem; line-height: 1.45;
+  margin: 0 0 1rem; color: #616161; font-size: .86rem; line-height: 1.45;
 }
 #ib-auth-modal label {
-  display: block; font-size: .72rem; color: #9aa8c0; margin: 0 0 .3rem;
+  display: block; font-size: .72rem; color: #616161; margin: 0 0 .3rem;
 }
 #ib-auth-modal input[type="text"],
 #ib-auth-modal input[type="email"] {
   width: 100%; margin-bottom: .75rem; padding: .55rem .65rem;
-  border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
-  background: #0a101c; color: #e8eef8; font-size: .9rem;
+  border-radius: 10px; border: 1px solid #e3e4e5;
+  background: #f8f8f8; color: #1a1a1a; font-size: .9rem;
 }
 #ib-auth-modal .row-check {
   display: flex; gap: .5rem; align-items: flex-start;
-  margin: .15rem 0 1rem; font-size: .78rem; color: #c5d0e2; line-height: 1.4;
+  margin: .15rem 0 1rem; font-size: .78rem; color: #303030; line-height: 1.4;
 }
 #ib-auth-modal .row-check input { margin-top: .15rem; }
-#ib-auth-modal a { color: #7eb7e8; }
+#ib-auth-modal a { color: #2f7cc0; }
 #ib-auth-modal .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .25rem; }
 #ib-auth-modal button {
-  appearance: none; border: 0; cursor: pointer; border-radius: 8px;
+  appearance: none; border: 0; cursor: pointer; border-radius: 10px;
   padding: .45rem .75rem; font-size: .8rem; font-weight: 650;
 }
-#ib-auth-modal button.primary { background: #3B8FD6; color: #041018; }
+#ib-auth-modal button.primary { background: #3B8FD6; color: #fff; }
 #ib-auth-modal button.secondary {
-  background: transparent; color: #e8eef8; border: 1px solid rgba(255,255,255,.14);
+  background: transparent; color: #1a1a1a; border: 1px solid #e3e4e5;
 }
 #ib-auth-modal button:disabled { opacity: .55; cursor: not-allowed; }
 #ib-auth-err {
   display: none; margin: 0 0 .75rem; padding: .5rem .65rem;
-  border-radius: 8px; background: rgba(220, 80, 80, .15);
-  color: #f0b4b4; font-size: .8rem; line-height: 1.4;
+  border-radius: 8px; background: #fbeaea;
+  color: #8e1f0b; font-size: .8rem; line-height: 1.4;
 }
 #ib-auth-err[data-show="1"] { display: block; }
 #ib-auth-ok {
   display: none; margin: 0 0 .75rem; padding: .5rem .65rem;
-  border-radius: 8px; background: rgba(80, 180, 120, .12);
-  color: #9eddb8; font-size: .8rem; line-height: 1.4;
+  border-radius: 8px; background: #eaf6ee;
+  color: #0d5c2e; font-size: .8rem; line-height: 1.4;
 }
 #ib-auth-ok[data-show="1"] { display: block; }
 html[data-ib-signed-in="1"] #ib-auth-modal,

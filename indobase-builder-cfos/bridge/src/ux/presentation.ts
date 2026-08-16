@@ -320,6 +320,18 @@ export function lifecycleFromRuntime(state: RuntimeView, hint: ExecutionHint = {
   return 'BUILD'
 }
 
+/** Stale blocked Go Live jobs must not cover a working preview. */
+export function launchFailureShouldSurface(state: RuntimeView, hint: ExecutionHint = {}): boolean {
+  const previewBroken = state.preview.status === 'error' || state.preview.status === 'failed'
+  if (previewBroken) return true
+  const failed =
+    hint.jobStatus === 'blocked' || hint.planStatus === 'failed' || hint.planStatus === 'interrupted'
+  if (!failed) return false
+  if (hint.turnClass === 'launch') return true
+  if (state.preview.status === 'ready' && state.preview.url) return false
+  return true
+}
+
 export function lifecycleRail(current: LifecycleStageId): PresentationSurface['lifecycle'] {
   const order = LIFECYCLE_STAGES
   const idx = order.indexOf(current)
@@ -336,12 +348,7 @@ export function lifecycleRail(current: LifecycleStageId): PresentationSurface['l
 export function streamPhaseFromHint(state: RuntimeView, hint: ExecutionHint = {}): { phase: StreamPhase; label: string } {
   const noun = businessNoun(kindOf(state))
   if (hint.guest) return { phase: 'IDLE', label: 'Create an account to continue' }
-  if (
-    hint.planStatus === 'failed' ||
-    hint.planStatus === 'interrupted' ||
-    hint.jobStatus === 'blocked' ||
-    state.preview.status === 'error'
-  ) {
+  if (launchFailureShouldSurface(state, hint)) {
     return { phase: 'BLOCKED', label: 'Needs a fix before we continue' }
   }
   const steps = hint.stepStatuses || []
@@ -388,7 +395,7 @@ export function executionCardFromState(
   const who = named || `your ${noun}`
   const steps = hint.stepStatuses || []
   const fromStep = steps.some((s) => s.status === 'running' || s.status === 'succeeded' || s.status === 'failed')
-  if (hint.jobStatus === 'blocked' || hint.planStatus === 'failed') {
+  if (launchFailureShouldSurface(state, hint)) {
     const fail = humanizeLaunchFailure({
       code: hint.failureCode,
       message: hint.failureMessage,
@@ -425,7 +432,7 @@ export function contextualActionsFor(state: RuntimeView, hint: ExecutionHint = {
       },
     ]
   }
-  if (hint.jobStatus === 'blocked' || hint.planStatus === 'failed') {
+  if (launchFailureShouldSurface(state, hint)) {
     return humanizeLaunchFailure({
       code: hint.failureCode,
       message: hint.failureMessage,
@@ -572,7 +579,7 @@ export function homeFromRuntime(state: RuntimeView, hint: ExecutionHint = {}): P
     state.preview.status === 'building'
   const empty = !state.spec && state.preview.status === 'absent' && !state.live.isLive
   const error =
-    hint.jobStatus === 'blocked' || hint.planStatus === 'failed'
+    launchFailureShouldSurface(state, hint)
       ? humanizeLaunchFailure({
           code: hint.failureCode,
           message: hint.failureMessage,
@@ -678,14 +685,13 @@ export function composePresentation(state: RuntimeView, hint: ExecutionHint = {}
   const current = lifecycleFromRuntime(state, hint)
   const noun = businessNoun(kind)
   const named = (state.business.name || state.spec?.businessName || '').trim()
-  const failure =
-    hint.jobStatus === 'blocked' || hint.planStatus === 'failed'
-      ? humanizeLaunchFailure({
-          code: hint.failureCode,
-          message: hint.failureMessage,
-          repairable: hint.repairable,
-        })
-      : null
+  const failure = launchFailureShouldSurface(state, hint)
+    ? humanizeLaunchFailure({
+        code: hint.failureCode,
+        message: hint.failureMessage,
+        repairable: hint.repairable,
+      })
+    : null
   const live = state.live.isLive && Boolean(state.live.url)
   let headline = named ? `${named}` : `Your ${noun}`
   let body = 'Tell me what to change.'
@@ -708,8 +714,8 @@ export function composePresentation(state: RuntimeView, hint: ExecutionHint = {}
     headline = `Building ${named || `your ${noun}`}`
     body = 'Progress comes from the work in progress — not a checklist.'
   } else if (!state.spec) {
-    headline = 'What do you want to launch?'
-    body = 'Tell me the business. I will build a preview, then you publish.'
+    headline = "You've got a business to launch."
+    body = 'What do you want to work on next?'
   }
   return {
     lifecycle: lifecycleRail(current),

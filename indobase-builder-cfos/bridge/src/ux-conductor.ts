@@ -89,8 +89,21 @@ export const HOME_INTENTS: readonly HomeIntent[] = [
   },
 ] as const
 
-export const UX_HOME_HEADLINE = 'What do you want to launch?'
-export const UX_HOME_SUBHEAD = 'Tell me what business you want. I will build it, show a preview, then launch it.'
+export const UX_HOME_HEADLINE = "You've got a business to launch."
+export const UX_HOME_SUBHEAD = 'What do you want to work on next?'
+
+/** Merchant admin rail. Labels stay Indobase (no engine names). */
+export const MERCHANT_ADMIN_NAV = [
+  { id: 'home', label: 'Home', group: 'main' },
+  { id: 'orders', label: 'Orders', group: 'main', screen: 'orders', prompt: "Show me today's orders." },
+  { id: 'products', label: 'Products', group: 'main', screen: 'products', prompt: 'Show my products and help me add or update them.' },
+  { id: 'customers', label: 'Customers', group: 'main', screen: 'customers', prompt: 'Show my customers and enquiries.' },
+  { id: 'analytics', label: 'Analytics', group: 'main', prompt: 'Summarize how my business is doing.' },
+  { id: 'online-store', label: 'Online Store', group: 'channels', screen: 'storefront', prompt: 'Open my live site and help me improve the storefront.' },
+  { id: 'payments', label: 'Payments', group: 'channels', prompt: 'Set up payments with Razorpay or Stripe for my business.' },
+  { id: 'domain', label: 'Domain', group: 'channels', prompt: 'Get a custom domain for my business on Indobase.' },
+  { id: 'settings', label: 'Settings', group: 'footer', screen: 'settings', prompt: 'Help me with settings.' },
+] as const
 
 /** Default (store) job titles — production conductor ids stay the same. */
 export const PRODUCTION_JOB_STAGE_TITLES = {

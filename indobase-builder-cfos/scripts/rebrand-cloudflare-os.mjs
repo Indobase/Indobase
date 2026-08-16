@@ -114,7 +114,39 @@ copyFileSync(join(BRAND, 'NOTICE'), join(OS, 'INDOBASE-NOTICE'))
   text = replaceAll(text, '--color-accent-100: #b84e00;', `--color-accent-100: ${BRAND_BLUE_DARK};`)
   text = replaceAll(text, '--color-accent-200: #ff8a5c;', `--color-accent-200: ${BRAND_BLUE_TEXT_DARK};`)
   text = replaceAll(text, '--color-shadow-accent-light: #ff663355;', '--color-shadow-accent-light: #3B8FD655;')
-  // Hardcoded orange tint in routes
+  if (!text.includes('/* Indobase merchant OS light shell */')) {
+    text += `
+
+/* Indobase merchant OS light shell */
+html, html.dark {
+  color-scheme: light !important;
+}
+`
+  }
+  if (!text.includes('html[data-ib-surface="chat"]')) {
+    text += `
+
+html.indobase-merchant-os [data-slot="sidebar"],
+html.indobase-merchant-os nav[aria-label="Sidebar"],
+html.indobase-merchant-os nav[aria-label="Workspace"] {
+  display: none !important;
+}
+@media (min-width: 960px) {
+  html[data-ib-surface="chat"] body > #root,
+  html[data-ib-surface="chat"] body > #app {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 400px !important;
+    z-index: 48 !important;
+    background: #fff !important;
+    border-left: 1px solid #e3e4e5 !important;
+    overflow: hidden !important;
+  }
+}
+`
+  }
   write(path, text)
   console.log('  brand colors →', BRAND_BLUE)
 }
@@ -254,17 +286,23 @@ console.log('  chrome logos → IndobaseMark')
   const path = join(OS, 'packages/workshop-frontend/src/routes/index.tsx')
   if (existsSync(path)) {
     let text = read(path)
-    text = replaceAll(text, 'What are we working on?', 'What do you want to launch?')
-    text = replaceAll(text, 'Describe Your Business Idea', 'What do you want to launch?')
+    text = replaceAll(text, 'What are we working on?', "You've got a business to launch.")
+    text = replaceAll(text, 'Describe Your Business Idea', "You've got a business to launch.")
+    text = replaceAll(text, 'What do you want to launch?', "You've got a business to launch.")
     text = replaceAll(
       text,
       'Ask a question, create an output, or create an app that works with your tools and data.',
-      'Launch a production-ready application from one prompt.',
+      'What do you want to work on next?',
     )
     text = replaceAll(
       text,
       'Tell Indobase what you want to build — we’ll create the site, backend, and go live with you.',
+      'What do you want to work on next?',
+    )
+    text = replaceAll(
+      text,
       'Launch a production-ready application from one prompt.',
+      'What do you want to work on next?',
     )
     write(path, text)
     console.log('  home landing hero → launch a production application')
@@ -276,7 +314,7 @@ console.log('  chrome logos → IndobaseMark')
   )
   if (existsSync(suggestionsSrc) && existsSync(suggestionsDest)) {
     copyFileSync(suggestionsSrc, suggestionsDest)
-    console.log('  HomeTaskSuggestions ← Store / SaaS / Website / Booking / Ordering / Agency')
+    console.log('  HomeTaskSuggestions ← Polariz home cards (store / site / app / booking)')
   }
 }
 
@@ -2434,6 +2472,7 @@ ${injection}`
       'WorkspaceChrome.tsx',
       'WorkspaceChrome.module.css',
       'BusinessControlCenter.tsx',
+      'BusinessControlCenter.module.css',
       'ExecutionCard.tsx',
       'ExecutionCard.module.css',
       'presentation.ts',

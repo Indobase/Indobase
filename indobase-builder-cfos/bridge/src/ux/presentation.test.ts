@@ -8,6 +8,7 @@ import {
   composePresentation,
   contextualActionsFor,
   executionCardFromState,
+  launchFailureShouldSurface,
   lifecycleFromRuntime,
   presentsInternalLeak,
   streamPhaseFromHint,
@@ -164,6 +165,15 @@ describe('presentation layer', () => {
     assert.equal(live.executionCard?.kind, 'live')
     assert.match(live.copy.liveBanner || '', /live/i)
     assert.ok(!live.home.metrics.some((m) => /₹0|Today/.test(m.value) && m.id === 'sales'))
+  })
+
+  it('does not treat a stale blocked job as a preview blocker', () => {
+    const ready = ecommerceReady()
+    assert.equal(launchFailureShouldSurface(ready, { jobStatus: 'blocked' }), false)
+    const preview = composePresentation(ready, { jobStatus: 'blocked', turnClass: 'build' })
+    assert.equal(preview.stream.phase, 'COMPLETED')
+    assert.equal(preview.executionCard?.kind, 'updated')
+    assert.match(preview.executionCard?.title || '', /ready/i)
   })
 
   it('empty, loading, and stream phases', () => {

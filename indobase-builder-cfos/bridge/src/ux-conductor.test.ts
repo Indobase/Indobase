@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import { AGENT_FACING_TOOL_NAMES } from './production-launch/agent-surface.js'
 import {
   HOME_INTENTS,
+  MERCHANT_ADMIN_NAV,
   UX_CONDUCTOR_AGENT_RULES,
   UX_HOME_HEADLINE,
   businessJobStageTitle,
@@ -37,13 +38,24 @@ describe('UX conductor', () => {
   })
 
   it('home intents are business language, not architecture', () => {
-    assert.equal(UX_HOME_HEADLINE, 'What do you want to launch?')
+    assert.equal(UX_HOME_HEADLINE, "You've got a business to launch.")
     assert.equal(HOME_INTENTS.length, 6)
     for (const tile of HOME_INTENTS) {
       assert.doesNotMatch(tile.prompt, /guidedBackend|ensureDatabase|applySchema|PocketBase|Commerce ABI|Studio|tenant|provisioner|POST \/api/i)
       assert.doesNotMatch(tile.label, /backend|schema|gadget|Studio/i)
     }
     assert.ok(HOME_INTENTS.some((t) => t.id === 'launch-store' && t.description === 'Sell online'))
+  })
+
+  it('merchant admin rail is business language', () => {
+    const ids = MERCHANT_ADMIN_NAV.map((n) => n.id)
+    for (const need of ['home', 'orders', 'products', 'customers', 'online-store', 'payments', 'domain']) {
+      assert.ok(ids.includes(need), `missing ${need}`)
+    }
+    assert.equal(
+      MERCHANT_ADMIN_NAV.some((n) => /shopify|sidekick|dropship/i.test(n.label)),
+      false,
+    )
   })
 
   it('maps job stages to business-specific titles', () => {

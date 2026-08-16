@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it } from 'node:test'
 
 import {
@@ -150,8 +152,35 @@ describe('core workspace chrome', () => {
     assert.match(html, /INDOBASE_FOLLOWUPS/)
     assert.match(html, /GUEST/)
     assert.match(html, /ONBOARDING/)
+    assert.match(html, /id="ib-merchant-os"/)
+    assert.match(html, /color-scheme: light/)
+    assert.match(html, /data-ib-surface="chat"/)
+    assert.match(html, /400px/)
+    assert.match(html, /id="ib-merchant-top"/)
+    assert.match(html, /id="ib-merchant-search"/)
+    assert.match(html, /placeholder="Search"/)
+    assert.match(html, /id="ib-ask-toggle"/)
+    assert.match(html, /aria-label="Open Ask"/)
+    assert.match(html, /id="ib-profile"/)
+    assert.match(html, /aria-label="Profile"/)
+    assert.match(html, /aria-label="Attachment"/)
+    assert.doesNotMatch(html, /shopify|sidekick|dropshipper|agentic/i)
     assert.match(html, /Create your Indobase account/)
     assert.doesNotMatch(html, /id="ib-auth-fab"/)
     assert.match(html, /__INDOBASE_SESSION_STAGE__/)
+  })
+
+  it('admin rail keeps Settings with a gear and Attachment on Ask', () => {
+    const home = readFileSync(join(import.meta.dirname, '../../branding/HomeTaskSuggestions.tsx'), 'utf8')
+    assert.match(home, /id: 'settings'/)
+    assert.match(home, /label: 'Settings'/)
+    assert.match(home, /GearIcon/)
+    assert.match(home, /aria-label="Attachment"/)
+    const chrome = readFileSync(
+      join(import.meta.dirname, '../../branding/followups/WorkspaceChrome.tsx'),
+      'utf8',
+    )
+    assert.match(chrome, /data-id=\{item.id\}/)
+    assert.match(chrome, /item.id === 'settings'/)
   })
 })

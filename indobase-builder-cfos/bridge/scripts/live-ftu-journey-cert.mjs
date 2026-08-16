@@ -158,7 +158,7 @@ try {
 try {
   const home = await get(`${BASE}/`)
   const html = home.text || ''
-  const hasWorkspace = /__INDOBASE_PROJECT__|WorkspaceChrome|What do you want to launch\?/.test(html)
+  const hasWorkspace = /__INDOBASE_PROJECT__|WorkspaceChrome|You've got a business to launch/.test(html)
   const leaked = INTERNAL.test(html) && /guidedBackend|Commerce ABI|PocketBase|ensureDatabase/.test(html)
   record('LIVE-HOME', home.status === 200, `builder home ${home.status} bytes=${html.length}`, 'completion')
   record(

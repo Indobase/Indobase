@@ -107,7 +107,7 @@ describe('session-payload', () => {
     assert.equal(payload.tools.launchProductionApp.path, '/api/os/apps/launch')
     assert.match(payload.agent_hint, /Production Launch Job/)
     assert.equal(payload.production_job, null)
-    assert.equal(payload.home.headline, 'What do you want to launch?')
+    assert.equal(payload.home.headline, "You've got a business to launch.")
     assert.ok(payload.home.tiles.some((t) => t.id === 'launch-saas'))
     assert.ok(payload.home.tiles.some((t) => t.id === 'launch-store'))
     assert.ok(payload.home.tiles.some((t) => t.id === 'launch-landing'))

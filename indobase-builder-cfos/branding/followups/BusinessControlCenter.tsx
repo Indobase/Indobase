@@ -188,11 +188,11 @@ export function BusinessControlCenter({
         ))}
       </nav>
       <section className={styles.main}>
-        <h2 className={styles.hello}>{greeting(displayName)}</h2>
+        <h2 className={styles.hello}>
+          {section === 'overview' && surface?.copy.headline ? surface.copy.headline : greeting(displayName)}
+        </h2>
         <p className={styles.muted}>
-          {home?.name || brand}
-          {home?.typeLabel ? ` · ${home.typeLabel}` : ''}
-          {liveUrl ? ` · ${hostOf(liveUrl)}` : ''}
+          {section === 'overview' && surface?.copy.body ? surface.copy.body : `${home?.name || brand}${home?.typeLabel ? ` · ${home.typeLabel}` : ''}${liveUrl ? ` · ${hostOf(liveUrl)}` : ''}`}
         </p>
         {rail ? (
           <ol className={styles.lifecycle} aria-label="Business lifecycle">
@@ -456,7 +456,7 @@ export function BusinessControlCenter({
         <input
           value={ask}
           onChange={(e) => setAsk(e.target.value)}
-          placeholder="Ask about your business…"
+          placeholder="Write a product description, or ask what to do next"
           disabled={disabled}
           aria-label="Ask AI"
         />

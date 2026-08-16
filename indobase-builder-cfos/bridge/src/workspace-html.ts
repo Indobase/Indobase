@@ -5,6 +5,8 @@
 import type { Session } from './auth.js'
 import { injectAuthChrome } from './auth-chrome.js'
 import { stripVendorBranding } from './indobase-adapter.js'
+import { injectMerchantOsTopbar } from './merchant-os-chrome.js'
+import { MERCHANT_OS_CSS } from './merchant-os-css.js'
 
 function escapeHtml(value: string): string {
   return value
@@ -16,11 +18,11 @@ function escapeHtml(value: string): string {
 
 const SHELL_CSS = `
   :root {
-    --bg: #0b1220;
-    --panel: #121a2b;
-    --line: rgba(255,255,255,.08);
-    --text: #e8eef8;
-    --muted: #9aa8c0;
+    --bg: #f1f2f4;
+    --panel: #fff;
+    --line: #e3e4e5;
+    --text: #1a1a1a;
+    --muted: #616161;
     --accent: #3B8FD6;
   }
   * { box-sizing: border-box; }
@@ -61,7 +63,7 @@ const SHELL_CSS = `
   .landing .hero {
     flex: 1; display: grid; place-items: center; padding: 2rem 1.25rem;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,143,214,.18), transparent 55%),
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,143,214,.10), transparent 55%),
       var(--bg);
   }
   .landing .card {
@@ -189,6 +191,13 @@ export function injectIndobaseContextBootstrap(html: string, opts?: { guest?: bo
   }
   pull();
   setInterval(pull, 15000);
+  try {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.style.colorScheme = 'light';
+    localStorage.setItem('theme', 'light');
+    localStorage.setItem('appearance', 'light');
+  } catch (_) {}
 
   // Hide CFOS tool-call pills that leak internal names (authStart, ensureDatabase, …).
   (function hideOperatorToolPills() {
@@ -267,7 +276,18 @@ export function injectIndobaseContextBootstrap(html: string, opts?: { guest?: bo
   } else {
     withScript = `${html}${script}`
   }
-  return injectAuthChrome(withScript, opts)
+  return injectAuthChrome(injectMerchantOsChrome(withScript), opts)
+}
+
+function injectMerchantOsChrome(html: string): string {
+  let next = html
+  if (!next.includes('id="ib-merchant-os"')) {
+    const tag = `<style id="ib-merchant-os">${MERCHANT_OS_CSS}</style>`
+    if (/<\/head>/i.test(next)) next = next.replace(/<\/head>/i, `${tag}</head>`)
+    else if (/<body/i.test(next)) next = next.replace(/<body/i, `${tag}<body`)
+    else next = `${tag}${next}`
+  }
+  return injectMerchantOsTopbar(next)
 }
 
 /** Fallback if handoff secret missing — normal entry mints a guest and opens the agent desktop. */

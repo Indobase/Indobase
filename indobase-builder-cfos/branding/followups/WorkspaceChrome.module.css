@@ -14,8 +14,8 @@
   gap: 0.5rem;
   height: 44px;
   padding: 0 0.75rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-kumo-line, #d8dee8) 80%, transparent);
-  background: color-mix(in srgb, var(--color-kumo-tint, #fff) 92%, transparent);
+  border-bottom: 1px solid #e3e4e5;
+  background: #1a1c1d;
   backdrop-filter: blur(10px);
 }
 
@@ -23,7 +23,7 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--text-color-kumo-strong, #111827);
+  color: #f1f2f4;
 }
 
 .liveBadge,
@@ -92,8 +92,8 @@
   z-index: 45;
   display: flex;
   flex-direction: column;
-  background: #0b1220;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f1f2f4;
+  border-left: 1px solid #e3e4e5;
 }
 
 .previewHead {
@@ -104,9 +104,9 @@
   gap: 0.75rem;
   height: 44px;
   padding: 0 0.85rem;
-  background: #121a2b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e8eef8;
+  background: #fff;
+  border-bottom: 1px solid #e3e4e5;
+  color: #1a1a1a;
 }
 
 .previewTitle {
@@ -154,9 +154,9 @@
 
 .empty {
   background:
-    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(59, 143, 214, 0.16), transparent 60%),
-    #0b1220;
-  color: #e8eef8;
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(59, 143, 214, 0.08), transparent 60%),
+    #f8f8f8;
+  color: #1a1a1a;
 }
 
 .empty h2,
@@ -170,18 +170,18 @@
 .overlay p {
   margin: 0;
   max-width: 28rem;
-  color: #9aa8c0;
+  color: #616161;
   font-size: 0.85rem;
   line-height: 1.45;
 }
 
 .overlay {
-  background: color-mix(in srgb, #0b1220 72%, transparent);
-  color: #e8eef8;
+  background: color-mix(in srgb, #f8f8f8 86%, transparent);
+  color: #1a1a1a;
 }
 
 .overlay[data-kind='attention'] {
-  background: color-mix(in srgb, #1a1020 82%, transparent);
+  background: color-mix(in srgb, #fbeaea 82%, transparent);
 }
 
 .overlayActions {
@@ -194,7 +194,7 @@
 
 .liveUrl {
   font-size: 12px;
-  color: #7ddea2;
+  color: #0d5c2e;
   word-break: break-all;
 }
 
@@ -204,10 +204,10 @@
   width: min(280px, calc(100% - 1.5rem));
   border-radius: 14px;
   padding: 0.75rem 0.8rem;
-  background: #121a2b;
-  color: #e8eef8;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #e3e4e5;
+  box-shadow: 0 12px 40px rgba(26, 28, 29, 0.12);
 }
 
 .popoverKicker {
@@ -241,8 +241,8 @@
   font-size: 11px;
   font-weight: 650;
   cursor: pointer;
-  background: rgba(59, 143, 214, 0.18);
-  color: #e8eef8;
+  background: #e8f3fb;
+  color: #1a1a1a;
 }
 
 .popoverTools {
@@ -254,7 +254,8 @@
 
 .popoverTools button {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid #e3e4e5;
+  color: #1a1a1a;
 }
 
 .popover form {
@@ -266,9 +267,9 @@
   flex: 1;
   min-width: 0;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0b1220;
-  color: #e8eef8;
+  border: 1px solid #e3e4e5;
+  background: #f8f8f8;
+  color: #1a1a1a;
   padding: 0.4rem 0.5rem;
   font: inherit;
   font-size: 12px;
@@ -286,9 +287,99 @@
   cursor: pointer;
 }
 
+.merchant {
+  position: fixed;
+  top: 56px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+}
+
+.rail,
+.askDock {
+  display: none;
+}
+
+.group {
+  margin: 0.85rem 0.55rem 0.3rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8c9196;
+}
+
+.railFooter {
+  margin-top: auto;
+}
+
 @media (min-width: 960px) {
   .bar {
     display: none;
+  }
+
+  .merchant {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr) 400px;
+    background: #f1f2f4;
+  }
+
+  :global(html[data-ib-ask-open='0']) .merchant {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  :global(html[data-ib-ask-open='0']) .askDock {
+    display: none !important;
+  }
+
+  .rail {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    padding: 1rem 0.7rem;
+    background: #ebebeb;
+    border-right: 1px solid #e3e4e5;
+    overflow: auto;
+  }
+
+  .rail button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    border-radius: 10px;
+    padding: 0.5rem 0.7rem;
+    font: 650 13px/1.3 system-ui, sans-serif;
+    color: #303030;
+    cursor: pointer;
+  }
+
+  .rail button[data-active='true'] {
+    background: #fff;
+    box-shadow: 0 0 0 1px #e3e4e5 inset;
+  }
+
+  .rail button[data-id='settings'] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .merchant .preview {
+    position: relative;
+    inset: auto;
+    width: auto;
+    height: auto;
+    z-index: auto;
+    border-left: 0;
+    min-width: 0;
+  }
+
+  .askDock {
+    display: block;
+    pointer-events: none;
   }
 }
 
