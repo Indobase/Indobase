@@ -1,4 +1,4 @@
-export type ProviderName = 'bedrock' | 'openai' | 'anthropic'
+export type ProviderName = 'bedrock' | 'openai' | 'anthropic' | 'groq'
 
 export type BedrockModel = 'anthropic.claude-3-7-sonnet-20250219-v1:0' | 'openai.gpt-oss-120b-1:0'
 
@@ -6,7 +6,10 @@ export type OpenAIModel = 'gpt-5' | 'gpt-5-mini'
 
 export type AnthropicModel = 'claude-sonnet-4-20250514' | 'claude-3-5-haiku-20241022'
 
-export type Model = BedrockModel | OpenAIModel | AnthropicModel
+// Groq-hosted models, reached via Groq's OpenAI-compatible API.
+export type GroqModel = 'openai/gpt-oss-120b' | 'llama-3.3-70b-versatile'
+
+export type Model = BedrockModel | OpenAIModel | AnthropicModel | GroqModel
 
 export type ProviderModelConfig = {
   /** Optional providerOptions to attach to the system message for this model */
@@ -26,6 +29,10 @@ export type ProviderRegistry = {
   }
   anthropic: {
     models: Record<AnthropicModel, ProviderModelConfig>
+    providerOptions?: Record<string, any>
+  }
+  groq: {
+    models: Record<GroqModel, ProviderModelConfig>
     providerOptions?: Record<string, any>
   }
 }
@@ -62,6 +69,13 @@ export const PROVIDERS: ProviderRegistry = {
     models: {
       'claude-sonnet-4-20250514': { default: false },
       'claude-3-5-haiku-20241022': { default: true },
+    },
+  },
+  groq: {
+    models: {
+      // Same model the Bedrock branch trusts as default — known-good for tool calling.
+      'openai/gpt-oss-120b': { default: true },
+      'llama-3.3-70b-versatile': { default: false },
     },
   },
 }

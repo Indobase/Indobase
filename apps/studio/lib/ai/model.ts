@@ -1,8 +1,9 @@
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI, openai } from '@ai-sdk/openai'
 import { LanguageModel } from 'ai'
 import { checkAwsCredentials, createRoutedBedrock } from './bedrock'
 import {
   BedrockModel,
+  GroqModel,
   Model,
   OpenAIModel,
   PROVIDERS,
@@ -58,13 +59,30 @@ export async function getModel({
   const hasAwsCredentials = await checkAwsCredentials()
   const hasAwsBedrockRoleArn = !!process.env.AWS_BEDROCK_ROLE_ARN
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY
+  const hasGroqKey = !!process.env.GROQ_API_KEY
 
-  // Auto-pick a provider if not specified defaulting to Bedrock
-  if (!preferredProvider) {
-    if (hasAwsBedrockRoleArn && hasAwsCredentials) {
+  const hasBedrock = hasAwsBedrockRoleArn && hasAwsCredentials
+
+  // Whether the credentials for a given provider are actually present.
+  const providerIsAvailable = (p: ProviderName | undefined): boolean => {
+    if (p === 'bedrock') return hasBedrock
+    if (p === 'openai') return hasOpenAIKey
+    if (p === 'groq') return hasGroqKey
+    return false
+  }
+
+  // Auto-pick a provider if none was specified, or if the requested provider
+  // has no credentials available (so a route asking for 'openai' still works
+  // on a Groq-only deployment). Preference order: Bedrock, OpenAI, then Groq.
+  if (!providerIsAvailable(preferredProvider)) {
+    if (hasBedrock) {
       preferredProvider = 'bedrock'
     } else if (hasOpenAIKey) {
       preferredProvider = 'openai'
+    } else if (hasGroqKey) {
+      preferredProvider = 'groq'
+    } else {
+      preferredProvider = undefined
     }
   }
 
@@ -93,6 +111,23 @@ export async function getModel({
       providerRegistry.models as Record<BedrockModel, ProviderModelConfig>
     )[chosenModelId as BedrockModel]?.promptProviderOptions
     return { model, promptProviderOptions }
+  }
+
+  if (preferredProvider === 'groq') {
+    if (!hasGroqKey) {
+      return { error: new Error('GROQ_API_KEY not available') }
+    }
+    // Groq exposes an OpenAI-compatible API; reuse the OpenAI provider pointed
+    // at Groq's base URL. .chat() forces the /chat/completions route — Groq has
+    // no /responses endpoint.
+    const groq = createOpenAI({
+      baseURL: 'https://api.groq.com/openai/v1',
+      apiKey: process.env.GROQ_API_KEY,
+    })
+    return {
+      model: groq.chat(chosenModelId as GroqModel),
+      promptProviderOptions: models[chosenModelId as GroqModel]?.promptProviderOptions,
+    }
   }
 
   if (preferredProvider === 'openai') {

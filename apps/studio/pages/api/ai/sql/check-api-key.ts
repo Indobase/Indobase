@@ -19,9 +19,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 const handleGet = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (process.env.OPENAI_API_KEY) {
-    return res.status(200).json({ hasKey: true })
-  } else {
-    return res.status(200).json({ hasKey: false })
-  }
+  const hasKey = !!process.env.OPENAI_API_KEY || !!process.env.GROQ_API_KEY
+  return res.status(200).json({ hasKey })
 }
