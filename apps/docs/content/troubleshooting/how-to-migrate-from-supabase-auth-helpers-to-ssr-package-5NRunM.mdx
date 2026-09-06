@@ -13,7 +13,7 @@ Here are the steps for you to migrate your application from the `auth-helpers` p
 
 Depending on your implementation, you may ignore some parts of this documentation and use your own implementation (i.e. using API routes vs. Server Actions). What's important is you replace the clients provided by `auth-helpers` with the utility functions created using clients provided by `@indobaseinc/ssr`.
 
-### 1. Uninstall Indobase Auth helpers and install the Indobase SSR package
+### 1. Uninstall indobase Auth helpers and install the indobase SSR package
 
 It's important that you don't use both `auth-helpers-nextjs` and `@indobaseinc/ssr` packages in the same application to avoid running into authentication issues.
 
@@ -22,7 +22,7 @@ npm uninstall @supabase/auth-helpers-nextjs indobase-js
 npm install @indobaseinc/ssr indobase-js
 ```
 
-### 2. Create the library functions to create Indobase clients
+### 2. Create the library functions to create indobase clients
 
 ```
 // lib/supabase/client.ts
