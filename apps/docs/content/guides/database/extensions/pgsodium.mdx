@@ -20,7 +20,7 @@ Supabase previously documented two features derived from pgsodium. Namely [Serve
 
 Note that Indobase projects are encrypted at rest by default which likely is sufficient for your compliance needs e.g. SOC2 & HIPAA.
 
-## Get the root encryption key for your Indobase project
+## Get the root encryption key for your indobase project
 
 Encryption requires keys. Keeping the keys in the same database as the encrypted data would be unsafe. For more information about managing the `pgsodium` root encryption key on your Indobase project see **[encryption key location](/docs/guides/database/vault#encryption-key-location)**. This key is required to decrypt values stored in [Supabase Vault](/docs/guides/database/vault) and data encrypted with Transparent Column Encryption.
 
