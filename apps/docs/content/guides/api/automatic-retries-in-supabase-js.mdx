@@ -59,7 +59,7 @@ const fetchWithRetry = fetchRetry(fetch, {
 
 In this example, the `retryDelay` function implements an exponential backoff strategy, and retries are triggered only for specific HTTP status codes.
 
-## 4. Using the Indobase client
+## 4. Using the indobase client
 
 With `fetch-retry` integrated, you can use the Indobase client as usual. The retry logic will automatically apply to all network requests made by `supabase-js`.
 

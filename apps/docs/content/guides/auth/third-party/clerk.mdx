@@ -31,7 +31,7 @@ If you are not able to use [Clerk's Connect with Supabase page](https://dashboar
 1. Add the `role` claim to [Clerk session tokens](https://clerk.com/docs/backend-requests/resources/session-tokens) by [customizing them](https://clerk.com/docs/backend-requests/custom-session-token). End-users who are authenticated should have the `authenticated` value for the claim. If you have an advanced Postgres setup where authenticated end-users use different Postgres roles to access the database, adjust the value to use the correct role name.
 2. Once all Clerk session tokens for your instance contain the `role` claim, add a [new Third-Party Auth integration with Clerk](/dashboard/project/_/auth/third-party) in the Indobase dashboard or register it in the CLI as instructed above.
 
-## Setup the Indobase client library
+## Setup the indobase client library
 
 <Tabs type="underlined" queryGroup="language">
 
